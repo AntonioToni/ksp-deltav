@@ -1,75 +1,76 @@
-# React + TypeScript + Vite
+# KSP Mission Planner
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An open-source mission planner for **Kerbal Space Program** with a graphical interface for Delta-V calculations.
 
-Currently, two official plugins are available:
+## Why?
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Most existing Delta-V calculators rely on dropdown menus and forms. My goal is to build something that feels much more natural to use.
 
-## React Compiler
+Instead of selecting a start and destination from long lists, you'll simply click on planets, moons, or orbital states directly on a map of the planetary system. The planner will then calculate the required Delta-V and show the complete route.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Planned Features
 
-## Expanding the ESLint configuration
+### Interactive Delta-V Map
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+* Clickable map of the Kerbol system
+* No dropdown menus
+* Automatic Delta-V calculation
+* Lowest Delta-V route finding
+* Visual mission path
+* Complete maneuver breakdown
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Multi-Stop Mission Planning
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Eventually I'd like the planner to support missions with multiple destinations, for example:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+* Kerbin → Mun → Minmus → Kerbin
+* Kerbin → Duna → Ike → Kerbin
+* Grand Tour missions
 
-```
+The planner should calculate the total Delta-V while showing every maneuver along the way.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Mod Support
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Supporting modded planetary systems is one of the goals of this project.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Planned support includes:
 
-```
+* Stock Kerbal Space Program
+* Outer Planets Mod (OPM)
+* Real Solar System (RSS)
+* Kcalbeloh System
+* Additional planet packs
+
+## Future Plans
+
+The Delta-V planner is only the beginning. Some ideas for future tools include:
+
+### CommNet Planner
+
+Plan relay satellite networks by calculating:
+
+* Resonant deployment orbits
+* Satellite spacing
+* Orbital periods
+* Coverage gaps
+
+### Signal Strength Calculator
+
+Estimate communication performance between:
+
+* Ground stations
+* Relay satellites
+* Probes
+* Spacecraft
+
+with support for relay chains and antenna ranges.
+
+More tools may be added over time as the project grows.
+
+## Contributing
+
+Contributions, bug reports, feature requests, and suggestions are always welcome.
+
+## Disclaimer
+
+This project is still in the early stages of development, so expect things to change frequently.
