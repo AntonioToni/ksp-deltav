@@ -1,24 +1,17 @@
+// src/utils/deltaV.ts
 import type { Node } from "../types/node";
+import { surfaceToOrbit, orbitToFlyby, sameSystemDV, interplanetaryDV } from "../data/deltaV";
 
-import {
-  surfaceToOrbit,
-  orbitToFlyby,
-  interplanetaryDV
-} from "../data/deltaV";
-
-function getLocal(body: string, type: "surfaceOrbit" | "orbitFlyby") {
+function getLocal(body: string, type: "surfaceOrbit" | "orbitFlyby"): number | null {
   if (type === "surfaceOrbit") return surfaceToOrbit[body] ?? null;
   return orbitToFlyby[body] ?? null;
 }
 
 export function getDeltaV(from: Node, to: Node): number | null {
-  // -------------------------
   // SAME BODY
-  // -------------------------
   if (from.body === to.body) {
     if (from.situation === to.situation) return 0;
 
-    // surface ↔ orbit
     if (
       (from.situation === "surface" && to.situation === "orbit") ||
       (from.situation === "orbit" && to.situation === "surface")
@@ -26,7 +19,6 @@ export function getDeltaV(from: Node, to: Node): number | null {
       return getLocal(from.body, "surfaceOrbit");
     }
 
-    // orbit ↔ flyby
     if (
       (from.situation === "orbit" && to.situation === "flyby") ||
       (from.situation === "flyby" && to.situation === "orbit")
@@ -34,34 +26,20 @@ export function getDeltaV(from: Node, to: Node): number | null {
       return getLocal(from.body, "orbitFlyby");
     }
 
-    // surface ↔ flyby (composed)
-    if (from.situation === "surface" && to.situation === "flyby") {
-      const a = getLocal(from.body, "surfaceOrbit");
-      const b = getLocal(from.body, "orbitFlyby");
-      return a && b ? a + b : null;
-    }
-
-    if (from.situation === "flyby" && to.situation === "surface") {
-      const a = getLocal(from.body, "orbitFlyby");
-      const b = getLocal(from.body, "surfaceOrbit");
-      return a && b ? a + b : null;
-    }
-
     return null;
   }
 
-  // -------------------------
-  // INTERPLANETARY (THIS IS THE FIX)
-  // -------------------------
-
-  // orbit → flyby (enter target SOI)
-  if (from.situation === "orbit" && to.situation === "flyby") {
-    return interplanetaryDV[`${from.body}->${to.body}`] ?? null;
+  // SAME SYSTEM, DIFFERENT BODY (e.g. Kerbin ↔ Mun, Duna ↔ Ike)
+  // Valid edges: orbit (parent) → flyby (moon), or flyby (moon) → orbit (parent)
+  if (from.system === to.system) {
+    const key = `${from.body}->${to.body}`;
+    return sameSystemDV[key] ?? null;
   }
 
-  // flyby → flyby (transfer between SOIs)
+  // DIFFERENT SYSTEM — only flyby → flyby is valid here
   if (from.situation === "flyby" && to.situation === "flyby") {
-    return interplanetaryDV[`${from.body}->${to.body}`] ?? null;
+    const key = `${from.body}->${to.body}`;
+    return interplanetaryDV[key] ?? null;
   }
 
   return null;
