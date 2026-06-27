@@ -7,6 +7,10 @@ function getLocal(body: string, type: "surfaceOrbit" | "orbitFlyby"): number | n
   return orbitToFlyby[body] ?? null;
 }
 
+function getSymmetric(table: Record<string, number>, a: string, b: string): number | null {
+  return table[`${a}<->${b}`] ?? table[`${b}<->${a}`] ?? null;
+}
+
 export function getDeltaV(from: Node, to: Node): number | null {
   // SAME BODY
   if (from.body === to.body) {
@@ -32,14 +36,12 @@ export function getDeltaV(from: Node, to: Node): number | null {
   // SAME SYSTEM, DIFFERENT BODY (e.g. Kerbin ↔ Mun, Duna ↔ Ike)
   // Valid edges: orbit (parent) → flyby (moon), or flyby (moon) → orbit (parent)
   if (from.system === to.system) {
-    const key = `${from.body}->${to.body}`;
-    return sameSystemDV[key] ?? null;
+    return getSymmetric(sameSystemDV, from.body, to.body);
   }
 
   // DIFFERENT SYSTEM — only flyby → flyby is valid here
   if (from.situation === "flyby" && to.situation === "flyby") {
-    const key = `${from.body}->${to.body}`;
-    return interplanetaryDV[key] ?? null;
+    return getSymmetric(interplanetaryDV, from.body, to.body);
   }
 
   return null;
