@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
   page.on('console', message => {
     if (message.type() === 'error') pageErrors.push(message.text())
   })
-  await page.goto('/')
+  await page.goto('./')
   await expect(page.getByRole('heading', { name: 'KSP DeltaV Planner', exact: true })).toBeVisible()
 })
 

@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test'
 // The cloud image provides Chromium. Other machines can install Playwright's
 // bundled browser with `npx playwright install chromium`.
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
-  ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined)
+  ?? (!process.env.CI && existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined)
 
 export default defineConfig({
   testDir: './e2e',

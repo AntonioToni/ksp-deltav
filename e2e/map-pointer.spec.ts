@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test('preserves mouse and touch selection while outgoing maneuver costs change', async ({ page, isMobile }) => {
   const browserErrors: string[] = []
   page.on('pageerror', error => browserErrors.push(error.message))
-  await page.goto('/')
+  await page.goto('./')
 
   const activate = async (kind: 'orbit' | 'surface') => {
     const node = page.locator(`[data-node-id="stock:kerbin:${kind}"]`)

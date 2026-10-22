@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:pages": "npm run build && playwright test --config=playwright.pages.config.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

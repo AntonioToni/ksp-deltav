@@ -33,6 +33,9 @@ npm run build
 npm run preview
 ```
 
+Production builds and previews use the `/ksp-deltav/` project path required by
+GitHub Pages. The development server continues to use `/`.
+
 ## Validation
 
 ```sh
@@ -40,6 +43,7 @@ npm test             # Vitest: routing, validation, and stock-data regressions
 npm run lint
 npm run build        # Strict TypeScript checking and production bundle
 npm run test:e2e     # Playwright: desktop and mobile browser workflows
+npm run test:pages   # Build and run those workflows under /ksp-deltav/
 ```
 
 Browser tests start their own Vite server on port 4173. The cloud environment's
@@ -47,6 +51,21 @@ Browser tests start their own Vite server on port 4173. The cloud environment's
 with `npx playwright install chromium`; an optional
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` can select a different Chromium executable.
 Use `npm run test:watch` for interactive unit-test development.
+
+## GitHub Pages deployment
+
+In the repository's **Settings → Pages → Build and deployment**, select
+**GitHub Actions** as the source. The `Deploy to GitHub Pages` workflow then
+validates, builds, and deploys each push to `main`. It can also be started
+manually from the Actions tab.
+
+The workflow runs lint, routing/data tests, and desktop browser checks against
+the production build at its project path before uploading `dist`. Deployment
+uses GitHub's Pages actions and the workflow's temporary `GITHUB_TOKEN`; no
+additional deployment secret is needed.
+
+The default project URL is <https://antoniotoni.github.io/ksp-deltav/> once the
+first deployment succeeds.
 
 ## How estimates work
 
