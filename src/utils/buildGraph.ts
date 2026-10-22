@@ -1,40 +1,11 @@
-import { nodes } from "../data/nodes";
-import { getDeltaV } from "./deltaV";
-import { isValidTransition } from "./isValidTransition";
+import type { ManeuverEdge, PlanetPack, PlannerGraph } from '../types/planner'
+import { validatePlanetPack } from './validatePlanetPack'
 
-export type Graph = Record<string, { to: string; cost: number }[]>;
-
-export function buildGraph(): Graph {
-  const graph: Record<string, { to: string; cost: number }[]> = {};
-
-  for (const from of nodes) {
-    graph[from.id] = [];
-
-    for (const to of nodes) {
-      if (from.id === to.id) continue;
-
-      // 🚨 HARD BLOCK: no orbit-to-orbit interplanetary edges
-      if (
-        from.situation === "orbit" &&
-        to.situation === "orbit" &&
-        from.body !== to.body
-      ) {
-        continue;
-      }
-
-      if (!isValidTransition(from, to)) continue;
-
-      const cost = getDeltaV(from, to);
-      if (cost === null) {
-        continue;
-      }
-
-      graph[from.id].push({
-        to: to.id,
-        cost,
-      });
-    }
-  }
-
-  return graph;
+/** Compile only explicit directed maneuvers; never infer reverse costs. */
+export function buildGraph(pack: PlanetPack): PlannerGraph {
+  const errors = validatePlanetPack(pack)
+  if (errors.length > 0) throw new Error(`Invalid planet pack:\n${errors.join('\n')}`)
+  const graph = new Map<string, ManeuverEdge[]>(pack.nodes.map(node => [node.id, []]))
+  for (const edge of pack.maneuvers) graph.get(edge.from)?.push(edge)
+  return { nodes: new Map(pack.nodes.map(node => [node.id, node])), adjacency: graph }
 }
