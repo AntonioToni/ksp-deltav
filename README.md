@@ -1,76 +1,96 @@
-# KSP Mission Planner
+# KSP DeltaV Planner
 
-An open-source mission planner for **Kerbal Space Program** with a graphical interface for Delta-V calculations.
+An open-source mission planner for **Kerbal Space Program**, built with React,
+TypeScript, Vite, and Material UI. Select states directly on a schematic map of
+the stock Kerbol system to calculate a route and inspect its maneuver budget.
 
-## Why?
+## Implemented
 
-Most existing Delta-V calculators rely on dropdown menus and forms. My goal is to build something that feels much more natural to use.
+- Interactive SVG map with all 17 stock bodies and 50 selectable states:
+  surface, low orbit, encounter, and high elliptical orbit where needed.
+  Kerbol has no mission states; Jool has no landable surface.
+- Explicit origin/destination selection, endpoint editing, swap, and reset.
+- Lowest estimated Delta-V within the supported maneuver graph, with directed
+  connections, highlighted routes, and individual/cumulative maneuver costs.
+- Keyboard selection with Enter/Space, focus indicators, zoom controls,
+  route-only filtering, and a scrollable map on smaller screens.
+- A validated, sourced stock dataset and distinct invalid/unreachable results.
 
-Instead of selecting a start and destination from long lists, you'll simply click on planets, moons, or orbital states directly on a map of the planetary system. The planner will then calculate the required Delta-V and show the complete route.
+## Development
 
-## Planned Features
+Use **Node.js 24 LTS** and npm (validated with Node 24.19.0 / npm 11.9.0).
 
-### Interactive Delta-V Map
+```sh
+npm ci
+npm run dev
+```
 
-* Clickable map of the Kerbol system
-* No dropdown menus
-* Automatic Delta-V calculation
-* Lowest Delta-V route finding
-* Visual mission path
-* Complete maneuver breakdown
+The app is entirely client-side. It needs no backend, credentials, or environment
+variables. Production output is generated in `dist`:
 
-## Multi-Stop Mission Planning
+```sh
+npm run build
+npm run preview
+```
 
-Eventually I'd like the planner to support missions with multiple destinations, for example:
+## Validation
 
-* Kerbin → Mun → Minmus → Kerbin
-* Kerbin → Duna → Ike → Kerbin
-* Grand Tour missions
+```sh
+npm test             # Vitest: routing, validation, and stock-data regressions
+npm run lint
+npm run build        # Strict TypeScript checking and production bundle
+npm run test:e2e     # Playwright: desktop and mobile browser workflows
+```
 
-The planner should calculate the total Delta-V while showing every maneuver along the way.
+Browser tests start their own Vite server on port 4173. The cloud environment's
+`/usr/bin/chromium` is used when available. On another machine, install a browser
+with `npx playwright install chromium`; an optional
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` can select a different Chromium executable.
+Use `npm run test:watch` for interactive unit-test development.
 
-## Mod Support
+## How estimates work
 
-Supporting modded planetary systems is one of the goals of this project.
+The planner uses the individually sourced segments of the community KSP 1.7.3
+Delta-V map. Numbers are in **m/s** and represent favorable, idealized transfers;
+they are estimates rather than simulated trajectories. The Kerbin surface → Mun
+surface reference route is **5,120 m/s** in this source revision.
 
-Planned support includes:
+Only Kerbin-centered interplanetary transfers are currently supplied. A route
+between two other planetary systems includes capture into Kerbin low orbit and
+escape for the next transfer. The search tracks arrival context to prevent a
+free shortcut through incompatible planetary encounters. High elliptical orbit
+or a moon orbit does not reset that context.
 
-* Stock Kerbal Space Program
-* Outer Planets Mod (OPM)
-* Real Solar System (RSS)
-* Kcalbeloh System
-* Additional planet packs
+Plane-change allowances, dates, travel time, gravity assists, and vehicle
+performance are excluded. No atmospheric savings are credited. Atmospheric
+powered descent uses an explicitly labeled, ascent-sized planning allowance,
+not a calculated landing burn. Add an appropriate mission margin.
 
-## Future Plans
+See [data provenance, assumptions, and reference totals](docs/DATA.md) for the
+pinned source and its attribution.
 
-The Delta-V planner is only the beginning. Some ideas for future tools include:
+## Architecture
 
-### CommNet Planner
+- `src/types/planner.ts`: body hierarchy, route states, directed maneuvers,
+  planet packs, and route results.
+- `src/data/stock.ts`: the single stock dataset, including reference orbits,
+  source metadata, and maneuver assumptions.
+- `src/utils/validatePlanetPack.ts`: runtime validation of data and supported
+  maneuver topology.
+- `src/utils/buildGraph.ts` and `findRoute.ts`: graph construction and contextual
+  Dijkstra search, independent of React.
+- `src/components/mapLayout.ts` and `DeltaVMap.tsx`: schematic coordinates and
+  interactive SVG presentation, separate from the physical/reference data.
+- `src/App.tsx`: mission selection, route presentation, and assumptions.
 
-Plan relay satellite networks by calculating:
+## Next steps
 
-* Resonant deployment orbits
-* Satellite spacing
-* Orbital periods
-* Coverage gaps
+- Ordered multi-stop missions and return legs.
+- Reviewed direct transfers between additional planetary systems.
+- Vehicle-aware landing estimates and optional atmospheric assistance.
+- Versioned planet-pack loading for OPM, RSS, Kcalbeloh, and other mods.
+- Later: CommNet deployment/coverage and signal-strength planning.
 
-### Signal Strength Calculator
-
-Estimate communication performance between:
-
-* Ground stations
-* Relay satellites
-* Probes
-* Spacecraft
-
-with support for relay chains and antenna ranges.
-
-More tools may be added over time as the project grows.
-
-## Contributing
-
-Contributions, bug reports, feature requests, and suggestions are always welcome.
-
-## Disclaimer
-
-This project is still in the early stages of development, so expect things to change frequently.
+The project remains in early development. Contributions, bug reports, and
+suggestions are welcome. Kerbal Space Program is the property of its respective
+owners; this is a community project.

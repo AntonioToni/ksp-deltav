@@ -1,1 +1,0 @@
-export type Situation = "surface" | "orbit" | "flyby";
