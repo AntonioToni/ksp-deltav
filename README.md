@@ -6,14 +6,18 @@ the stock Kerbol system to calculate a route and inspect its maneuver budget.
 
 ## Implemented
 
-- Interactive SVG map with all 17 stock bodies and 50 selectable states:
+- Full-screen branching SVG map covering all 16 stock planets/moons and 50 selectable states:
   surface, low orbit, encounter, and high elliptical orbit where needed.
   Kerbol has no mission states; Jool has no landable surface.
 - Explicit origin/destination selection, endpoint editing, swap, and reset.
-- Lowest estimated Delta-V within the supported maneuver graph, with directed
-  connections, highlighted routes, and individual/cumulative maneuver costs.
-- Keyboard selection with Enter/Space, focus indicators, zoom controls,
-  route-only filtering, and a scrollable map on smaller screens.
+- Lowest estimated Delta-V within the supported maneuver graph, with colored
+  connections and highlighted routes.
+- A 0–100% redundancy slider adds a reserve to the final budget without changing
+  the route. Budgets round up to whole m/s; the base and extra amounts stay visible.
+- Optional compact maneuver breakdown, hidden by default.
+- Keyboard selection with Enter/Space and visible focus indicators. The map
+  reflows for portrait screens and fits alongside the controls without page or
+  map scrolling.
 - A validated, sourced stock dataset and distinct invalid/unreachable results.
 
 ## Development
@@ -39,7 +43,7 @@ GitHub Pages. The development server continues to use `/`.
 ## Validation
 
 ```sh
-npm test             # Vitest: routing, validation, and stock-data regressions
+npm test             # Vitest: routing, validation, stock data, and reserve budgets
 npm run lint
 npm run build        # Strict TypeScript checking and production bundle
 npm run test:e2e     # Playwright: desktop and mobile browser workflows
@@ -98,13 +102,14 @@ pinned source and its attribution.
   maneuver topology.
 - `src/utils/buildGraph.ts` and `findRoute.ts`: graph construction and contextual
   Dijkstra search, independent of React.
+- `src/utils/budget.ts`: redundancy calculation, separate from routing costs.
 - `src/components/mapLayout.ts` and `DeltaVMap.tsx`: schematic coordinates and
   interactive SVG presentation, separate from the physical/reference data.
 - `src/App.tsx`: mission selection, route presentation, and assumptions.
 
 ## Next steps
 
-- Ordered multi-stop missions and return legs.
+- Round-trip and return-only planning, followed by ordered multi-stop missions.
 - Reviewed direct transfers between additional planetary systems.
 - Vehicle-aware landing estimates and optional atmospheric assistance.
 - Versioned planet-pack loading for OPM, RSS, Kcalbeloh, and other mods.

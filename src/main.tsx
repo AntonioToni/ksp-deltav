@@ -9,16 +9,17 @@ import App from './App';
 const theme = createTheme({
   palette: {
     mode: 'dark',
-    primary: { main: '#7dd3fc', dark: '#3287ad' },
-    secondary: { main: '#c4b5fd' },
-    background: { default: '#0b1120', paper: '#121e30' },
-    text: { primary: '#eef5ff', secondary: '#a0b2ca' },
-    divider: '#293a52',
+    primary: { main: '#73c8fa', dark: '#3f91c3' },
+    secondary: { main: '#e7bd7b' },
+    background: { default: '#191a24', paper: '#20212d' },
+    text: { primary: '#e5e6ee', secondary: '#9d9eaf' },
+    divider: '#333541',
   },
   typography: { fontFamily: 'Roboto, sans-serif', button: { textTransform: 'none' } },
   shape: { borderRadius: 12 },
   components: {
-    MuiPaper: { defaultProps: { elevation: 0 }, styleOverrides: { root: { backgroundImage: 'none', border: '1px solid #293a52' } } },
+    MuiCssBaseline: { styleOverrides: { 'html, body, #root': { width: '100%', height: '100%', margin: 0, overflow: 'hidden' } } },
+    MuiPaper: { defaultProps: { elevation: 0 }, styleOverrides: { root: { backgroundImage: 'none', border: '1px solid #333541' } } },
     MuiButton: { styleOverrides: { root: { minHeight: 44 } } },
     MuiAccordion: { styleOverrides: { root: { '&:before': { display: 'none' } } } },
   },
