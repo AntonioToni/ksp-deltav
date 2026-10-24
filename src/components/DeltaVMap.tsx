@@ -4,6 +4,7 @@ import type { KeyboardEvent } from 'react'
 import type { ManeuverEdge, NodeKind, PlanetPack, RouteResult } from '../types/planner'
 import { arrowPosition, connectionPoints, createMapLayout, pathFromPoints } from './mapLayout'
 import type { MapMode } from './mapLayout'
+import { getAerobrakingEdges } from '../utils/aerobraking'
 
 interface DeltaVMapProps {
   pack: PlanetPack
@@ -16,6 +17,7 @@ interface DeltaVMapProps {
 const stateNames: Record<NodeKind, string> = { surface: 'Land', orbit: 'Orbit', elliptical: 'High', encounter: 'Flyby' }
 const originColor = '#73c8fa'
 const destinationColor = '#e7bd7b'
+const aerobrakingColor = '#c6e8d8'
 
 export default function DeltaVMap({ pack, startId, endId, route, onSelect }: DeltaVMapProps) {
   const container = useRef<HTMLDivElement>(null)
@@ -39,6 +41,7 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
   const bodyById = useMemo(() => new Map(pack.bodies.map(body => [body.id, body])), [pack])
   const routeEdges = useMemo(() => new Set(route?.status === 'success' ? route.legs.map(leg => leg.edge.id) : []), [route])
   const routeNodes = useMemo(() => new Set(route?.status === 'success' ? route.nodeIds : []), [route])
+  const aerobrakingEdges = useMemo(() => getAerobrakingEdges(pack), [pack])
   const connections = useMemo(() => {
     const seen = new Set<string>()
     return pack.maneuvers.filter(edge => {
@@ -82,15 +85,18 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
         sx={{
           display: 'block', width: '100%', height: '100%', overflow: 'hidden',
           '& .map-node': { cursor: 'pointer', outline: 'none' },
+          '& .map-node .state-circle': { transition: 'stroke-width 120ms ease, stroke-opacity 120ms ease' },
           '& .map-node .focus-ring': { opacity: 0 },
           '& .map-node:hover .focus-ring, & .map-node:focus-visible .focus-ring': { opacity: 1 },
           '& .map-node:hover .state-circle, & .map-node:focus-visible .state-circle': { strokeWidth: 3 },
+          '@media (prefers-reduced-motion: reduce)': { '& .map-node .state-circle': { transition: 'none' } },
         }}
       >
         <defs>
-          <pattern id={`${prefix}-route-stripes`} width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(40)">
-            <rect width="10" height="24" fill="#ffffff" fillOpacity="0.18" />
-          </pattern>
+          <linearGradient id={`${prefix}-node-fill`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#303748" />
+            <stop offset="1" stopColor="#20232f" />
+          </linearGradient>
           <filter id={`${prefix}-glow`} x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5" /></filter>
         </defs>
 
@@ -100,7 +106,7 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
           fill="none"
           stroke={edgeColor(edge)}
           strokeWidth={mode === 'portrait' ? 9 : 15}
-          strokeOpacity={routeEdges.size ? 0.19 : 0.35}
+          strokeOpacity={routeEdges.size ? 0.25 : 0.46}
           strokeLinejoin="round"
           strokeLinecap="round"
           data-connection-id={edge.id}
@@ -109,12 +115,24 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
         {pack.maneuvers.filter(edge => routeEdges.has(edge.id)).map(edge => {
           const points = pointsFor(edge)
           const d = pathFromPoints(points)
-          const arrow = arrowPosition(points)
           const color = edgeColor(edge)
           return <g key={edge.id}>
+            <path d={d} fill="none" stroke={color} strokeWidth={mode === 'portrait' ? 20 : 29} strokeOpacity={0.1} strokeLinejoin="round" strokeLinecap="round" pointerEvents="none" />
             <path d={d} fill="none" stroke={color} strokeWidth={mode === 'portrait' ? 12 : 19} strokeOpacity={0.95} strokeLinejoin="round" strokeLinecap="round" data-edge-id={edge.id} data-route-edge="true"><title>{edge.label}: {edge.deltaV.toLocaleString()} m/s</title></path>
-            <path d={d} fill="none" stroke={`url(#${prefix}-route-stripes)`} strokeWidth={mode === 'portrait' ? 12 : 19} strokeLinejoin="round" pointerEvents="none" />
-            {arrow && <path d="M -7 -6 L 7 0 L -7 6 Z" transform={`translate(${arrow.x} ${arrow.y}) rotate(${arrow.angle})`} fill="#f4f5fa" fillOpacity={0.9} pointerEvents="none" />}
+            <path d={d} fill="none" stroke="#ffffff" strokeWidth={1.5} strokeOpacity={0.16} strokeLinejoin="round" pointerEvents="none" />
+          </g>
+        })}
+
+        {aerobrakingEdges.map(edge => {
+          const arrow = arrowPosition(pointsFor(edge))
+          if (!arrow) return null
+          const label = `Atmospheric braking possible: ${nodeById.get(edge.from)?.label} → ${nodeById.get(edge.to)?.label}`
+          const selected = routeEdges.has(edge.id)
+          return <g key={`aero-${edge.id}`} role="img" aria-label={label}
+            data-aerobraking-edge={edge.id} data-from={edge.from} data-to={edge.to} data-selected={selected ? 'true' : 'false'}
+            transform={`translate(${arrow.x} ${arrow.y}) rotate(${arrow.angle})`}>
+            <title>{label}. {edge.kind === 'descent' ? 'Atmospheric entry or landing assistance' : 'Aerocapture or aerobraking'}; savings are not included in the budget.</title>
+            <path d="M -7 -6 L 7 0 L -7 6 Z" fill={selected ? '#effff6' : aerobrakingColor} fillOpacity={selected ? 1 : routeEdges.size ? 0.65 : 0.9} stroke="#172b25" strokeWidth={1} strokeLinejoin="round" />
           </g>
         })}
 
@@ -150,7 +168,7 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
             <rect x={-layout.hitRadius} y={-layout.hitRadius} width={layout.hitRadius * 2} height={layout.hitRadius * 2} fill="transparent" rx={8} />
             {selected && <circle r={radius + 5} fill={color} fillOpacity={0.5} filter={`url(#${prefix}-glow)`} />}
             <circle className="focus-ring" r={radius + 6} fill="none" stroke="#f2f4fa" strokeWidth={2} />
-            <circle className="state-circle" r={radius} fill={selected ? color : routeNodes.has(node.id) ? '#363948' : '#242530'} stroke={color} strokeWidth={selected ? 2.5 : 1.5} strokeOpacity={selected || routeNodes.has(node.id) ? 1 : 0.7} />
+            <circle className="state-circle" r={radius} fill={selected ? color : routeNodes.has(node.id) ? '#354355' : `url(#${prefix}-node-fill)`} stroke={color} strokeWidth={selected ? 2.5 : 1.5} strokeOpacity={selected || routeNodes.has(node.id) ? 1 : 0.85} />
             {hub ? <>
               <text y={-3} textAnchor="middle" fill={selected ? '#20212d' : '#e2e4ed'} fontSize={13} fontWeight={600} pointerEvents="none">Kerbin</text>
               <text y={13} textAnchor="middle" fill={selected ? '#20212d' : '#b2b7c7'} fontSize={12} pointerEvents="none">escape</text>

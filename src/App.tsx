@@ -76,22 +76,31 @@ export default function App() {
 
   return (
     <Box sx={{ width: '100%', height: '100dvh', display: 'grid', gridTemplateRows: '44px minmax(0, 1fr) auto', overflow: 'hidden', '@media (max-height: 500px)': { gridTemplateRows: '34px minmax(0, 1fr) auto' } }}>
-      <Box component="header" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: { xs: 1.25, sm: 2.5 }, borderBottom: '1px solid', borderColor: 'divider', gap: 1 }}>
+      <Box component="header" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: { xs: 1.25, sm: 2.5 }, borderBottom: '1px solid', borderColor: 'divider', gap: 1, background: 'linear-gradient(100deg, #202330, #1b1e29)', boxShadow: 'inset 0 1px 0 #ffffff04' }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
           <RocketLaunchRounded sx={{ color: 'primary.main', fontSize: 21 }} />
-          <Typography component="h1" sx={{ fontWeight: 600, fontSize: { xs: 14, sm: 16 }, whiteSpace: 'nowrap' }}>KSP DeltaV Planner</Typography>
+          <Typography component="h1" sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 }, letterSpacing: '-.015em', whiteSpace: 'nowrap' }}>KSP DeltaV Planner</Typography>
         </Stack>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>STOCK · KSP 1</Typography>
+          <Tooltip title="Arrows point toward potential aerocapture, aerobraking, or atmospheric landing assistance. Savings are not included in the budget.">
+            <Box role="note" aria-label="Aerobraking legend" sx={{ display: 'flex', alignItems: 'center', gap: .75, px: .75, py: .45, border: '1px solid #c6e8d81c', borderRadius: 4, bgcolor: '#1a202c99', color: '#b5c9bf', whiteSpace: 'nowrap' }}>
+              <svg width="10" height="10" viewBox="-8 -8 16 16" aria-hidden="true"><path d="M -7 -6 L 7 0 L -7 6 Z" fill="#c6e8d8" /></svg>
+              <Typography component="span" sx={{ fontSize: 10, lineHeight: 1.4 }}>
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Aerobraking possible</Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Aerobrake</Box>
+              </Typography>
+            </Box>
+          </Tooltip>
+          <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' }, fontSize: 10, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>STOCK · KSP 1</Typography>
           <Tooltip title="Model assumptions and data sources"><IconButton aria-label="Model assumptions and data sources" size="small" onClick={() => setShowInfo(true)}><InfoOutlined sx={{ fontSize: 19 }} /></IconButton></Tooltip>
         </Stack>
       </Box>
 
-      <Box component="main" aria-label="Interactive Delta-V map" sx={{ minHeight: 0, minWidth: 0, overflow: 'hidden', position: 'relative' }}>
+      <Box component="main" aria-label="Interactive Delta-V map" sx={{ minHeight: 0, minWidth: 0, overflow: 'hidden', position: 'relative', backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(115,200,250,.025), transparent 65%)' }}>
         <DeltaVMap pack={stockPack} startId={startId} endId={endId} route={route} onSelect={selectNode} />
       </Box>
 
-      <Box ref={setBreakdownAnchor} component="footer" sx={{ bgcolor: 'background.paper', borderTop: '2px solid', borderColor: 'primary.dark', minWidth: 0 }}>
+      <Box ref={setBreakdownAnchor} component="footer" sx={{ bgcolor: 'background.paper', backgroundImage: 'linear-gradient(180deg, #262a38, #20232f)', borderTop: '2px solid', borderColor: 'primary.dark', minWidth: 0, boxShadow: '0 -8px 24px #00000018, inset 0 1px 0 #ffffff03' }}>
         <Box component="section" aria-label="Mission controls" sx={{
           display: 'grid', minWidth: 0, columnGap: 2, rowGap: .75,
           gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
@@ -107,13 +116,15 @@ export default function App() {
               const label = endpoint === 'start' ? 'Origin' : 'Destination'
               return <Box key={endpoint} sx={{ gridColumn: index === 0 ? 1 : 3, gridRow: 1, minWidth: 0 }}>
                 <Button fullWidth variant="outlined" color={color} aria-label={`Choose ${label.toLowerCase()}`} aria-describedby={`${endpoint}-state`} aria-pressed={selection === endpoint} onClick={() => setSelection(endpoint)} sx={{
-                  px: 1, py: .75, minHeight: 44, justifyContent: 'flex-start', textAlign: 'left', borderRadius: 1, overflow: 'hidden',
+                  px: 1, py: .75, minHeight: 44, justifyContent: 'flex-start', textAlign: 'left', borderRadius: 1.25, overflow: 'hidden',
                   borderColor: selection === endpoint ? `${color}.main` : 'divider',
-                  bgcolor: selection === endpoint ? endpoint === 'start' ? 'rgba(115,200,250,.08)' : 'rgba(231,189,123,.08)' : 'transparent',
+                  bgcolor: selection === endpoint ? endpoint === 'start' ? 'rgba(115,200,250,.055)' : 'rgba(231,189,123,.055)' : 'rgba(14,17,26,.15)',
+                  backgroundImage: selection === endpoint ? `linear-gradient(120deg, ${endpoint === 'start' ? 'rgba(115,200,250,.055)' : 'rgba(231,189,123,.055)'}, transparent)` : 'none',
+                  boxShadow: 'inset 0 1px 0 #ffffff05',
                 }}>
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography component="span" sx={{ display: 'block', fontSize: 9, letterSpacing: '.09em', textTransform: 'uppercase', lineHeight: 1.2 }}>{endpoint === 'start' ? 'A' : 'B'} · {label}</Typography>
-                    <Typography component="span" id={`${endpoint}-state`} title={nodeId ? nodesById.get(nodeId)?.label : undefined} sx={{ display: 'block', fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', mt: .25 }}>{nodeId ? nodesById.get(nodeId)?.label : `Select ${label.toLowerCase()}`}</Typography>
+                    <Typography component="span" sx={{ display: 'block', fontSize: 9, letterSpacing: '.1em', textTransform: 'uppercase', lineHeight: 1.2, opacity: .82 }}>{endpoint === 'start' ? 'A' : 'B'} · {label}</Typography>
+                    <Typography component="span" id={`${endpoint}-state`} title={nodeId ? nodesById.get(nodeId)?.label : undefined} sx={{ display: 'block', fontSize: 12, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', mt: .25 }}>{nodeId ? nodesById.get(nodeId)?.label : `Select ${label.toLowerCase()}`}</Typography>
                   </Box>
                 </Button>
               </Box>
@@ -124,14 +135,14 @@ export default function App() {
           <Box sx={{ gridArea: 'reserve', minWidth: 0, px: .5 }}>
             <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
               <Typography component="label" htmlFor="redundancy-slider" sx={{ fontSize: 11, color: 'text.secondary' }}>Redundancy</Typography>
-              <Typography sx={{ fontSize: 12, color: 'primary.main', fontVariantNumeric: 'tabular-nums' }}>+{redundancy}%</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 500, color: 'primary.main', fontVariantNumeric: 'tabular-nums' }}>+{redundancy}%</Typography>
             </Stack>
             <Slider id="redundancy-slider" aria-label="Redundancy" min={0} max={100} step={5} value={redundancy} onChange={(_, value) => { if (typeof value === 'number') setRedundancy(value) }} getAriaValueText={value => `${value}% redundancy`} valueLabelDisplay="auto" valueLabelFormat={value => `+${value}%`} size="small" sx={{ display: 'block', width: 'calc(100% - 12px)', mx: '6px', py: 1.5, '& .MuiSlider-thumb': { width: 13, height: 13 } }} />
           </Box>
 
           <Box sx={{ gridArea: 'budget', minWidth: 0 }}>
-            <Typography sx={{ fontSize: 10, color: 'text.secondary', letterSpacing: '.08em', textTransform: 'uppercase' }}>Delta-V budget</Typography>
-            {budget ? <Typography component="output" data-testid="route-total" sx={{ display: 'block', fontSize: { xs: 25, sm: 32 }, lineHeight: 1.1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+            <Typography sx={{ fontSize: 10, color: 'text.secondary', letterSpacing: '.1em', textTransform: 'uppercase' }}>Delta-V budget</Typography>
+            {budget ? <Typography component="output" data-testid="route-total" sx={{ display: 'block', fontSize: { xs: 25, sm: 32 }, lineHeight: 1.1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 700, letterSpacing: '-.025em' }}>
               {format.format(budget.totalDeltaV)} <Box component="span" sx={{ fontSize: '.55em', color: 'text.secondary' }}>m/s</Box>
             </Typography> : <Typography sx={{ fontSize: 25, lineHeight: 1.1, color: 'text.secondary' }}>— <Box component="span" sx={{ fontSize: 13 }}>m/s</Box></Typography>}
             <Typography sx={{ fontSize: 9, color: 'text.secondary', whiteSpace: 'nowrap' }}>
@@ -151,8 +162,8 @@ export default function App() {
       </Box>
 
       <Popper open={showBreakdown} anchorEl={breakdownAnchor} placement="top-end" popperOptions={{ strategy: 'fixed' }} modifiers={[{ name: 'offset', options: { offset: [0, 12] } }, { name: 'preventOverflow', options: { padding: 8 } }]} sx={{ zIndex: 1200 }}>
-        <Paper sx={{ width: 'min(320px, calc(100vw - 16px))', borderRadius: 1.5, overflow: 'hidden', boxShadow: '0 12px 40px #0007', '@media (max-height: 500px)': { width: 'min(520px, calc(100vw - 16px))' } }}>
-          <Box sx={{ px: 1.5, py: .5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#ffffff05' }}>
+        <Paper sx={{ width: 'min(320px, calc(100vw - 16px))', borderRadius: 1.5, overflow: 'hidden', boxShadow: '0 12px 40px #0008, inset 0 1px 0 #ffffff06', backgroundImage: 'linear-gradient(145deg, #282d3b, #202431)', '@media (max-height: 500px)': { width: 'min(520px, calc(100vw - 16px))' } }}>
+          <Box sx={{ px: 1.5, py: .5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#ffffff05', boxShadow: 'inset 0 -1px 0 #ffffff06' }}>
             <Typography sx={{ fontSize: 12, fontWeight: 600 }}>Maneuver breakdown</Typography>
             <IconButton aria-label="Close breakdown" size="small" onClick={() => { setShowBreakdown(false); breakdownToggle.current?.focus() }}><CloseRounded sx={{ fontSize: 16 }} /></IconButton>
           </Box>
@@ -179,6 +190,7 @@ export default function App() {
           <Box component="ul" sx={{ pl: 2.5, '& li': { fontSize: 13, mb: 1 } }}>
             <li>“Flyby” labels represent encounter estimates. Favorable windows are assumed; plane changes, travel time, and gravity assists are excluded.</li>
             <li>Atmospheric landing uses an ascent-sized planning allowance, not a calculated descent burn. No atmospheric savings are included.</li>
+            <li>Arrows mark potential aerobraking in the shown direction; atmospheric savings are not included in the budget.</li>
             <li>Transfers between other planetary systems include a paid Kerbin parking-orbit layover.</li>
             <li>High elliptical orbits are separate states. Kerbol has no selectable states, and Jool has no surface.</li>
           </Box>

@@ -52,6 +52,21 @@ orbit and an elliptical orbit are different states.
 - Add a mission margin. A shortest path is the lowest estimate in this dataset,
   not a universal minimum over all possible KSP trajectories.
 
+## Atmospheric-braking markers
+
+Small arrows point inward on atmospheric capture and descent segments. These
+are informational opportunities, covering aerocapture, aerobraking, and entry or
+landing assistance; they do not change maneuver costs or calculate a trajectory.
+The stock map shows 14 directed markers: eight local captures, four atmospheric
+descents, and the Mun/Minmus returns to Kerbin low orbit. Outbound maneuvers and
+airless-body captures and landings have no atmospheric-braking arrow.
+
+Moon returns ending at a parent's high elliptical reference orbit remain
+unmarked. Interplanetary encounter-to-encounter increments also remain unmarked;
+their destination's atmospheric capture is shown on its separate inward
+capture segment. Actual atmospheric assistance depends on the trajectory and
+vehicle, and no atmospheric savings are applied to the budget.
+
 ## Auditing changes
 
 `src/data/stock.test.ts` checks coverage, references, topology, and landmark totals.

@@ -12,6 +12,9 @@ the stock Kerbol system to calculate a route and inspect its maneuver budget.
 - Explicit origin/destination selection, endpoint editing, swap, and reset.
 - Lowest estimated Delta-V within the supported maneuver graph, with colored
   connections and highlighted routes.
+- Small directional arrows mark potential atmospheric braking, including
+  atmospheric entry. A legend explains the markers; budgets still include full
+  maneuver costs and do not apply atmospheric savings.
 - A 0–100% redundancy slider adds a reserve to the final budget without changing
   the route. Budgets round up to whole m/s; the base and extra amounts stay visible.
 - Optional compact maneuver breakdown, hidden by default.
@@ -103,6 +106,8 @@ pinned source and its attribution.
 - `src/utils/buildGraph.ts` and `findRoute.ts`: graph construction and contextual
   Dijkstra search, independent of React.
 - `src/utils/budget.ts`: redundancy calculation, separate from routing costs.
+- `src/utils/aerobraking.ts`: directed atmospheric-braking map markers,
+  independent of route selection and budget calculations.
 - `src/components/mapLayout.ts` and `DeltaVMap.tsx`: schematic coordinates and
   interactive SVG presentation, separate from the physical/reference data.
 - `src/App.tsx`: mission selection, route presentation, and assumptions.

@@ -177,6 +177,68 @@ test('keeps the atmospheric landing assumption available as a compact note', asy
   await expect(page.getByRole('alert')).toContainText('Atmospheric landing uses a planning allowance.')
 })
 
+test('shows atmospheric braking opportunities independently of the selected route without changing its budget', async ({ page }) => {
+  const markers = page.locator('[data-aerobraking-edge]')
+  const selectedMarkers = page.locator('[data-aerobraking-edge][data-selected="true"]')
+  const eligiblePairs = [
+    ['kerbin:encounter', 'kerbin:orbit'],
+    ['eve:encounter', 'eve:elliptical'],
+    ['eve:elliptical', 'eve:orbit'],
+    ['duna:encounter', 'duna:elliptical'],
+    ['duna:elliptical', 'duna:orbit'],
+    ['jool:encounter', 'jool:elliptical'],
+    ['jool:elliptical', 'jool:orbit'],
+    ['laythe:encounter', 'laythe:orbit'],
+    ['kerbin:orbit', 'kerbin:surface'],
+    ['eve:orbit', 'eve:surface'],
+    ['duna:orbit', 'duna:surface'],
+    ['laythe:orbit', 'laythe:surface'],
+    ['mun:encounter', 'kerbin:orbit'],
+    ['minmus:encounter', 'kerbin:orbit'],
+  ].map(([from, to]) => ({ from: `stock:${from}`, to: `stock:${to}` }))
+
+  await expect(page.getByRole('note', { name: 'Aerobraking legend', exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(markers).toHaveCount(14)
+  expect(await markers.evaluateAll(elements => elements.map(element => ({
+    from: element.getAttribute('data-from'),
+    to: element.getAttribute('data-to'),
+  })).sort((a, b) => `${a.from}->${a.to}`.localeCompare(`${b.from}->${b.to}`))))
+    .toEqual(eligiblePairs.sort((a, b) => `${a.from}->${a.to}`.localeCompare(`${b.from}->${b.to}`)))
+  for (const marker of await markers.all()) {
+    await expect(marker).toHaveAttribute('role', 'img')
+    await expect(marker).toHaveAttribute('aria-label', /^Atmospheric braking possible:/)
+    await expect(marker).toHaveAttribute('data-selected', 'false')
+    await expect(marker).toBeVisible()
+  }
+
+  await planMunLanding(page)
+  await expect(markers).toHaveCount(14)
+  await expect(selectedMarkers).toHaveCount(0)
+  const slider = page.getByRole('slider', { name: 'Redundancy', exact: true })
+  await slider.focus()
+  for (let step = 0; step < 4; step++) await slider.press('ArrowRight')
+  await expect(page.getByTestId('route-total')).toHaveText('6,144 m/s')
+  await expect(selectedMarkers).toHaveCount(0)
+  await slider.press('Home')
+
+  // The return transfer folds Kerbin capture into its arrival at low orbit.
+  await page.getByRole('button', { name: 'Swap origin and destination', exact: true }).click()
+  await expect(page.getByTestId('route-total')).toHaveText('5,120 m/s')
+  await expect(selectedMarkers).toHaveCount(2)
+  expect(await selectedMarkers.evaluateAll(elements => elements.map(element => element.getAttribute('data-aerobraking-edge')).sort()))
+    .toEqual(['stock:kerbin:orbit->stock:kerbin:surface', 'stock:mun:encounter->stock:kerbin:orbit'])
+
+  // Starting at the encounter includes both atmospheric capture and descent.
+  await page.getByRole('button', { name: 'Choose origin', exact: true }).click()
+  await state(page, 'kerbin', 'encounter').click()
+  await expect(page.getByTestId('route-total')).toHaveText('4,350 m/s')
+  await expect(markers).toHaveCount(14)
+  await expect(selectedMarkers).toHaveCount(2)
+  expect(await selectedMarkers.evaluateAll(elements => elements.map(element => element.getAttribute('data-aerobraking-edge')).sort()))
+    .toEqual(['stock:kerbin:encounter->stock:kerbin:orbit', 'stock:kerbin:orbit->stock:kerbin:surface'])
+})
+
 for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 390 }, { width: 667, height: 375 }]) {
   test(`fits the longest supported 12-maneuver breakdown above controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
