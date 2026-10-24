@@ -197,6 +197,8 @@ interplanetaryTransfer('eeloo', 1140)
 export const stockPack: PlanetPack = {
   id: 'stock',
   name: 'Stock Kerbol system',
+  shortName: 'Stock',
+  transferHubBodyId: 'stock:kerbin',
   version: '1.7.3-map.1',
   description: 'An idealized stock-system Delta-V budget map with directed maneuvers and explicit reference orbits.',
   sources: [{

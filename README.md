@@ -6,10 +6,15 @@ the stock Kerbol system to calculate a route and inspect its maneuver budget.
 
 ## Implemented
 
-- Full-screen branching SVG map covering all 16 stock planets/moons and 50 selectable states:
-  surface, low orbit, encounter, and high elliptical orbit where needed.
-  Kerbol has no mission states; Jool has no landable surface.
+- Stock/OPM selector backed by a planet-pack registry. Stock includes 50 states;
+  OPM includes 32 bodies and 96 states, with Eeloo orbiting Sarnus and Tal orbiting Wal.
+- Full-screen branching SVG map for surface, low orbit, encounter, and high
+  elliptical orbit states. Stars have no stock mission states, and gas giants
+  have no landable surface.
 - Explicit origin/destination selection, endpoint editing, swap, and reset.
+- Round-trip planning computes directed outbound and return routes separately,
+  preserving arrival context at the turnaround. Redundancy applies once to the
+  complete mission.
 - Lowest estimated Delta-V within the supported maneuver graph, with colored
   connections and highlighted routes.
 - Small directional arrows mark potential atmospheric braking, including
@@ -17,10 +22,12 @@ the stock Kerbol system to calculate a route and inspect its maneuver budget.
   maneuver costs and do not apply atmospheric savings.
 - A 0–100% redundancy slider adds a reserve to the final budget without changing
   the route. Budgets round up to whole m/s; the base and extra amounts stay visible.
-- Optional compact maneuver breakdown, hidden by default.
+- Optional compact maneuver breakdown, hidden by default, with Outbound/Return
+  tabs for round trips.
 - Keyboard selection with Enter/Space and visible focus indicators. The map
   reflows for portrait screens and fits alongside the controls without page or
   map scrolling.
+- A subtle deep-blue background with sparse, static stars.
 - A validated, sourced stock dataset and distinct invalid/unreachable results.
 
 ## Development
@@ -46,7 +53,7 @@ GitHub Pages. The development server continues to use `/`.
 ## Validation
 
 ```sh
-npm test             # Vitest: routing, validation, stock data, and reserve budgets
+npm test             # Vitest: packs, layouts, routing, round trips, and reserves
 npm run lint
 npm run build        # Strict TypeScript checking and production bundle
 npm run test:e2e     # Playwright: desktop and mobile browser workflows
@@ -81,6 +88,14 @@ Delta-V map. Numbers are in **m/s** and represent favorable, idealized transfers
 they are estimates rather than simulated trajectories. The Kerbin surface → Mun
 surface reference route is **5,120 m/s** in this source revision.
 
+The OPM pack extends the shared stock data with the historical OPM 1.8.1
+community map and the current official body hierarchy. Those older budgets are
+**not calibrated for current OPM atmospheres**; obsolete parking altitudes that
+would lie inside modern atmospheres are omitted. Karen was absent from that
+map, so its budgets are explicitly documented analytical estimates from pinned
+official constants. Plock uses the upper end of the map's transfer range.
+The in-app information dialog shows the active pack's assumptions and sources.
+
 Only Kerbin-centered interplanetary transfers are currently supplied. A route
 between two other planetary systems includes capture into Kerbin low orbit and
 escape for the next transfer. The search tracks arrival context to prevent a
@@ -101,11 +116,16 @@ pinned source and its attribution.
   planet packs, and route results.
 - `src/data/stock.ts`: the single stock dataset, including reference orbits,
   source metadata, and maneuver assumptions.
+- `src/data/opm.ts` and `planetPacks.ts`: the OPM extension and the pack registry.
+  A pack supplies its display name, transfer hub, bodies, states, maneuvers, and
+  sources; adding a reviewed pack does not require routing or App-specific cases.
 - `src/utils/validatePlanetPack.ts`: runtime validation of data and supported
   maneuver topology.
 - `src/utils/buildGraph.ts` and `findRoute.ts`: graph construction and contextual
   Dijkstra search, independent of React.
 - `src/utils/budget.ts`: redundancy calculation, separate from routing costs.
+- `src/utils/mission.ts`: directed outbound/return planning and combined budgets,
+  with arrival context carried across the turnaround.
 - `src/utils/aerobraking.ts`: directed atmospheric-braking map markers,
   independent of route selection and budget calculations.
 - `src/components/mapLayout.ts` and `DeltaVMap.tsx`: schematic coordinates and
@@ -114,10 +134,11 @@ pinned source and its attribution.
 
 ## Next steps
 
-- Round-trip and return-only planning, followed by ordered multi-stop missions.
+- Return-only planning and ordered multi-stop missions.
 - Reviewed direct transfers between additional planetary systems.
 - Vehicle-aware landing estimates and optional atmospheric assistance.
-- Versioned planet-pack loading for OPM, RSS, Kcalbeloh, and other mods.
+- Calibrated modern OPM budgets and reviewed packs for RSS, Kcalbeloh, and other mods.
+- User-supplied versioned planet-pack loading.
 - Later: CommNet deployment/coverage and signal-strength planning.
 
 The project remains in early development. Contributions, bug reports, and

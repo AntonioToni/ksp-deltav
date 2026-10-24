@@ -5,6 +5,7 @@ export type MapMode = 'wide' | 'portrait' | 'short'
 export interface BodyLabel extends Point {
   body: CelestialBody
   anchor: 'start' | 'middle' | 'end'
+  maxWidth?: number
 }
 export interface MapLayout {
   width: number
@@ -15,6 +16,10 @@ export interface MapLayout {
   radius: number
   hitRadius: number
   hubId: string | undefined
+  nodeFontSize: number
+  labelFontSize: number
+  presentation: 'stock' | 'opm' | 'generated'
+  bodyRails?: Map<string, number>
 }
 
 type BodyStates = Partial<Record<NodeKind, Point>>
@@ -48,10 +53,129 @@ const portraitColumns = [
 ]
 const shortId = (id: string) => id.split(':').at(-1) ?? id
 
+// Presentation presets do not add states or change graph connectivity. A pack
+// only uses a preset when every actual node has its own known position.
+const opmStates: Record<string, BodyStates> = {
+  dres: { surface: p(200, 80), orbit: p(390, 80), encounter: p(680, 260) },
+  ike: { surface: p(220, 180), orbit: p(350, 180), encounter: p(500, 180) },
+  duna: { surface: p(200, 290), orbit: p(350, 290), elliptical: p(500, 290), encounter: p(640, 390) },
+  gilly: { surface: p(200, 420), orbit: p(350, 420), encounter: p(500, 420) },
+  eve: { surface: p(200, 530), orbit: p(350, 530), elliptical: p(500, 530), encounter: p(640, 530) },
+  moho: { surface: p(200, 650), orbit: p(350, 650), encounter: p(520, 650) },
+  kerbin: { surface: p(840, 1030), orbit: p(840, 850), encounter: p(840, 650) },
+  mun: { surface: p(300, 850), orbit: p(450, 850), encounter: p(600, 850) },
+  minmus: { surface: p(1160, 1010), orbit: p(1050, 930), encounter: p(940, 850) },
+  jool: { orbit: p(1370, 510), elliptical: p(1210, 510), encounter: p(1010, 510) },
+  laythe: { surface: p(1000, 80), orbit: p(1000, 205), encounter: p(1000, 330) },
+  vall: { surface: p(1130, 80), orbit: p(1130, 205), encounter: p(1130, 330) },
+  tylo: { surface: p(1260, 80), orbit: p(1260, 205), encounter: p(1260, 330) },
+  bop: { surface: p(1390, 80), orbit: p(1390, 205), encounter: p(1390, 330) },
+  pol: { surface: p(1520, 80), orbit: p(1520, 205), encounter: p(1520, 330) },
+  sarnus: { orbit: p(1820, 485), elliptical: p(1680, 485), encounter: p(1540, 485) },
+  hale: { surface: p(1660, 80), orbit: p(1660, 205), encounter: p(1660, 330) },
+  ovok: { surface: p(1790, 80), orbit: p(1790, 205), encounter: p(1790, 330) },
+  eeloo: { surface: p(1920, 80), orbit: p(1920, 205), encounter: p(1920, 330) },
+  slate: { surface: p(2050, 80), orbit: p(2050, 205), encounter: p(2050, 330) },
+  tekto: { surface: p(2180, 80), orbit: p(2180, 205), encounter: p(2180, 330) },
+  urlum: { orbit: p(2060, 640), elliptical: p(1910, 640), encounter: p(1760, 640) },
+  polta: { surface: p(2350, 440), orbit: p(2210, 440), encounter: p(2070, 440) },
+  priax: { surface: p(2470, 565), orbit: p(2330, 565), encounter: p(2190, 565) },
+  wal: { surface: p(2470, 740), orbit: p(2330, 740), encounter: p(2190, 740) },
+  tal: { surface: p(2470, 900), orbit: p(2330, 900), encounter: p(2190, 900) },
+  neidon: { orbit: p(1710, 785), elliptical: p(1570, 715), encounter: p(1430, 665) },
+  thatmo: { surface: p(2090, 1020), orbit: p(1970, 940), encounter: p(1850, 860) },
+  nissee: { surface: p(1880, 1085), orbit: p(1750, 985), encounter: p(1620, 885) },
+  plock: { surface: p(1450, 1030), orbit: p(1450, 930), elliptical: p(1370, 840), encounter: p(1280, 750) },
+  karen: { surface: p(1280, 1100), orbit: p(1280, 1000), encounter: p(1280, 900) },
+}
+
+const opmLabels: Record<string, Point & { anchor?: BodyLabel['anchor'] }> = {
+  dres: { ...p(140, 88), anchor: 'end' },
+  ike: { ...p(160, 188), anchor: 'end' },
+  duna: { ...p(140, 298), anchor: 'end' },
+  gilly: { ...p(140, 428), anchor: 'end' },
+  eve: { ...p(140, 538), anchor: 'end' },
+  moho: { ...p(140, 658), anchor: 'end' },
+  jool: { ...p(1435, 518), anchor: 'start' },
+  sarnus: { ...p(1885, 493), anchor: 'start' },
+  urlum: { ...p(2130, 650), anchor: 'start' },
+  neidon: { ...p(1780, 785), anchor: 'start' },
+  kerbin: p(840, 1080), mun: p(300, 900), minmus: p(1160, 1060),
+  plock: p(1450, 1080), karen: p(1280, 1150),
+  polta: { ...p(2415, 448), anchor: 'start' },
+  priax: { ...p(2530, 573), anchor: 'start' },
+  wal: { ...p(2530, 748), anchor: 'start' },
+  tal: { ...p(2530, 908), anchor: 'start' },
+  thatmo: { ...p(2155, 1028), anchor: 'start' },
+  nissee: { ...p(1945, 1093), anchor: 'start' },
+}
+
+function canUsePreset(pack: PlanetPack, positions: Record<string, BodyStates>): boolean {
+  const used = new Set<string>()
+  return pack.nodes.length > 0 && pack.nodes.every(node => {
+    const key = `${shortId(node.bodyId)}:${node.kind}`
+    if (!positions[shortId(node.bodyId)]?.[node.kind] || used.has(key)) return false
+    used.add(key)
+    return true
+  })
+}
+
+function findHub(pack: PlanetPack): string | undefined {
+  const homeStates = pack.nodes.filter(node => node.bodyId === pack.transferHubBodyId)
+  const preferred = homeStates.find(node => node.kind === 'encounter')
+    ?? homeStates.find(node => node.kind === 'orbit') ?? homeStates[0]
+  if (preferred) return preferred.id
+  const nodes = new Map(pack.nodes.map(node => [node.id, node]))
+  const degree = new Map<string, number>()
+  for (const edge of pack.maneuvers) {
+    if (nodes.get(edge.from)?.bodyId === nodes.get(edge.to)?.bodyId) continue
+    degree.set(edge.from, (degree.get(edge.from) ?? 0) + 1)
+    degree.set(edge.to, (degree.get(edge.to) ?? 0) + 1)
+  }
+  return [...pack.nodes].sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0))[0]?.id
+}
+
 export function createMapLayout(pack: PlanetPack, mode: MapMode = 'wide'): MapLayout {
+  const hasOuterPlanets = pack.bodies.some(body => shortId(body.id) === 'sarnus')
+  if (hasOuterPlanets && canUsePreset(pack, opmStates)) {
+    return mode === 'portrait' ? createGeneratedLayout(pack, mode) : createOpmLayout(pack, mode)
+  }
+  if (canUsePreset(pack, wideStates)) return createStockLayout(pack, mode)
+  return createGeneratedLayout(pack, mode)
+}
+
+function createOpmLayout(pack: PlanetPack, mode: MapMode): MapLayout {
   const nodePositions = new Map<string, Point>()
   const labels: BodyLabel[] = []
-  const hubId = pack.nodes.find(node => shortId(node.bodyId) === 'kerbin' && node.kind === 'encounter')?.id
+  const short = mode === 'short'
+  const transform = (point: Point) => short ? p(point.x, 40 + point.y * 0.54) : point
+  for (const body of pack.bodies) {
+    const nodes = pack.nodes.filter(node => node.bodyId === body.id)
+    if (!nodes.length) continue
+    const id = shortId(body.id)
+    const positions = opmStates[id]!
+    for (const node of nodes) nodePositions.set(node.id, transform(positions[node.kind]!))
+    const surface = positions.surface
+    const label: Point & { anchor?: BodyLabel['anchor'] } = opmLabels[id]
+      ?? (surface ? p(surface.x, surface.y - 44) : p(positions.orbit!.x, positions.orbit!.y - 44))
+    const point = transform(label)
+    // Vertical compression needs its own label gap to keep type clear of nodes.
+    if (short && surface && ['kerbin', 'mun', 'minmus', 'plock', 'karen'].includes(id)) point.y = transform(surface).y + 42
+    if (short && surface && ['laythe', 'vall', 'tylo', 'bop', 'pol', 'hale', 'ovok', 'eeloo', 'slate', 'tekto'].includes(id)) point.y = transform(surface).y - 36
+    labels.push({ body, ...point, anchor: label.anchor ?? 'middle' })
+  }
+  return {
+    width: 2620, height: short ? 710 : 1190, mode, nodePositions, labels,
+    radius: short ? 24 : 29, hitRadius: short ? 32 : 36,
+    hubId: findHub(pack), nodeFontSize: short ? 18 : 19, labelFontSize: short ? 23 : 25,
+    presentation: 'opm',
+  }
+}
+
+function createStockLayout(pack: PlanetPack, mode: MapMode): MapLayout {
+  const nodePositions = new Map<string, Point>()
+  const labels: BodyLabel[] = []
+  const hubId = findHub(pack)
   for (const [bodyIndex, body] of pack.bodies.filter(body => body.kind !== 'star').entries()) {
     const id = shortId(body.id)
     const nodes = pack.nodes.filter(node => node.bodyId === body.id)
@@ -94,6 +218,91 @@ export function createMapLayout(pack: PlanetPack, mode: MapMode = 'wide'): MapLa
     height: mode === 'portrait' ? 760 : mode === 'short' ? 460 : 750,
     mode, nodePositions, labels, radius: mode === 'short' ? 20 : 24,
     hitRadius: mode === 'portrait' ? 32 : 30, hubId,
+    nodeFontSize: mode === 'portrait' ? 17 : mode === 'short' ? 15 : 14,
+    labelFontSize: mode === 'short' ? 20 : 21, presentation: 'stock',
+  }
+}
+
+const kindOrder: Record<NodeKind, number> = { surface: 0, orbit: 1, elliptical: 2, encounter: 3 }
+
+/** Group hierarchy branches without assuming a home planet, namespace or depth. */
+function bodyGroups(pack: PlanetPack): CelestialBody[][] {
+  const active = new Set(pack.nodes.map(node => node.bodyId))
+  const byId = new Map(pack.bodies.map(body => [body.id, body]))
+  const visited = new Set<string>()
+  const groups: CelestialBody[][] = []
+  function visit(body: CelestialBody, group: CelestialBody[]) {
+    if (visited.has(body.id)) return
+    visited.add(body.id)
+    if (active.has(body.id)) group.push(body)
+    for (const child of pack.bodies.filter(candidate => candidate.parentId === body.id)) visit(child, group)
+  }
+  for (const body of pack.bodies) {
+    if (body.parentId && byId.has(body.parentId)) continue
+    if (!active.has(body.id) && body.kind === 'star') {
+      visited.add(body.id)
+      for (const child of pack.bodies.filter(candidate => candidate.parentId === body.id)) {
+        const group: CelestialBody[] = []
+        visit(child, group)
+        if (group.length) groups.push(group)
+      }
+    } else {
+      const group: CelestialBody[] = []
+      visit(body, group)
+      if (group.length) groups.push(group)
+    }
+  }
+  // Also place isolated/cyclic hierarchy entries instead of silently dropping them.
+  for (const body of pack.bodies) {
+    if (visited.has(body.id)) continue
+    const group: CelestialBody[] = []
+    visit(body, group)
+    if (group.length) groups.push(group)
+  }
+  return groups
+}
+
+function createGeneratedLayout(pack: PlanetPack, mode: MapMode): MapLayout {
+  const groups = bodyGroups(pack)
+  const count = groups.reduce((total, group) => total + group.length, 0)
+  const columnCount = Math.min(Math.max(count, 1), mode === 'portrait' ? count > 20 ? 3 : 2 : mode === 'short' ? 4 : 3)
+  const columns: CelestialBody[][] = Array.from({ length: columnCount }, () => [])
+  const targetRows = Math.ceil(count / columnCount)
+  for (const group of [...groups].sort((a, b) => b.length - a.length)) {
+    // A single large stellar hierarchy must not force the entire pack into one
+    // column. Smaller moon/submoon branches stay together where space permits.
+    for (let offset = 0; offset < group.length; offset += targetRows || 1) {
+      const chunk = group.slice(offset, offset + targetRows)
+      const column = columns.reduce((best, candidate) => candidate.length < best.length ? candidate : best)
+      column.push(...chunk)
+    }
+  }
+  const radius = mode === 'wide' ? 30 : mode === 'short' ? 25 : 28
+  const pitch = radius * 2 + (mode === 'wide' ? 18 : 6)
+  const maxStates = Math.max(1, ...pack.bodies.map(body => pack.nodes.filter(node => node.bodyId === body.id).length))
+  const cellWidth = Math.max(mode === 'wide' ? 340 : 270, (maxStates - 1) * pitch + radius * 2 + 38)
+  const rowPitch = mode === 'wide' ? 108 : 82
+  const maxRows = Math.max(1, ...columns.map(column => column.length))
+  const nodePositions = new Map<string, Point>()
+  const labels: BodyLabel[] = []
+  const bodyRails = new Map<string, number>()
+  for (const [columnIndex, column] of columns.entries()) {
+    const left = 32 + columnIndex * cellWidth
+    for (const [row, body] of column.entries()) {
+      const y = 70 + row * rowPitch
+      const nodes = pack.nodes.filter(node => node.bodyId === body.id)
+        .sort((a, b) => kindOrder[a.kind] - kindOrder[b.kind] || a.id.localeCompare(b.id))
+      nodes.forEach((node, index) => nodePositions.set(node.id, p(left + radius + index * pitch, y)))
+      labels.push({ body, x: left, y: y - radius - 9, anchor: 'start', maxWidth: cellWidth - 26 })
+      bodyRails.set(body.id, left + cellWidth - 12)
+    }
+  }
+  return {
+    width: 64 + columnCount * cellWidth,
+    height: 70 + (maxRows - 1) * rowPitch + 80,
+    mode, nodePositions, labels, radius, hitRadius: radius + 5,
+    hubId: findHub(pack), nodeFontSize: mode === 'wide' ? 21 : 22,
+    labelFontSize: mode === 'wide' ? 25 : 22, presentation: 'generated', bodyRails,
   }
 }
 
@@ -101,6 +310,40 @@ export function connectionPoints(from: RouteNode, to: RouteNode, layout: MapLayo
   const a = layout.nodePositions.get(from.id)
   const b = layout.nodePositions.get(to.id)
   if (!a || !b) return []
+  if (layout.presentation === 'opm' && (from.id === layout.hubId || to.id === layout.hubId)) {
+    const forward = from.id === layout.hubId
+    const planet = shortId(forward ? to.bodyId : from.bodyId)
+    // These branches need a clear corridor below Jool. A straight Sarnus band
+    // crosses Jool low orbit, while a straight Urlum band clips Neidon encounter.
+    // Bends are presentation geometry, not additional route states or costs.
+    const bends = planet === 'sarnus' ? [p(1430, 580)]
+      : planet === 'urlum' ? [p(1360, 590), p(1660, 590)] : []
+    if (bends.length) {
+      const points = [forward ? a : b,
+        ...bends.map(point => layout.mode === 'short' ? p(point.x, 40 + point.y * 0.54) : point),
+        forward ? b : a]
+      return forward ? points : points.reverse()
+    }
+  }
+  if (layout.presentation === 'generated' && from.bodyId !== to.bodyId) {
+    // Routing is canonical, so a return leg follows precisely the same band.
+    // This also handles links between two non-home planets and nested moons.
+    const forward = from.id.localeCompare(to.id) <= 0
+    const source = forward ? from : to
+    const target = forward ? to : from
+    const start = forward ? a : b
+    const end = forward ? b : a
+    const sourceRail = layout.bodyRails?.get(source.bodyId) ?? start.x
+    const targetRail = layout.bodyRails?.get(target.bodyId) ?? end.x
+    const gap = layout.radius + 8
+    const direction = end.y >= start.y ? 1 : -1
+    const startY = start.y + gap * direction
+    const endY = end.y - gap * direction
+    const points = sourceRail === targetRail
+      ? [start, p(start.x, startY), p(sourceRail, startY), p(sourceRail, endY), p(end.x, endY), end]
+      : [start, p(start.x, startY), p(sourceRail, startY), p(sourceRail, layout.height - 20), p(targetRail, layout.height - 20), p(targetRail, endY), p(end.x, endY), end]
+    return forward ? points : points.reverse()
+  }
   if (layout.mode !== 'portrait' || from.bodyId === to.bodyId) return [a, b]
   const fromBody = pack.bodies.find(body => body.id === from.bodyId)
   const toBody = pack.bodies.find(body => body.id === to.bodyId)

@@ -94,3 +94,128 @@ segments. The planner always sums the individually transcribed segment values;
 it does not add a second table of competing totals. Historical map revisions
 also differ (for example, the old Mun capture figure was 310 m/s; this pinned
 source uses 280 m/s).
+
+## Outer Planets Mod pack
+
+`src/data/opm.ts` adds a separately selectable **OPM** pack. It includes 32 bodies,
+96 selectable states, and 190 directed maneuvers. Stock IDs are retained for
+shared bodies and states. New bodies use `opm:` IDs. Eeloo is cloned as a Sarnus
+moon; switching packs never changes the stock dataset. Tal orbits Wal, and Karen
+orbits Plock. Jool, Sarnus, Urlum, and Neidon have no surface states.
+
+### References and compatibility
+
+- Numerical OPM map segments: [Kowgan community OPM 1.8.1 map, page 2](https://github.com/Kowgan/ksp_cheat_sheets/blob/ca2d4910dd98e5fd14277b04ec686e61cd6967ce/delta_v_map_outer_planets/DvMap_OP_2_A4.svg),
+  pinned to `ca2d4910dd98e5fd14277b04ec686e61cd6967ce`. Its attribution and
+  CC BY-NC-SA 4.0 terms are the same as the stock reference above; no artwork is
+  bundled. Individual numerical segments are transcribed into the new data model.
+- Body hierarchy, atmosphere presence, and Karen physical constants:
+  [official OPM Kopernicus configs](https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs),
+  pinned to `ffedf02e23d2d620e1018d1467f5e485f7950fa0`.
+
+**The OPM map is historical. Its budgets are not calibrated for current OPM
+atmospheres or orbital parameters.** In particular, the old printed low-orbit
+altitudes for Sarnus (314 km), Urlum (134 km), Neidon (120 km), and Thatmo (30 km)
+lie inside the atmosphere depths in the pinned modern configs (580, 325, 260,
+and 35 km respectively). The planner intentionally omits those four altitude
+claims; it does not silently substitute a modern altitude while presenting the
+old cost as a recalculated physical result. These states and costs represent
+the historical map's schematic budget references. Verify contemporary mission
+budgets in game or with a trajectory tool.
+
+The pack retains the newer stock reference for unaffected stock bodies rather
+than replacing it with the historical OPM map's first page. Eeloo changes both
+parent and routing context: its OPM segments are Sarnus low orbit → Eeloo
+encounter **1120 m/s**, Eeloo encounter → low orbit **490 m/s**, and surface
+budget **540 m/s**. The corresponding stock Eeloo transfer, capture, and surface
+segments are removed only from the OPM clone.
+
+All new OPM moon branches leave their parent's **low orbit** in the reference
+map, including Tal's branch from Wal. Sarnus, Urlum, Neidon, and Plock retain
+separate high elliptical states on their interplanetary arrival branches.
+The shared Polta/Priax intercept in the original diagram becomes two separate
+encounter nodes with identical **620 m/s** parent-transfer budgets; their local
+capture and surface costs remain separate. Plane-change figures printed
+beside branches are excluded, consistently with the stock pack.
+
+Plock's original transfer is a **1900–2700 m/s range**. The planner chooses the
+upper endpoint, **2700 m/s**, as a conservative map-budget selection. It does
+not invent a midpoint or simulate the launch epoch. Atmospheric powered-descent
+budgets for Tekto and Thatmo use the same explicitly labeled placeholder policy
+as atmospheric stock bodies: ascent budget reused without atmospheric savings.
+
+### Karen analytic estimate
+
+Karen is absent from the historical map. Its six directed maneuvers therefore
+use a different source tag, `opm-analytic-karen`, and disclose that the values are
+analytic estimates rather than map transcriptions or flight-tested budgets.
+
+Inputs are from the pinned [Plock.cfg](https://github.com/Poodmund/Outer-Planets-Mod/blob/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs/OuterPlanets/Plock.cfg)
+and [Karen.cfg](https://github.com/Poodmund/Outer-Planets-Mod/blob/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs/PlockMoons/Karen.cfg):
+
+| Input | Plock | Karen |
+| --- | ---: | ---: |
+| Radius (m) | 189,000 | 85,050 |
+| Surface gravity (`geeASL`) | 0.148 | 0.066 |
+| Parking altitude chosen for this estimate (m) | 10,000 | 10,000 |
+| Karen orbit semi-major axis about Plock (m) | — | 2,457,800 |
+| Karen eccentricity | — | 0 |
+
+Use `g₀ = 9.80665 m/s²` and `μ = g₀ × geeASL × R²`. Let `r₁` be Plock's
+parking radius, `r₂` Karen's orbital radius, and `rK` Karen's parking radius.
+The ideal coplanar Hohmann departure and arrival excess-speed estimates are:
+
+```text
+departure = sqrt(μP / r₁) × (sqrt(2r₂ / (r₁ + r₂)) − 1)
+v∞        = sqrt(μP / r₂) × (1 − sqrt(2r₁ / (r₁ + r₂)))
+capture   = sqrt(v∞² + 2μK / rK) − sqrt(μK / rK)
+```
+
+The ideal surface-to-parking estimate starts from a nonrotating surface using
+two instantaneous impulses. With `a = (RK + rK) / 2`:
+
+```text
+surface = sqrt(μK × (2/RK − 1/a))
+        + sqrt(μK / rK) − sqrt(μK × (2/rK − 1/a))
+```
+
+Round each derived budget **upward** to a whole m/s:
+
+| Segment | Unrounded (m/s) | Stored budget (m/s) |
+| --- | ---: | ---: |
+| Plock parking orbit → Karen encounter | 183.862 | 184 |
+| Karen encounter → Karen parking orbit | 104.311 | 105 |
+| Karen surface → Karen parking orbit | 247.298 | 248 |
+
+Reverse directed edges reuse these idealized estimates. This model omits
+finite-thrust and gravity losses, terrain, body rotation, orbital perturbations,
+and optional SigmaBinary behavior. Rounding upward does **not** supply a mission
+margin or make the idealized estimate a conservative real-flight bound.
+
+### OPM regression totals
+
+Tests verify independent reference sums from Kerbin surface, omitting plane
+changes and using the stated Plock range policy:
+
+| Destination | Budget (m/s) |
+| --- | ---: |
+| Sarnus low orbit | 8,980 |
+| Hale surface | 10,010 |
+| Ovok surface | 10,100 |
+| Eeloo surface | 11,130 |
+| Slate surface | 13,480 |
+| Tekto surface | 13,470 |
+| Urlum low orbit | 8,380 |
+| Polta surface | 10,080 |
+| Priax surface | 9,720 |
+| Wal surface | 11,290 |
+| Tal surface | 10,720 |
+| Neidon low orbit | 8,430 |
+| Thatmo surface | 10,760 |
+| Nissee surface | 10,640 |
+| Plock surface | 8,640 |
+| Karen surface (includes analytic estimate) | 8,697 |
+
+The registry in `src/data/planetPacks.ts` is the single list of selectable packs.
+Adding a pack means adding its reviewed dataset and registry entry. The selector,
+routing engine, and map consume the pack's metadata and supported states.

@@ -1,5 +1,10 @@
 import type { ManeuverEdge, PlannerGraph, RouteResult } from '../types/planner'
 
+export interface RouteSearchOptions {
+  /** Carry arrival energy across a mission waypoint until this planet's low orbit is reached. */
+  pendingParkingBodyId?: string | null
+}
+
 interface SearchState {
   nodeId: string
   pendingParkingBodyId: string | null
@@ -13,7 +18,7 @@ const stateKey = ({ nodeId, pendingParkingBodyId }: SearchState) => JSON.stringi
  * A map encounter is not a universal zero-cost gravity assist: after an
  * interplanetary arrival, a low parking orbit at that arrival planet is required before a new transfer.
  */
-export function findLowestCostPath(graph: PlannerGraph, start: string, goal: string): RouteResult {
+export function findLowestCostPath(graph: PlannerGraph, start: string, goal: string, options: RouteSearchOptions = {}): RouteResult {
   if (!graph.nodes.has(start) || !graph.nodes.has(goal)) {
     return { status: 'invalid', message: 'Choose a start and destination from the active planet pack.' }
   }
@@ -28,9 +33,17 @@ export function findLowestCostPath(graph: PlannerGraph, start: string, goal: str
       return { status: 'invalid', message: 'The routing graph contains invalid endpoints or maneuver costs.' }
     }
   }
+  const pendingParkingBodyId = options.pendingParkingBodyId ?? null
+  if (pendingParkingBodyId !== null && (typeof pendingParkingBodyId !== 'string' || ![...graph.nodes.values()].some(node => node.bodyId === pendingParkingBodyId))) {
+    return { status: 'invalid', message: 'The arrival context references an unknown body.' }
+  }
   if (start === goal) return { status: 'success', nodeIds: [start], legs: [], totalDeltaV: 0 }
 
-  const initialState: SearchState = { nodeId: start, pendingParkingBodyId: null }
+  const startNode = graph.nodes.get(start)
+  const initialState: SearchState = {
+    nodeId: start,
+    pendingParkingBodyId: startNode?.kind === 'orbit' && startNode.bodyId === pendingParkingBodyId ? null : pendingParkingBodyId,
+  }
   const initialKey = stateKey(initialState)
   const states = new Map<string, SearchState>([[initialKey, initialState]])
   const distances = new Map<string, number>([[initialKey, 0]])

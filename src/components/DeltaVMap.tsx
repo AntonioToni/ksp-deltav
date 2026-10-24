@@ -65,7 +65,8 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
     const to = bodyById.get(nodeById.get(edge.to)?.bodyId ?? '')
     if (from?.kind === 'moon') return from.color
     if (to?.kind === 'moon') return to.color
-    return (from?.id.endsWith(':kerbin') ? to?.color : from?.color) ?? '#a7aaba'
+    const hubBodyId = layout.hubId ? nodeById.get(layout.hubId)?.bodyId : undefined
+    return (from?.id === hubBodyId ? to?.color : from?.color) ?? '#a7aaba'
   }
 
   function pointsFor(edge: ManeuverEdge) {
@@ -79,7 +80,7 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
       <Box
         component="svg"
         role="group"
-        aria-label="Kerbol system Delta-V state map"
+        aria-label={`${pack.bodies.find(body => body.kind === 'star')?.name ?? pack.name} system Delta-V state map`}
         viewBox={`0 0 ${layout.width} ${layout.height}`}
         preserveAspectRatio="xMidYMid meet"
         sx={{
@@ -136,12 +137,14 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
           </g>
         })}
 
-        {layout.labels.map(({ body, x, y, anchor }) => <text
+        {layout.labels.map(({ body, x, y, anchor, maxWidth }) => <text
           key={body.id} x={x} y={y} textAnchor={anchor}
-          fontSize={mode === 'portrait' ? 21 : mode === 'short' ? 20 : 21}
+          fontSize={layout.labelFontSize}
+          textLength={maxWidth && body.name.length * layout.labelFontSize * 0.6 > maxWidth ? maxWidth : undefined}
+          lengthAdjust="spacingAndGlyphs"
           fontWeight={500} fill={body.color} fillOpacity={0.93}
           style={{ pointerEvents: 'none' }}
-        >{body.name}</text>)}
+        >{body.name}<title>{body.name}</title></text>)}
 
         {pack.nodes.map(node => {
           const point = layout.nodePositions.get(node.id)
@@ -170,9 +173,9 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
             <circle className="focus-ring" r={radius + 6} fill="none" stroke="#f2f4fa" strokeWidth={2} />
             <circle className="state-circle" r={radius} fill={selected ? color : routeNodes.has(node.id) ? '#354355' : `url(#${prefix}-node-fill)`} stroke={color} strokeWidth={selected ? 2.5 : 1.5} strokeOpacity={selected || routeNodes.has(node.id) ? 1 : 0.85} />
             {hub ? <>
-              <text y={-3} textAnchor="middle" fill={selected ? '#20212d' : '#e2e4ed'} fontSize={13} fontWeight={600} pointerEvents="none">Kerbin</text>
-              <text y={13} textAnchor="middle" fill={selected ? '#20212d' : '#b2b7c7'} fontSize={12} pointerEvents="none">escape</text>
-            </> : <text dominantBaseline="central" textAnchor="middle" fill={selected ? '#20212d' : '#d0d3df'} fontSize={mode === 'portrait' ? 17 : mode === 'short' ? 15 : 14} fontWeight={selected ? 600 : 400} pointerEvents="none">{stateNames[node.kind]}</text>}
+              <text y={-3} textAnchor="middle" fill={selected ? '#20212d' : '#e2e4ed'} fontSize={Math.min(13, radius * 1.7 / Math.max(1, (body?.name.length ?? 3) * 0.6))} fontWeight={600} pointerEvents="none">{body?.name ?? 'Hub'}</text>
+              <text y={13} textAnchor="middle" fill={selected ? '#20212d' : '#b2b7c7'} fontSize={12} pointerEvents="none">{node.kind === 'encounter' ? 'escape' : stateNames[node.kind]}</text>
+            </> : <text dominantBaseline="central" textAnchor="middle" fill={selected ? '#20212d' : '#d0d3df'} fontSize={layout.nodeFontSize} fontWeight={selected ? 600 : 400} pointerEvents="none">{stateNames[node.kind]}</text>}
             {selected && <>
               <circle cx={radius - 1} cy={-radius + 1} r={9} fill="#20212d" stroke={color} strokeWidth={1} />
               <text x={radius - 1} y={-radius + 1} dominantBaseline="central" textAnchor="middle" fill={color} fontSize={10} fontWeight={700} pointerEvents="none">{start && end ? 'AB' : start ? 'A' : 'B'}</text>

@@ -40,6 +40,12 @@ export interface ManeuverEdge {
 export interface PlanetPack {
   id: string
   name: string
+  /** Compact display name for pack selectors. */
+  shortName?: string
+  /** Optional short, visible data-quality note linked to the pack assumptions. */
+  dataNotice?: string
+  /** Planet used by this pack's supplied interplanetary transfer branches. */
+  transferHubBodyId?: string
   version: string
   description: string
   sources: DataSource[]

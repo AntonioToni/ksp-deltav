@@ -251,7 +251,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 390 }
     await breakdownToggle(page).check()
 
     const list = breakdown(page)
-    const panel = list.locator('..')
+    const panel = page.getByRole('region', { name: 'Maneuver breakdown panel', exact: true })
     const legs = list.getByRole('listitem')
     await expect(legs).toHaveCount(12)
     await assertOnScreen(panel, page)
