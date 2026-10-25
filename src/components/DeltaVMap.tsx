@@ -10,6 +10,7 @@ interface DeltaVMapProps {
   pack: PlanetPack
   startId: string | null
   endId: string | null
+  waypointIds?: readonly string[]
   route: RouteResult | null
   onSelect: (nodeId: string) => void
 }
@@ -17,9 +18,11 @@ interface DeltaVMapProps {
 const stateNames: Record<NodeKind, string> = { surface: 'Land', orbit: 'Orbit', elliptical: 'High', encounter: 'Flyby' }
 const originColor = '#73c8fa'
 const destinationColor = '#e7bd7b'
+const waypointColor = '#8fcdbd'
 const aerobrakingColor = '#c6e8d8'
+const noWaypoints: readonly string[] = []
 
-export default function DeltaVMap({ pack, startId, endId, route, onSelect }: DeltaVMapProps) {
+export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoints, route, onSelect }: DeltaVMapProps) {
   const container = useRef<HTMLDivElement>(null)
   const [mode, setMode] = useState<MapMode>('wide')
   const [inspectedId, setInspectedId] = useState<string | null>(null)
@@ -39,6 +42,15 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
   const layout = useMemo(() => createMapLayout(pack, mode), [pack, mode])
   const nodeById = useMemo(() => new Map(pack.nodes.map(node => [node.id, node])), [pack])
   const bodyById = useMemo(() => new Map(pack.bodies.map(body => [body.id, body])), [pack])
+  const waypointIndexes = useMemo(() => {
+    const indexes = new Map<string, number[]>()
+    waypointIds.forEach((id, index) => {
+      const visits = indexes.get(id) ?? []
+      visits.push(index + 1)
+      indexes.set(id, visits)
+    })
+    return indexes
+  }, [waypointIds])
   const routeEdges = useMemo(() => new Set(route?.status === 'success' ? route.legs.map(leg => leg.edge.id) : []), [route])
   const routeNodes = useMemo(() => new Set(route?.status === 'success' ? route.nodeIds : []), [route])
   const aerobrakingEdges = useMemo(() => getAerobrakingEdges(pack), [pack])
@@ -52,6 +64,7 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
     })
   }, [pack])
   const inspected = inspectedId ? nodeById.get(inspectedId) : undefined
+  const inspectedStops = inspected ? waypointIndexes.get(inspected.id) : undefined
 
   function activate(event: KeyboardEvent<SVGGElement>, id: string) {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -151,15 +164,21 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
           if (!point) return null
           const start = node.id === startId
           const end = node.id === endId
-          const selected = start || end
+          const stopIndexes = waypointIndexes.get(node.id)
+          const stop = stopIndexes !== undefined
+          const stopDescription = stopIndexes ? `Intermediate ${stopIndexes.length === 1 ? 'stop' : 'stops'} ${stopIndexes.join(', ')}` : undefined
+          const selected = start || end || stop
           const body = bodyById.get(node.bodyId)
-          const color = end ? destinationColor : start ? originColor : body?.color ?? '#a7aaba'
+          const color = end ? destinationColor : start ? originColor : stop ? waypointColor : body?.color ?? '#a7aaba'
           const hub = node.id === layout.hubId && mode !== 'portrait'
           const radius = hub ? layout.radius + 9 : layout.radius
-          const title = `${node.label}${node.altitudeKm === undefined ? '' : ` · ${node.altitudeKm} km`}${start ? ' · Origin A' : ''}${end ? ' · Destination B' : ''}`
+          const title = `${node.label}${node.altitudeKm === undefined ? '' : ` · ${node.altitudeKm} km`}${start ? ' · Origin A' : ''}${end ? ' · Destination B' : ''}${stopDescription ? ` · ${stopDescription}` : ''}`
+          // Keep stop badges within the existing hit area, including large hubs.
+          const stopBadgeOffset = Math.max(0, Math.min(radius - 1, layout.hitRadius - 8))
           return <g
             key={node.id} transform={`translate(${point.x} ${point.y})`}
             role="button" tabIndex={0} aria-label={node.label} aria-pressed={selected}
+            aria-description={stopDescription} data-waypoint-indexes={stopIndexes?.join(',')}
             data-node-id={node.id} className="map-node"
             onClick={() => { setInspectedId(node.id); onSelect(node.id) }}
             onKeyDown={event => activate(event, node.id)}
@@ -176,15 +195,20 @@ export default function DeltaVMap({ pack, startId, endId, route, onSelect }: Del
               <text y={-3} textAnchor="middle" fill={selected ? '#20212d' : '#e2e4ed'} fontSize={Math.min(13, radius * 1.7 / Math.max(1, (body?.name.length ?? 3) * 0.6))} fontWeight={600} pointerEvents="none">{body?.name ?? 'Hub'}</text>
               <text y={13} textAnchor="middle" fill={selected ? '#20212d' : '#b2b7c7'} fontSize={12} pointerEvents="none">{node.kind === 'encounter' ? 'escape' : stateNames[node.kind]}</text>
             </> : <text dominantBaseline="central" textAnchor="middle" fill={selected ? '#20212d' : '#d0d3df'} fontSize={layout.nodeFontSize} fontWeight={selected ? 600 : 400} pointerEvents="none">{stateNames[node.kind]}</text>}
-            {selected && <>
+            {(start || end) && <>
               <circle cx={radius - 1} cy={-radius + 1} r={9} fill="#20212d" stroke={color} strokeWidth={1} />
               <text x={radius - 1} y={-radius + 1} dominantBaseline="central" textAnchor="middle" fill={color} fontSize={10} fontWeight={700} pointerEvents="none">{start && end ? 'AB' : start ? 'A' : 'B'}</text>
             </>}
+            {stopIndexes && <g pointerEvents="none" data-waypoint-badge="true">
+              <title>{stopDescription}</title>
+              <circle cx={start || end ? -stopBadgeOffset : stopBadgeOffset} cy={start || end ? stopBadgeOffset : -stopBadgeOffset} r={8} fill="#172b2b" stroke={waypointColor} strokeWidth={1} />
+              <text x={start || end ? -stopBadgeOffset : stopBadgeOffset} y={start || end ? stopBadgeOffset : -stopBadgeOffset} dominantBaseline="central" textAnchor="middle" fill={waypointColor} fontSize={stopIndexes.length > 1 ? 8 : 10} fontWeight={700}>{stopIndexes[0]}{stopIndexes.length > 1 ? '+' : ''}</text>
+            </g>}
           </g>
         })}
       </Box>
       {inspected && mode === 'wide' && <Box sx={{ position: 'absolute', left: 10, bottom: 5, pointerEvents: 'none', px: 1, py: 0.5, bgcolor: 'rgba(25,26,36,.92)', borderRadius: 1, maxWidth: 'calc(100% - 20px)' }}>
-        <Typography variant="caption" sx={{ color: '#d7dbe6', fontSize: { xs: 10, sm: 11 }, display: 'block' }}>{inspected.label}{inspected.altitudeKm === undefined ? '' : ` · ${inspected.altitudeKm} km`}</Typography>
+        <Typography variant="caption" sx={{ color: '#d7dbe6', fontSize: { xs: 10, sm: 11 }, display: 'block' }}>{inspected.label}{inspected.altitudeKm === undefined ? '' : ` · ${inspected.altitudeKm} km`}{inspectedStops ? ` · ${inspectedStops.length === 1 ? 'Stop' : 'Stops'} ${inspectedStops.join(', ')}` : ''}</Typography>
       </Box>}
     </Box>
   )

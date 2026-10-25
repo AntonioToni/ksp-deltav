@@ -23,7 +23,7 @@ Production output is written to `dist`. Production builds and previews use the
 ## Checks
 
 ```sh
-npm test             # Unit tests for packs, layouts, mission modes, routing, and reserves
+npm test             # Unit tests for packs, layouts, ordered missions, routing, and reserves
 npm run lint         # ESLint
 npm run build        # Strict TypeScript checks and production bundle
 ```
@@ -66,20 +66,35 @@ On Linux CI machines that also need browser system dependencies, use
 | Stock reference data | `src/data/stock.ts` |
 | OPM and RSS packs, and pack registry | `src/data/opm.ts`, `src/data/rss.ts`, `src/data/planetPacks.ts` |
 | Pack and topology validation | `src/utils/validatePlanetPack.ts` |
-| Graph construction and contextual route search | `src/utils/buildGraph.ts`, `src/utils/findRoute.ts` |
-| One-way, round-trip, and return-only planning | `src/utils/mission.ts` |
+| Graph construction and ordered contextual route search | `src/utils/buildGraph.ts`, `src/utils/findRoute.ts` |
+| Mission modes, ordered stops, and stage budgets | `src/utils/mission.ts` |
 | Reserve calculations | `src/utils/budget.ts` |
 | Informational atmospheric-braking markers | `src/utils/aerobraking.ts` |
 | Schematic layouts and SVG interaction | `src/components/mapLayout.ts`, `src/components/DeltaVMap.tsx` |
 | Mission controls and presentation | `src/App.tsx` |
+| Searchable stop editor and reorder controls | `src/components/StopsDialog.tsx` |
 | Theme and decorative background | `src/main.tsx`, `src/components/SpaceBackground.tsx` |
 | Browser workflows | `e2e/` |
 
-Maneuvers have explicit directed costs. Route search tracks arrival context to
-prevent incompatible encounter chaining, and round trips carry that context
-across the turnaround. Reserve calculations and atmospheric markers are separate
-from routing costs. Return-only mode searches destination → origin independently,
-without requiring an outbound route or inheriting its arrival context.
+Maneuvers have explicit directed costs. Ordered route search uses Dijkstra states
+containing the node, pending parking-orbit requirement, and next required visit.
+It searches the complete itinerary for the selected mission mode, preserving
+arrival context across stops and the round-trip turnaround. This prevents
+incompatible encounter chaining and avoids choosing a cheap stage that makes the
+remaining mission more expensive. Return-only mode reverses the itinerary and
+starts independently at the destination.
+
+`findLowestCostPath` retains the single-route interface; `findOrderedPath` handles
+ordered visit sequences. `findMissionRoute` accepts up to four intermediate
+states and exposes aggregate outbound/return routes plus their stage slices.
+Stage costs restart their cumulative totals locally; the complete mission retains
+its full cumulative budget. Reserve calculations and atmospheric markers remain
+separate from routing costs.
+
+The Stops editor stores visits in outbound order. Pack changes filter out
+unsupported stops, swapping reverses their order, and reset empties the list.
+The map shows numbered stop badges, and the optional breakdown pages through
+stages to keep long missions compact.
 
 To add a planet pack, define its bodies, states, directed maneuvers, sources,
 assumptions, and display metadata, then register it in `planetPacks.ts`. Generic

@@ -54,19 +54,41 @@ orbit and an elliptical orbit are different states.
 
 ## Mission modes
 
-These modes apply to Stock, OPM, and RSS. **One way** calculates origin →
-destination. **Round trip** searches each direction separately and carries the
-outbound arrival context through the turnaround, so an encounter waypoint cannot
-erase a required parking-orbit capture. The total budget is not assumed to be
-twice the outbound budget.
+These modes apply to Stock, OPM, and RSS. An itinerary contains the selected
+origin, up to four intermediate states in outbound order, and the destination.
+For example, an itinerary with two stops is A → S1 → S2 → B.
 
-**Return only** leaves the selected endpoints in place and calculates destination
-→ origin. It assumes the craft is already at the selected destination state;
-it neither requires an outbound route nor inherits an unmodeled outbound
-arrival. Thus a return-only route from an encounter or high ellipse can differ
-from the return leg of a full round trip. The map and breakdown show only the
-selected journey, with its actual start and end states. Reserves apply once to
-the selected mode's total.
+- **One way** follows A → S1 → S2 → B.
+- **Return only** follows B → S2 → S1 → A. It assumes the craft is already at B;
+  it neither requires an outbound route nor inherits an unmodeled outbound
+  arrival.
+- **Round trip** follows the outbound itinerary and then retraces the stops in
+  reverse order to A. Arrival context carries through every stop and the
+  turnaround. The budget is not assumed to be twice the outbound cost.
+
+The route search optimizes the complete sequence for the selected mode. Its
+state includes the current node, pending parking-orbit requirement, and next
+required visit. A stop cannot erase arrival energy or turn an encounter into a
+free parking-orbit reset. A longer route to one stop may therefore give the
+lowest total budget once later visits and their arrival conditions are included.
+Passing a later stop early does not complete that required visit out of order.
+Consecutive repeated states are allowed and can produce zero-maneuver stages.
+
+The breakdown divides the optimized journey into stages between required visits,
+with actual start and end states and local stage costs. These are parts of one
+mission, rather than independently optimized routes or additional charges.
+Outbound and Return tabs distinguish the two directions of a round trip.
+Reserves apply once to the complete selected-mode budget.
+
+Numbered teal map badges identify stops in outbound order. Repeated stop states
+share a badge showing the first number and `+`; its description lists all visit
+positions. Swapping endpoints also reverses stop order. Changing packs retains
+supported states and removes unsupported stops, without modifying source data.
+
+A return-only route from an encounter or high ellipse can still differ from the
+return leg of a full round trip because its initial arrival conditions differ.
+The graph's supplied transfers, parking-orbit restrictions, and other reference
+limitations apply to multi-stop missions as well as routes without stops.
 
 ## Atmospheric-braking markers
 

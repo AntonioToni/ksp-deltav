@@ -13,10 +13,13 @@ one-way, round-trip, and return-only budgets, and add a reserve for your mission
   elliptical-orbit states. OPM includes Eeloo under Sarnus and Tal under Wal.
 - **One-way, round-trip, and return-only planning** with highlighted routes, editable
   endpoints, swap, and reset.
+- **Ordered multi-stop missions** with up to four intermediate states. Search for
+  stops or select them on the map, then reorder or remove them in the Stops editor.
 - **Mission reserves** from 0–100%, added to the final budget without changing
   the selected route.
-- **Optional maneuver breakdowns**, with separate Outbound and Return tabs for
-  round trips. Details stay hidden until you enable them.
+- **Optional maneuver breakdowns**, with one stage at a time for multi-stop
+  missions and separate Outbound and Return tabs for round trips. Details stay
+  hidden until you enable them.
 - **Atmospheric-braking markers** showing where atmospheric assistance may be
   possible in the indicated direction.
 - **A responsive map** with keyboard and touch selection, a deep-blue starfield,
@@ -30,13 +33,22 @@ one-way, round-trip, and return-only budgets, and add a reserve for your mission
 3. Choose a mission mode: **One way** for origin → destination, **Round trip**
    for both legs, or **Return only** for destination → origin. Changing modes
    keeps your selected endpoints.
-4. Adjust **Redundancy** for your reserve and enable **Breakdown** to inspect
-   individual maneuvers.
+4. Open **Stops** to add up to four intermediate states in outbound order. Use
+   **Choose a stop** or **Select stop on map**, then reorder or remove entries.
+   Numbered teal badges identify the stops on the map.
+5. Adjust **Redundancy** for your reserve and enable **Breakdown** to inspect
+   individual maneuvers. Use the stage arrows to browse a multi-stop journey.
 
 All budgets are shown in **m/s**. For example, the stock Kerbin surface → Mun
 surface route is **5,120 m/s**, or **10,240 m/s** for a round trip before reserves.
-Return only plans the journey from the selected destination state back to the
-origin; it does not include an outbound flight or its arrival conditions.
+With stops, One way follows origin → stops → destination. Return only reverses
+that itinerary, and Round trip follows it outward and then in reverse. Return
+only starts at the selected destination state without including an outbound
+flight or its arrival conditions. The reserve applies once to the full budget.
+
+**Swap** reverses both the endpoints and the stop order. Changing systems keeps
+states available in the new pack and removes unsupported stops; **Clear** also
+removes all stops.
 
 ## About the estimates
 
@@ -84,7 +96,6 @@ the [developer guide](docs/DEVELOPMENT.md).
 - Modern OPM budget calibration.
 - Kcalbeloh configurations alongside Stock or OPM, plus other mod packs.
 - Atmospheric savings and improved landing estimates.
-- Ordered multi-stop missions.
 - User-supplied planet packs and additional direct interplanetary transfers.
 - Longer term: CommNet coverage and relay planning.
 

@@ -9,10 +9,14 @@ import SwapHorizRounded from '@mui/icons-material/SwapHorizRounded'
 import RestartAltRounded from '@mui/icons-material/RestartAltRounded'
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import CloseRounded from '@mui/icons-material/CloseRounded'
+import AltRouteRounded from '@mui/icons-material/AltRouteRounded'
+import ChevronLeftRounded from '@mui/icons-material/ChevronLeftRounded'
+import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import { stockPack } from './data/stock'
 import { planetPacks } from './data/planetPacks'
 import DeltaVMap from './components/DeltaVMap'
 import SpaceBackground from './components/SpaceBackground'
+import StopsDialog from './components/StopsDialog'
 import { buildGraph } from './utils/buildGraph'
 import { findMissionRoute, type MissionMode } from './utils/mission'
 import { calculateBudget } from './utils/budget'
@@ -38,46 +42,87 @@ export default function App() {
   const bodiesById = useMemo(() => new Map(pack.bodies.map(body => [body.id, body])), [pack])
   const [startId, setStartId] = useState<string | null>(null)
   const [endId, setEndId] = useState<string | null>(null)
-  const [selection, setSelection] = useState<'start' | 'end'>('start')
+  const [selection, setSelection] = useState<'start' | 'end' | 'stop'>('start')
+  const previousSelection = useRef<'start' | 'end'>('start')
+  const [waypointIds, setWaypointIds] = useState<string[]>([])
+  const [showStops, setShowStops] = useState(false)
   const [redundancy, setRedundancy] = useState(0)
   const [missionMode, setMissionMode] = useState<MissionMode>('one-way')
   const roundTrip = missionMode === 'round-trip'
   const returnOnly = missionMode === 'return-only'
   const [breakdownLeg, setBreakdownLeg] = useState<'outbound' | 'return'>('outbound')
+  const [breakdownStage, setBreakdownStage] = useState(0)
   const [showBreakdown, setShowBreakdown] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
   const [breakdownAnchor, setBreakdownAnchor] = useState<HTMLDivElement | null>(null)
   const breakdownToggle = useRef<HTMLInputElement>(null)
   const route = useMemo(
-    () => startId !== null && endId !== null ? findMissionRoute(graph, startId, endId, missionMode) : null,
-    [graph, startId, endId, missionMode],
+    () => startId !== null && endId !== null ? findMissionRoute(graph, startId, endId, missionMode, waypointIds) : null,
+    [graph, startId, endId, missionMode, waypointIds],
   )
-  const activeLeg = route?.status === 'success'
-    ? returnOnly || breakdownLeg === 'return' && route.returnRoute ? route.returnRoute : route.outbound
+  const showingReturn = returnOnly || roundTrip && breakdownLeg === 'return'
+  const activeJourney = route?.status === 'success'
+    ? showingReturn ? route.returnRoute : route.outbound
     : null
+  const stages = route?.status === 'success' ? showingReturn ? route.returnStages : route.outboundStages : []
+  const stageIndex = Math.min(breakdownStage, Math.max(0, stages.length - 1))
+  const activeLeg = stages[stageIndex] ?? activeJourney
+  const activeStart = activeLeg?.nodeIds[0]
+  const activeEnd = activeLeg?.nodeIds.at(-1)
+  const startColor = activeStart === endId ? 'secondary.main' : activeStart === startId ? 'primary.main' : '#92d5c6'
+  const endColor = activeEnd === endId ? 'secondary.main' : activeEnd === startId ? 'primary.main' : '#92d5c6'
   const budget = route?.status === 'success' ? calculateBudget(route.totalDeltaV, redundancy) : null
   const hasAtmosphericLanding = route?.status === 'success' && route.legs.some(({ edge }) =>
     edge.kind === 'descent' && bodiesById.get(nodesById.get(edge.to)?.bodyId ?? '')?.hasAtmosphere,
   )
   const hubName = bodiesById.get(pack.transferHubBodyId ?? '')?.name ?? 'the reference planet'
-  const hasLayover = route?.status === 'success' && [route.outbound, route.returnRoute].some(leg => leg && leg.legs.filter(({ edge }) =>
+  const hasLayover = route?.status === 'success' && [...route.outboundStages, ...route.returnStages].some(leg => leg.legs.filter(({ edge }) =>
     edge.kind === 'transfer' && nodesById.get(edge.from)?.kind === 'encounter' && nodesById.get(edge.to)?.kind === 'encounter',
   ).length > 1)
 
   useEffect(() => {
-    if (!showBreakdown) return
+    if (!showBreakdown && selection !== 'stop') return
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setShowBreakdown(false)
-        breakdownToggle.current?.focus()
+        if (selection === 'stop') {
+          setSelection(previousSelection.current)
+          setShowStops(true)
+        } else {
+          setShowBreakdown(false)
+          breakdownToggle.current?.focus()
+        }
       }
     }
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [showBreakdown])
+  }, [showBreakdown, selection])
+
+  function resetDetails() {
+    setBreakdownLeg('outbound')
+    setBreakdownStage(0)
+  }
+
+  function changeStops(ids: string[]) {
+    setWaypointIds(ids)
+    resetDetails()
+  }
+
+  function selectStopOnMap() {
+    if (waypointIds.length >= 4) return
+    if (selection !== 'stop') previousSelection.current = selection
+    setSelection('stop')
+    setShowStops(false)
+    setShowBreakdown(false)
+  }
 
   function selectNode(id: string) {
-    setBreakdownLeg('outbound')
+    resetDetails()
+    if (selection === 'stop') {
+      setWaypointIds(ids => ids.length < 4 ? [...ids, id] : ids)
+      setSelection(previousSelection.current)
+      setShowStops(true)
+      return
+    }
     if (selection === 'start') {
       setStartId(id)
       setSelection('end')
@@ -93,18 +138,22 @@ export default function App() {
     setPackId(id)
     setStartId(nextStart)
     setEndId(nextEnd)
-    setSelection(nextStart === null ? 'start' : nextEnd === null ? 'end' : selection)
+    setWaypointIds(ids => ids.filter(nodeId => available.has(nodeId)))
+    setSelection(nextStart === null ? 'start' : nextEnd === null || selection === 'stop' ? 'end' : selection)
+    setShowStops(false)
     setShowBreakdown(false)
-    setBreakdownLeg('outbound')
+    resetDetails()
   }
 
   function reset() {
     setStartId(null)
     setEndId(null)
     setSelection('start')
+    setWaypointIds([])
+    setShowStops(false)
     setRedundancy(0)
     setMissionMode('one-way')
-    setBreakdownLeg('outbound')
+    resetDetails()
     setShowBreakdown(false)
   }
 
@@ -114,7 +163,8 @@ export default function App() {
         : hasLayover ? `Includes a ${hubName} parking-orbit layover.`
           : route?.status === 'success' ? `${route.legs.length} maneuvers · Select a state to update your ${selection === 'start' ? 'origin' : 'destination'}.`
             : `Select ${selection === 'start' ? 'an origin' : 'a destination'} on the map.`
-  const status = returnOnly && route?.status === 'success'
+  const status = selection === 'stop' ? `Select stop ${waypointIds.length + 1} on the map. Escape cancels.`
+    : returnOnly && route?.status === 'success'
     ? `Return only: ${nodesById.get(endId ?? '')?.label} → ${nodesById.get(startId ?? '')?.label}. ${routeStatus}`
     : routeStatus
 
@@ -142,16 +192,16 @@ export default function App() {
 
       <Box component="main" aria-label="Interactive Delta-V map" sx={{ minHeight: 0, minWidth: 0, overflow: 'hidden', position: 'relative' }}>
         <SpaceBackground />
-        <DeltaVMap pack={pack} startId={startId} endId={endId} route={route} onSelect={selectNode} />
+        <DeltaVMap pack={pack} startId={startId} endId={endId} waypointIds={waypointIds} route={route} onSelect={selectNode} />
       </Box>
 
       <Box ref={setBreakdownAnchor} component="footer" sx={{ bgcolor: 'background.paper', backgroundImage: 'linear-gradient(180deg, #16243b, #101b2f)', borderTop: '2px solid', borderColor: 'primary.dark', minWidth: 0, boxShadow: '0 -8px 24px #00000018, inset 0 1px 0 #ffffff03' }}>
         <Box component="section" aria-label="Mission controls" sx={{
           display: 'grid', minWidth: 0, columnGap: 2, rowGap: .75,
           gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
-          gridTemplateAreas: '"selectors selectors" "mission mission" "reserve budget" "actions actions"',
+          gridTemplateAreas: '"selectors selectors" "mission mission" "reserve budget" "stops actions"',
           px: { xs: 1.25, sm: 2.5 }, pt: { xs: 1, sm: 1.5 }, pb: .5,
-          '@media (min-width: 700px), (min-width: 600px) and (max-height: 500px)': { gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) auto', gridTemplateAreas: '"selectors selectors selectors selectors" "mission reserve budget actions"', alignItems: 'center', columnGap: 3 },
+          '@media (min-width: 700px), (min-width: 600px) and (max-height: 500px)': { gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) auto', gridTemplateAreas: '"selectors selectors selectors stops" "mission reserve budget actions"', alignItems: 'center', columnGap: 3 },
           [compactBreakdown]: { pt: .25, pb: .125, rowGap: .5 },
           '@media (max-height: 500px)': { pt: .25, columnGap: 1.5 },
         }}>
@@ -164,7 +214,7 @@ export default function App() {
             </Box>
             <Box sx={{ minWidth: 0 }}>
               <Typography sx={{ mb: .25, fontSize: 10, lineHeight: 1.1, color: 'text.secondary', letterSpacing: '.06em', textTransform: 'uppercase', '@media (max-height: 500px)': { display: 'none' } }}>Trip</Typography>
-              <ToggleButtonGroup exclusive fullWidth aria-label="Mission mode" value={missionMode} onChange={(_, value: MissionMode | null) => { if (value !== null) { setMissionMode(value); setBreakdownLeg('outbound') } }} sx={{ ...selectorGroupStyles, '@media (max-width: 599px)': { '& [aria-hidden]': { display: 'none' }, '& .MuiToggleButton-root': { gap: 0 } }, '@media (max-width: 359px)': { '& .MuiToggleButton-root': { fontSize: 11 } } }}>
+              <ToggleButtonGroup exclusive fullWidth aria-label="Mission mode" value={missionMode} onChange={(_, value: MissionMode | null) => { if (value !== null) { setMissionMode(value); resetDetails() } }} sx={{ ...selectorGroupStyles, '@media (max-width: 599px)': { '& [aria-hidden]': { display: 'none' }, '& .MuiToggleButton-root': { gap: 0 } }, '@media (max-width: 359px)': { '& .MuiToggleButton-root': { fontSize: 11 } } }}>
               <ToggleButton value="one-way"><Box component="span" aria-hidden="true" sx={{ fontSize: 17, lineHeight: 1 }}>→</Box>One way</ToggleButton>
               <ToggleButton value="round-trip"><Box component="span" aria-hidden="true" sx={{ fontSize: 17, lineHeight: 1 }}>⇄</Box>Round trip</ToggleButton>
               <ToggleButton value="return-only"><Box component="span" aria-hidden="true" sx={{ fontSize: 17, lineHeight: 1 }}>←</Box>Return only</ToggleButton>
@@ -191,7 +241,7 @@ export default function App() {
                 </Button>
               </Box>
             })}
-            <Tooltip title="Swap origin and destination"><span style={{ gridColumn: 2, gridRow: 1 }}><IconButton aria-label="Swap origin and destination" disabled={!startId || !endId} onClick={() => { setStartId(endId); setEndId(startId); setBreakdownLeg('outbound') }} size="small"><SwapHorizRounded sx={{ fontSize: 20 }} /></IconButton></span></Tooltip>
+            <Tooltip title="Reverse the endpoints and stop order"><span style={{ gridColumn: 2, gridRow: 1 }}><IconButton aria-label="Swap origin and destination" disabled={!startId || !endId} onClick={() => { setStartId(endId); setEndId(startId); setWaypointIds(ids => [...ids].reverse()); resetDetails() }} size="small"><SwapHorizRounded sx={{ fontSize: 20 }} /></IconButton></span></Tooltip>
           </Box>
 
           <Box sx={{ gridArea: 'reserve', minWidth: 0, px: .5 }}>
@@ -202,9 +252,9 @@ export default function App() {
             <Slider id="redundancy-slider" aria-label="Redundancy" min={0} max={100} step={5} value={redundancy} onChange={(_, value) => { if (typeof value === 'number') setRedundancy(value) }} getAriaValueText={value => `${value}% redundancy`} valueLabelDisplay="auto" valueLabelFormat={value => `+${value}%`} size="small" sx={{ display: 'block', width: 'calc(100% - 12px)', mx: '6px', py: 1.5, '& .MuiSlider-thumb': { width: 13, height: 13 } }} />
           </Box>
 
-          <Box sx={{ gridArea: 'budget', minWidth: 0 }}>
+          <Box sx={{ gridArea: 'budget', minWidth: 0, containerType: 'inline-size' }}>
             <Typography sx={{ fontSize: 10, color: 'text.secondary', letterSpacing: '.1em', textTransform: 'uppercase' }}>{roundTrip ? 'Round-trip budget' : returnOnly ? 'Return-only budget' : 'Delta-V budget'}</Typography>
-            {budget ? <Typography component="output" data-testid="route-total" sx={{ display: 'block', fontSize: { xs: 25, sm: 32 }, lineHeight: 1.1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 700, letterSpacing: '-.025em' }}>
+            {budget ? <Typography component="output" data-testid="route-total" sx={{ display: 'block', fontSize: { xs: 25, sm: 32 }, lineHeight: 1.1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 700, letterSpacing: '-.025em', '@container (max-width: 170px)': { fontSize: 25 } }}>
               {format.format(budget.totalDeltaV)} <Box component="span" sx={{ fontSize: '.55em', color: 'text.secondary' }}>m/s</Box>
             </Typography> : <Typography sx={{ fontSize: 25, lineHeight: 1.1, color: 'text.secondary' }}>— <Box component="span" sx={{ fontSize: 13 }}>m/s</Box></Typography>}
             <Typography sx={{ fontSize: 9, color: 'text.secondary', whiteSpace: 'nowrap' }}>
@@ -212,34 +262,51 @@ export default function App() {
             </Typography>
           </Box>
 
-          <Box sx={{ gridArea: 'actions', display: 'flex', alignItems: 'center', justifyContent: { xs: 'space-between', sm: 'flex-start' }, gap: 1, '@media (min-width: 700px), (min-width: 600px) and (max-height: 500px)': { flexDirection: 'column', alignItems: 'flex-start', gap: 0 } }}>
+          <Button aria-label={selection === 'stop' ? 'Cancel stop selection' : 'Edit mission stops'} startIcon={<AltRouteRounded sx={{ fontSize: '16px !important' }} />} onClick={() => {
+            if (selection === 'stop') setSelection(previousSelection.current)
+            setShowBreakdown(false)
+            setShowStops(true)
+          }} sx={{ gridArea: 'stops', justifySelf: 'start', minHeight: 32, minWidth: 0, px: .75, fontSize: 11, color: waypointIds.length ? '#92d5c6' : 'text.secondary', border: '1px solid', borderColor: waypointIds.length || selection === 'stop' ? '#92d5c660' : 'divider', borderRadius: 1 }}>
+            {selection === 'stop' ? 'Cancel' : 'Stops'}{waypointIds.length > 0 && <Box component="span" data-testid="stop-count" sx={{ ml: .75, color: '#92d5c6', fontVariantNumeric: 'tabular-nums' }}>{waypointIds.length}</Box>}
+          </Button>
+          <Box sx={{ gridArea: 'actions', display: 'flex', alignItems: 'center', justifyContent: { xs: 'space-between', sm: 'flex-start' }, gap: .25, '@media (min-width: 700px), (min-width: 600px) and (max-height: 500px)': { flexDirection: 'column', alignItems: 'flex-start', gap: 0 } }}>
             <FormControlLabel sx={{ m: 0, '& .MuiFormControlLabel-label': { fontSize: 11 } }} control={<Checkbox size="small" checked={showBreakdown} onChange={(_, checked) => setShowBreakdown(checked)} slotProps={{ input: { 'aria-label': 'Show breakdown', ref: breakdownToggle } }} sx={{ p: .5, '& .MuiSvgIcon-root': { fontSize: 17 } }} />} label="Breakdown" />
-            <Button startIcon={<RestartAltRounded sx={{ fontSize: '16px !important' }} />} aria-label="Reset mission" size="small" onClick={reset} sx={{ minHeight: 28, fontSize: 11, px: .5 }}>Clear</Button>
+            <Button startIcon={<RestartAltRounded sx={{ fontSize: '16px !important' }} />} aria-label="Reset mission" size="small" onClick={reset} sx={{ minHeight: 28, minWidth: 0, fontSize: 11, px: .5 }}>Clear</Button>
           </Box>
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, px: { xs: 1.25, sm: 2.5 }, pb: .75, minHeight: 20 }}>
-          <Typography role={hasAtmosphericLanding || route?.status === 'invalid' ? 'alert' : 'status'} title={status} sx={{ flex: 1, minWidth: 0, fontSize: 10, color: hasAtmosphericLanding ? 'secondary.main' : 'text.secondary', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{status}</Typography>
+          <Typography role={selection !== 'stop' && (hasAtmosphericLanding || route?.status === 'invalid') ? 'alert' : 'status'} title={status} sx={{ flex: 1, minWidth: 0, fontSize: 10, color: selection === 'stop' ? '#92d5c6' : hasAtmosphericLanding ? 'secondary.main' : 'text.secondary', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{status}</Typography>
           {pack.dataNotice && <Button size="small" color="secondary" onClick={() => setShowInfo(true)} title={pack.description} sx={{ minHeight: 15, minWidth: 0, flexShrink: 0, p: 0, fontSize: 10, lineHeight: 1.5, whiteSpace: 'nowrap' }}>{pack.dataNotice}</Button>}
           <Typography sx={{ display: { xs: 'none', md: 'block' }, fontSize: 10, color: 'text.secondary', whiteSpace: 'nowrap' }}>Estimates in m/s · {redundancy}% reserve · Schematic, not to scale</Typography>
         </Box>
       </Box>
 
-      <Popper open={showBreakdown} anchorEl={breakdownAnchor} placement="top-end" popperOptions={{ strategy: 'fixed' }} modifiers={[{ name: 'offset', options: { offset: [0, 12] } }, { name: 'preventOverflow', options: { padding: 8 } }]} sx={{ zIndex: 1200 }}>
+      <Popper open={showBreakdown} anchorEl={breakdownAnchor} placement="top-end" popperOptions={{ strategy: 'fixed' }} modifiers={[{ name: 'offset', options: { offset: [0, 8] } }, { name: 'preventOverflow', options: { padding: 8 } }]} sx={{ zIndex: 1200 }}>
         <Paper role="region" aria-label="Maneuver breakdown panel" sx={{ width: 'min(320px, calc(100vw - 16px))', borderRadius: 1.5, overflow: 'hidden', boxShadow: '0 12px 40px #0008, inset 0 1px 0 #ffffff06', backgroundImage: 'linear-gradient(145deg, #1a2a42, #132037)', '@media (max-height: 500px)': { width: 'min(520px, calc(100vw - 16px))' } }}>
-          <Box sx={{ px: 1.5, py: .5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#ffffff05', boxShadow: 'inset 0 -1px 0 #ffffff06', [compactBreakdown]: { py: .25 } }}>
+          <Box sx={{ px: 1.5, py: .5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#ffffff05', boxShadow: 'inset 0 -1px 0 #ffffff06', [compactBreakdown]: { py: 0 } }}>
             <Typography sx={{ fontSize: 12, fontWeight: 600 }}>Maneuver breakdown</Typography>
-            <IconButton aria-label="Close breakdown" size="small" onClick={() => { setShowBreakdown(false); breakdownToggle.current?.focus() }} sx={{ [compactBreakdown]: { p: .25 } }}><CloseRounded sx={{ fontSize: 16 }} /></IconButton>
+            <Stack direction="row" sx={{ alignItems: 'center', gap: .25 }}>
+              {stages.length > 1 && <>
+                <IconButton aria-label="Previous stage" disabled={stageIndex === 0} onClick={() => setBreakdownStage(stageIndex - 1)} size="small" sx={{ p: .25 }}><ChevronLeftRounded sx={{ fontSize: 16 }} /></IconButton>
+                <Typography component="output" data-testid="stage-position" aria-label={`Stage ${stageIndex + 1} of ${stages.length}`} sx={{ fontSize: 11, whiteSpace: 'nowrap', color: '#92d5c6', fontVariantNumeric: 'tabular-nums' }}>{stageIndex + 1} / {stages.length}</Typography>
+                <IconButton aria-label="Next stage" disabled={stageIndex === stages.length - 1} onClick={() => setBreakdownStage(stageIndex + 1)} size="small" sx={{ p: .25 }}><ChevronRightRounded sx={{ fontSize: 16 }} /></IconButton>
+              </>}
+              <IconButton aria-label="Close breakdown" size="small" onClick={() => { setShowBreakdown(false); breakdownToggle.current?.focus() }} sx={{ [compactBreakdown]: { p: .25 } }}><CloseRounded sx={{ fontSize: 16 }} /></IconButton>
+            </Stack>
           </Box>
           {route?.status === 'success' && activeLeg && budget ? <>
             {roundTrip && <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Tabs aria-label="Trip leg" value={breakdownLeg} onChange={(_, value: 'outbound' | 'return') => setBreakdownLeg(value)} sx={{ minHeight: 28, flex: 1, '& .MuiTab-root': { minHeight: 28, minWidth: 72, py: .25, px: 1.25, fontSize: 11, textTransform: 'none' } }}>
+              <Tabs aria-label="Trip leg" value={breakdownLeg} onChange={(_, value: 'outbound' | 'return') => { setBreakdownLeg(value); setBreakdownStage(0) }} sx={{ minHeight: 28, flex: 1, '& .MuiTab-root': { minHeight: 28, minWidth: 72, py: .25, px: 1.25, fontSize: 11, textTransform: 'none' } }}>
                 <Tab id="outbound-trip-tab" aria-controls="trip-breakdown-panel" value="outbound" label="Outbound" />
                 <Tab id="return-trip-tab" aria-controls="trip-breakdown-panel" value="return" label="Return" />
               </Tabs>
-              <Typography data-testid="leg-total" sx={{ px: 1.5, fontSize: 11, whiteSpace: 'nowrap', color: 'text.secondary' }}>{format.format(activeLeg.totalDeltaV)} m/s</Typography>
+              <Typography data-testid="leg-total" sx={{ px: 1.5, fontSize: 11, whiteSpace: 'nowrap', color: 'text.secondary' }}>{format.format(activeJourney?.totalDeltaV ?? 0)} m/s</Typography>
             </Box>}
             <Box role={roundTrip ? 'tabpanel' : undefined} id="trip-breakdown-panel" aria-labelledby={roundTrip ? `${breakdownLeg}-trip-tab` : undefined}>
-            <Typography sx={{ px: 1.5, py: .5, color: 'primary.main', fontSize: 11, [compactBreakdown]: { py: .25 } }}>Start · {nodesById.get(activeLeg.nodeIds[0] ?? '')?.label}</Typography>
+            <Box sx={{ px: 1.5, py: .5, display: 'flex', alignItems: 'baseline', gap: .75, [compactBreakdown]: { py: .125 } }}>
+              <Typography title={nodesById.get(activeStart ?? '')?.label} sx={{ minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: startColor, fontSize: 11 }}>Start · {nodesById.get(activeStart ?? '')?.label}</Typography>
+              {stages.length > 1 && <Typography component="output" data-testid="stage-total" sx={{ flexShrink: 0, color: 'text.secondary', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>{format.format(activeLeg.totalDeltaV)} m/s</Typography>}
+            </Box>
             <Box component="ol" aria-label="Maneuver breakdown" sx={{ listStyle: 'none', m: 0, p: 0, '@media (max-height: 500px)': { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' } }}>
               {activeLeg.legs.map(({ edge }, index) => <Box component="li" key={`${edge.id}:${index}`} title={edge.label} sx={{ display: 'flex', alignItems: 'center', gap: .75, px: 1.5, py: .45, bgcolor: index % 2 === 0 ? '#ffffff08' : undefined, minWidth: 0, [compactBreakdown]: { py: 0, '& .MuiTypography-root': { fontSize: 10, lineHeight: 1.25 } } }}>
                 <Box component="span" sx={{ width: 5, height: 5, flexShrink: 0, borderRadius: '50%', bgcolor: bodiesById.get(nodesById.get(edge.to)?.bodyId ?? '')?.color ?? 'primary.main' }} />
@@ -248,18 +315,20 @@ export default function App() {
               </Box>)}
             </Box>
             {activeLeg.legs.length === 0 && <Typography sx={{ px: 1.5, py: 1, fontSize: 12 }}>No maneuvers required.</Typography>}
-            <Typography sx={{ px: 1.5, py: .5, color: 'secondary.main', fontSize: 11, [compactBreakdown]: { py: .25 } }}>End · {nodesById.get(activeLeg.nodeIds.at(-1) ?? '')?.label}</Typography>
+            <Typography title={nodesById.get(activeEnd ?? '')?.label} sx={{ px: 1.5, py: .5, color: endColor, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', [compactBreakdown]: { py: .125 } }}>End · {nodesById.get(activeEnd ?? '')?.label}</Typography>
             </Box>
             {redundancy > 0 && <Typography sx={{ px: 1.5, py: .75, borderTop: '1px solid', borderColor: 'divider', fontSize: 11, [compactBreakdown]: { py: .5 } }}>+{redundancy}% redundancy · {format.format(budget.extraDeltaV)} m/s {roundTrip ? 'mission reserve' : 'extra'}</Typography>}
           </> : <Typography sx={{ p: 1.5, fontSize: 12, color: 'text.secondary' }}>Select an origin and destination to see the maneuvers.</Typography>}
         </Paper>
       </Popper>
 
+      <StopsDialog open={showStops} pack={pack} waypointIds={waypointIds} startId={startId} endId={endId} onChange={changeStops} onClose={() => setShowStops(false)} onSelectOnMap={selectStopOnMap} />
+
       <Dialog open={showInfo} onClose={() => setShowInfo(false)} maxWidth="sm" fullWidth aria-labelledby="model-info-heading">
         <DialogTitle id="model-info-heading">About these estimates</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 1.5 }}>{pack.description}</Typography>
-          <Typography variant="body2" sx={{ mb: 1.5 }}>Round trips calculate outbound and return maneuvers separately. Return only calculates destination → origin from the selected destination state, without including the outbound journey. Redundancy applies once to the selected mission budget. Arrows show potential atmospheric braking; no atmospheric savings are included.</Typography>
+          <Typography variant="body2" sx={{ mb: 1.5 }}>Stops are visited in outbound order, and return journeys visit them in reverse. Arrival conditions carry through each stop and the round-trip turnaround. Return only starts independently at the destination. Redundancy applies once to the selected mission budget. Arrows show potential atmospheric braking; no atmospheric savings are included.</Typography>
           <Box component="ul" sx={{ pl: 2.5, '& li': { fontSize: 13, mb: 1 } }}>
             {pack.assumptions.map(assumption => <li key={assumption}>{assumption}</li>)}
           </Box>
