@@ -256,7 +256,8 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 390 }
     await expect(legs).toHaveCount(12)
     await assertOnScreen(panel, page)
     for (let index = 0; index < 12; index++) {
-      await expect(legs.nth(index)).toBeInViewport({ ratio: 1 })
+      // Mobile IntersectionObserver can round a fully visible row slightly below 1.
+      await expect(legs.nth(index)).toBeInViewport({ ratio: 0.99999 })
       await expect(legs.nth(index)).toContainText('m/s')
     }
     const panelBounds = await panel.boundingBox()

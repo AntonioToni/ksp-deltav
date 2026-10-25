@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { missionMode, missionModeButton } from './helpers/missionMode'
 import { rssPack } from '../src/data/rss'
 
 const node = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
 const packButton = (page: Page, name: 'Stock' | 'OPM' | 'RSS') => page.getByRole('button', { name, exact: true })
-const missionMode = (page: Page) => page.getByRole('combobox', { name: 'Mission mode', exact: true })
 const detailsToggle = (page: Page) => page.getByLabel('Show breakdown', { exact: true })
 const maneuverList = (page: Page) => page.getByRole('list', { name: 'Maneuver breakdown' })
 
@@ -109,12 +109,12 @@ async function assertDetailsAboveDock(page: Page) {
 
 test('budgets the sourced Earth–Moon mission and its directed return before adding reserve', async ({ page }) => {
   await packButton(page, 'RSS').click()
-  await expect(missionMode(page)).toHaveValue('one-way')
+  await expect(missionModeButton(page, 'one-way')).toHaveAttribute('aria-pressed', 'true')
   await node(page, 'rss:earth:surface').click()
   await node(page, 'rss:moon:surface').click()
   await expect(page.getByTestId('route-total')).toHaveText('14,660 m/s')
   await expect(page.locator('[data-route-edge="true"]')).toHaveCount(4)
-  await missionMode(page).selectOption('round-trip')
+  await missionModeButton(page, 'round-trip').click()
   await expect(page.getByTestId('route-total')).toHaveText('29,320 m/s')
   await expect(page.locator('[data-route-edge="true"]')).toHaveCount(8)
   await addTwentyPercentReserve(page)
@@ -140,7 +140,7 @@ test('budgets the sourced Earth–Moon mission and its directed return before ad
 test('clears incompatible endpoints across RSS and Kerbol packs while retaining mission options', async ({ page }) => {
   await node(page, 'stock:kerbin:surface').click()
   await node(page, 'stock:mun:surface').click()
-  await missionMode(page).selectOption('round-trip')
+  await missionModeButton(page, 'round-trip').click()
   await addTwentyPercentReserve(page)
   await detailsToggle(page).check()
   for (const nextPack of ['RSS', 'Stock', 'RSS', 'OPM', 'RSS'] as const) {
@@ -150,7 +150,7 @@ test('clears incompatible endpoints across RSS and Kerbol packs while retaining 
     await expect(page.getByRole('button', { name: 'Choose origin', exact: true })).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByRole('button', { name: 'Choose destination', exact: true })).toContainText('Select destination')
     await expect(page.getByTestId('route-total')).toHaveCount(0)
-    await expect(missionMode(page)).toHaveValue('round-trip')
+    await expect(missionModeButton(page, 'round-trip')).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByRole('slider', { name: 'Redundancy', exact: true })).toHaveAttribute('aria-valuenow', '20')
     await expect(detailsToggle(page)).not.toBeChecked()
     if (nextPack === 'RSS') {
@@ -165,7 +165,7 @@ test('clears incompatible endpoints across RSS and Kerbol packs while retaining 
   }
   await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
   await expect(packButton(page, 'RSS')).toHaveAttribute('aria-pressed', 'true')
-  await expect(missionMode(page)).toHaveValue('one-way')
+  await expect(missionModeButton(page, 'one-way')).toHaveAttribute('aria-pressed', 'true')
   await expect(detailsToggle(page)).not.toBeChecked()
   await expect(page.getByRole('slider', { name: 'Redundancy', exact: true })).toHaveAttribute('aria-valuenow', '0')
   await expect(page.getByTestId('route-total')).toHaveCount(0)
@@ -231,7 +231,7 @@ test('keeps the largest RSS mission budget and reserve text visible at 320 pixel
   await packButton(page, 'RSS').click()
   await node(page, 'rss:venus:surface').click()
   await node(page, 'rss:io:surface').click()
-  await missionMode(page).selectOption('round-trip')
+  await missionModeButton(page, 'round-trip').click()
   await expect(page.getByTestId('route-total')).toHaveText('140,820 m/s')
   const slider = page.getByRole('slider', { name: 'Redundancy', exact: true })
   await slider.focus()
@@ -262,7 +262,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     await packButton(page, 'RSS').click()
     await node(page, 'rss:phobos:surface').click()
     await node(page, 'rss:io:surface').click()
-    await missionMode(page).selectOption('round-trip')
+    await missionModeButton(page, 'round-trip').click()
     const slider = page.getByRole('slider', { name: 'Redundancy', exact: true })
     await slider.focus()
     await slider.press('End')
@@ -272,7 +272,8 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     await expect(legs).toHaveCount(14)
     await assertDetailsAboveDock(page)
     for (let index = 0; index < 14; index++) {
-      await expect(legs.nth(index)).toBeInViewport({ ratio: 1 })
+      // Mobile IntersectionObserver can round a fully visible row slightly below 1.
+      await expect(legs.nth(index)).toBeInViewport({ ratio: 0.99999 })
       await expect(legs.nth(index)).toContainText('m/s')
     }
     await assertSettingsVisible(page)
@@ -282,7 +283,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     await detailsToggle(page).uncheck()
     await detailsToggle(page).check()
     await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
-    await expect(missionMode(page)).toHaveValue('one-way')
+    await expect(missionModeButton(page, 'one-way')).toHaveAttribute('aria-pressed', 'true')
   })
 }
 
@@ -313,7 +314,7 @@ for (const viewport of [
     await assertRssFitsScreen(page)
     await node(page, 'rss:earth:surface').click()
     await node(page, 'rss:moon:surface').click()
-    await missionMode(page).selectOption('round-trip')
+    await missionModeButton(page, 'round-trip').click()
     await expect(page.getByTestId('route-total')).toBeVisible()
     await assertRssFitsScreen(page)
     await detailsToggle(page).check()
@@ -324,7 +325,7 @@ for (const viewport of [
     }
     await detailsToggle(page).uncheck()
     await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
-    await expect(missionMode(page)).toHaveValue('one-way')
+    await expect(missionModeButton(page, 'one-way')).toHaveAttribute('aria-pressed', 'true')
     await expect(packButton(page, 'RSS')).toHaveAttribute('aria-pressed', 'true')
     await assertRssFitsScreen(page)
   })

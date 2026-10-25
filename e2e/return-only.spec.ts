@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
+import { missionMode, missionModeButton } from './helpers/missionMode'
 
-const missionMode = (page: Page) => page.getByRole('combobox', { name: 'Mission mode', exact: true })
 const node = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
 const origin = (page: Page) => page.getByRole('button', { name: 'Choose origin', exact: true })
 const destination = (page: Page) => page.getByRole('button', { name: 'Choose destination', exact: true })
@@ -25,7 +25,7 @@ test.beforeEach(async ({ page }) => {
     if (message.type() === 'error') browserErrors.push(message.text())
   })
   await page.goto('./')
-  await expect(missionMode(page)).toHaveValue('one-way')
+  await expect(missionModeButton(page, 'one-way')).toHaveAttribute('aria-pressed', 'true')
 })
 
 test.afterEach(() => {
@@ -59,6 +59,31 @@ async function assertScreenBounds(page: Page) {
   expect(geometry.x).toBe(0)
   expect(geometry.y).toBe(0)
   await expect(missionMode(page)).toBeInViewport({ ratio: 1 })
+  const modeBounds = []
+  for (const mode of ['one-way', 'round-trip', 'return-only'] as const) {
+    const button = missionModeButton(page, mode)
+    await expect(button).toBeInViewport({ ratio: 1 })
+    const bounds = await button.boundingBox()
+    expect(bounds).not.toBeNull()
+    if (bounds) {
+      expect(bounds.height, 'Trip choices need a usable touch target').toBeGreaterThanOrEqual(36)
+      modeBounds.push(bounds)
+    }
+    const textFits = await button.evaluate(element => {
+      const bounds = element.getBoundingClientRect()
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      const text = range.getBoundingClientRect()
+      return text.left >= bounds.left - 1 && text.right <= bounds.right + 1
+        && text.top >= bounds.top - 1 && text.bottom <= bounds.bottom + 1
+    })
+    expect(textFits, 'All three trip labels should fit inside their buttons').toBe(true)
+  }
+  expect(modeBounds).toHaveLength(3)
+  for (let index = 1; index < modeBounds.length; index++) {
+    expect(modeBounds[index].x, 'Trip choices must not overlap').toBeGreaterThanOrEqual(modeBounds[index - 1].x + modeBounds[index - 1].width - 1)
+  }
+  await expect(missionMode(page).getByRole('button', { pressed: true })).toHaveCount(1)
   for (const name of ['Stock', 'OPM', 'RSS']) {
     await expect(packButton(page, name)).toBeInViewport({ ratio: 1 })
   }
@@ -72,6 +97,11 @@ async function assertScreenBounds(page: Page) {
     expect(bounds.y).toBeGreaterThanOrEqual(0)
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width)
     expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height)
+    const originBounds = await origin(page).boundingBox()
+    expect(originBounds).not.toBeNull()
+    if (originBounds) {
+      expect(bounds.y + bounds.height, 'Trip choices belong directly above the selected endpoints').toBeLessThanOrEqual(originBounds.y + 1)
+    }
   }
 }
 
@@ -83,7 +113,7 @@ for (const mission of missions) {
     await expect(page.getByTestId('route-total')).toHaveText(`${mission.base} m/s`)
     const outboundEdges = await edgeIds(page)
 
-    await missionMode(page).selectOption('return-only')
+    await missionModeButton(page, 'return-only').click()
     await expect(page.getByText('Return-only budget', { exact: true })).toBeVisible()
     await expect(origin(page)).toContainText(mission.homeName)
     await expect(destination(page)).toContainText(mission.targetName)
@@ -122,21 +152,28 @@ test('switches modes, swaps the return direction, and clears a zero-distance mis
   await node(page, 'stock:mun:surface').click()
   const outboundEdges = await edgeIds(page)
   await detailsToggle(page).check()
-  await missionMode(page).selectOption('return-only')
+  const returnOnly = missionModeButton(page, 'return-only')
+  await returnOnly.focus()
+  await returnOnly.press('Space')
+  await expect(returnOnly).toHaveAttribute('aria-pressed', 'true')
+  await returnOnly.click()
+  await expect(returnOnly, 'Clicking the current mode must keep one choice selected').toHaveAttribute('aria-pressed', 'true')
   await expect(panel(page).getByText('Start · Mun surface', { exact: true })).toBeVisible()
-  await missionMode(page).selectOption('round-trip')
+  const roundTrip = missionModeButton(page, 'round-trip')
+  await roundTrip.focus()
+  await roundTrip.press('Enter')
   await expect(page.getByTestId('route-total')).toHaveText('10,240 m/s')
   await expect(page.getByRole('tab', { name: 'Outbound', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.getByRole('tab', { name: 'Return', exact: true }).click()
-  await missionMode(page).selectOption('one-way')
+  await missionModeButton(page, 'one-way').click()
   await expect(page.getByTestId('route-total')).toHaveText('5,120 m/s')
   await expect(panel(page).getByText('Start · Kerbin surface', { exact: true })).toBeVisible()
   await expect(page.getByRole('tab')).toHaveCount(0)
   expect(await edgeIds(page)).toEqual(outboundEdges)
 
-  await missionMode(page).selectOption('return-only')
+  await missionModeButton(page, 'return-only').click()
   await page.getByRole('button', { name: 'Swap origin and destination', exact: true }).click()
-  await expect(missionMode(page)).toHaveValue('return-only')
+  await expect(missionModeButton(page, 'return-only')).toHaveAttribute('aria-pressed', 'true')
   await expect(origin(page)).toContainText('Mun surface')
   await expect(destination(page)).toContainText('Kerbin surface')
   await expect(panel(page).getByText('Start · Kerbin surface', { exact: true })).toBeVisible()
@@ -151,7 +188,7 @@ test('switches modes, swaps the return direction, and clears a zero-distance mis
   await expect(panel(page).getByText('No maneuvers required.', { exact: true })).toBeVisible()
   await addTwentyPercentReserve(page)
   await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
-  await expect(missionMode(page)).toHaveValue('one-way')
+  await expect(missionModeButton(page, 'one-way')).toHaveAttribute('aria-pressed', 'true')
   await expect(detailsToggle(page)).not.toBeChecked()
   await expect(page.getByRole('slider', { name: 'Redundancy', exact: true })).toHaveAttribute('aria-valuenow', '0')
   await expect(page.getByTestId('route-total')).toHaveCount(0)
@@ -160,17 +197,17 @@ test('switches modes, swaps the return direction, and clears a zero-distance mis
 test('retains return-only mode and reserve through compatible and incompatible pack changes', async ({ page }) => {
   await node(page, 'stock:kerbin:surface').click()
   await node(page, 'stock:mun:surface').click()
-  await missionMode(page).selectOption('return-only')
+  await missionModeButton(page, 'return-only').click()
   await addTwentyPercentReserve(page)
   await detailsToggle(page).check()
   await packButton(page, 'OPM').click()
-  await expect(missionMode(page)).toHaveValue('return-only')
+  await expect(missionModeButton(page, 'return-only')).toHaveAttribute('aria-pressed', 'true')
   await expect(origin(page)).toContainText('Kerbin surface')
   await expect(destination(page)).toContainText('Mun surface')
   await expect(page.getByTestId('route-total')).toHaveText('6,144 m/s')
   await expect(detailsToggle(page)).not.toBeChecked()
   await packButton(page, 'RSS').click()
-  await expect(missionMode(page)).toHaveValue('return-only')
+  await expect(missionModeButton(page, 'return-only')).toHaveAttribute('aria-pressed', 'true')
   await expect(origin(page)).toContainText('Select origin')
   await expect(destination(page)).toContainText('Select destination')
   await expect(page.getByTestId('route-total')).toHaveCount(0)
@@ -198,9 +235,9 @@ for (const viewport of [
       await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
       await node(page, mission.home).click()
       await node(page, mission.target).click()
-      for (const mode of ['round-trip', 'return-only', 'one-way', 'return-only']) {
-        await missionMode(page).selectOption(mode)
-        await expect(missionMode(page)).toHaveValue(mode)
+      for (const mode of ['round-trip', 'return-only', 'one-way', 'return-only'] as const) {
+        await missionModeButton(page, mode).click()
+        await expect(missionModeButton(page, mode)).toHaveAttribute('aria-pressed', 'true')
         await assertScreenBounds(page)
       }
       await expect(page.getByText('Return-only budget', { exact: true })).toBeInViewport({ ratio: 1 })
