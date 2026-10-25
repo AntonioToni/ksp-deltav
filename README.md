@@ -2,7 +2,7 @@
 
 Plan **Kerbal Space Program** missions on an interactive Delta-V map. Explore
 the stock Kerbol system, **Outer Planets Mod**, or **Real Solar System**, calculate
-one-way and round-trip budgets, and add a reserve for your mission.
+one-way, round-trip, and return-only budgets, and add a reserve for your mission.
 
 **[Open the planner](https://antoniotoni.github.io/ksp-deltav/)** ·
 [Data and assumptions](docs/DATA.md) · [Developer guide](docs/DEVELOPMENT.md)
@@ -11,7 +11,7 @@ one-way and round-trip budgets, and add a reserve for your mission.
 
 - **Stock, OPM, and RSS maps** with selectable surface, low-orbit, encounter, and high
   elliptical-orbit states. OPM includes Eeloo under Sarnus and Tal under Wal.
-- **One-way and round-trip planning** with highlighted routes, editable
+- **One-way, round-trip, and return-only planning** with highlighted routes, editable
   endpoints, swap, and reset.
 - **Mission reserves** from 0–100%, added to the final budget without changing
   the selected route.
@@ -27,12 +27,16 @@ one-way and round-trip budgets, and add a reserve for your mission.
 1. Choose **Stock**, **OPM**, or **RSS**.
 2. Select an origin, then a destination on the map. Use the Origin and
    Destination controls to edit either endpoint.
-3. Enable **Round trip** to include the return journey.
+3. Choose a mission mode: **One way** for origin → destination, **Round trip**
+   for both legs, or **Return only** for destination → origin. Changing modes
+   keeps your selected endpoints.
 4. Adjust **Redundancy** for your reserve and enable **Breakdown** to inspect
    individual maneuvers.
 
 All budgets are shown in **m/s**. For example, the stock Kerbin surface → Mun
 surface route is **5,120 m/s**, or **10,240 m/s** for a round trip before reserves.
+Return only plans the journey from the selected destination state back to the
+origin; it does not include an outbound flight or its arrival conditions.
 
 ## About the estimates
 
@@ -77,9 +81,10 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 ## Planned additions
 
-- Modern OPM budget calibration and packs for Kcalbeloh and other mods.
+- Modern OPM budget calibration.
+- Kcalbeloh configurations alongside Stock or OPM, plus other mod packs.
 - Atmospheric savings and improved landing estimates.
-- Return-only planning and ordered multi-stop missions.
+- Ordered multi-stop missions.
 - User-supplied planet packs and additional direct interplanetary transfers.
 - Longer term: CommNet coverage and relay planning.
 

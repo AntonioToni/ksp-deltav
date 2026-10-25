@@ -3,7 +3,7 @@ import { rssPack } from '../src/data/rss'
 
 const node = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
 const packButton = (page: Page, name: 'Stock' | 'OPM' | 'RSS') => page.getByRole('button', { name, exact: true })
-const roundTrip = (page: Page) => page.getByLabel('Round trip', { exact: true })
+const missionMode = (page: Page) => page.getByRole('combobox', { name: 'Mission mode', exact: true })
 const detailsToggle = (page: Page) => page.getByLabel('Show breakdown', { exact: true })
 const maneuverList = (page: Page) => page.getByRole('list', { name: 'Maneuver breakdown' })
 
@@ -35,13 +35,13 @@ async function assertSettingsVisible(page: Page) {
   for (const name of ['Stock', 'OPM', 'RSS'] as const) {
     await expect(packButton(page, name)).toBeInViewport({ ratio: 1 })
   }
-  await expect(page.getByText('Round trip', { exact: true })).toBeInViewport({ ratio: 1 })
+  await expect(missionMode(page)).toBeInViewport({ ratio: 1 })
   // MUI clips the accessible range input; the visible slider track must fit.
   await expect(page.locator('.MuiSlider-root')).toBeInViewport({ ratio: 1 })
   await expect(page.getByRole('button', { name: 'Reset mission', exact: true })).toBeInViewport({ ratio: 1 })
   const bounds = await Promise.all([
     ...(['Stock', 'OPM', 'RSS'] as const).map(name => packButton(page, name).boundingBox()),
-    page.getByText('Round trip', { exact: true }).boundingBox(),
+    missionMode(page).boundingBox(),
   ])
   for (let first = 0; first < bounds.length; first++) {
     for (let second = first + 1; second < bounds.length; second++) {
@@ -52,7 +52,7 @@ async function assertSettingsVisible(page: Page) {
       if (a && b) {
         const overlapX = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)
         const overlapY = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y)
-        expect(overlapX <= 1 || overlapY <= 1, 'Pack buttons and the round-trip label must not overlap').toBe(true)
+        expect(overlapX <= 1 || overlapY <= 1, 'Pack buttons and mission-mode selector must not overlap').toBe(true)
       }
     }
   }
@@ -109,12 +109,12 @@ async function assertDetailsAboveDock(page: Page) {
 
 test('budgets the sourced Earth–Moon mission and its directed return before adding reserve', async ({ page }) => {
   await packButton(page, 'RSS').click()
-  await expect(roundTrip(page)).not.toBeChecked()
+  await expect(missionMode(page)).toHaveValue('one-way')
   await node(page, 'rss:earth:surface').click()
   await node(page, 'rss:moon:surface').click()
   await expect(page.getByTestId('route-total')).toHaveText('14,660 m/s')
   await expect(page.locator('[data-route-edge="true"]')).toHaveCount(4)
-  await roundTrip(page).check()
+  await missionMode(page).selectOption('round-trip')
   await expect(page.getByTestId('route-total')).toHaveText('29,320 m/s')
   await expect(page.locator('[data-route-edge="true"]')).toHaveCount(8)
   await addTwentyPercentReserve(page)
@@ -140,7 +140,7 @@ test('budgets the sourced Earth–Moon mission and its directed return before ad
 test('clears incompatible endpoints across RSS and Kerbol packs while retaining mission options', async ({ page }) => {
   await node(page, 'stock:kerbin:surface').click()
   await node(page, 'stock:mun:surface').click()
-  await roundTrip(page).check()
+  await missionMode(page).selectOption('round-trip')
   await addTwentyPercentReserve(page)
   await detailsToggle(page).check()
   for (const nextPack of ['RSS', 'Stock', 'RSS', 'OPM', 'RSS'] as const) {
@@ -150,7 +150,7 @@ test('clears incompatible endpoints across RSS and Kerbol packs while retaining 
     await expect(page.getByRole('button', { name: 'Choose origin', exact: true })).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByRole('button', { name: 'Choose destination', exact: true })).toContainText('Select destination')
     await expect(page.getByTestId('route-total')).toHaveCount(0)
-    await expect(roundTrip(page)).toBeChecked()
+    await expect(missionMode(page)).toHaveValue('round-trip')
     await expect(page.getByRole('slider', { name: 'Redundancy', exact: true })).toHaveAttribute('aria-valuenow', '20')
     await expect(detailsToggle(page)).not.toBeChecked()
     if (nextPack === 'RSS') {
@@ -165,7 +165,7 @@ test('clears incompatible endpoints across RSS and Kerbol packs while retaining 
   }
   await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
   await expect(packButton(page, 'RSS')).toHaveAttribute('aria-pressed', 'true')
-  await expect(roundTrip(page)).not.toBeChecked()
+  await expect(missionMode(page)).toHaveValue('one-way')
   await expect(detailsToggle(page)).not.toBeChecked()
   await expect(page.getByRole('slider', { name: 'Redundancy', exact: true })).toHaveAttribute('aria-valuenow', '0')
   await expect(page.getByTestId('route-total')).toHaveCount(0)
@@ -231,7 +231,7 @@ test('keeps the largest RSS mission budget and reserve text visible at 320 pixel
   await packButton(page, 'RSS').click()
   await node(page, 'rss:venus:surface').click()
   await node(page, 'rss:io:surface').click()
-  await roundTrip(page).check()
+  await missionMode(page).selectOption('round-trip')
   await expect(page.getByTestId('route-total')).toHaveText('140,820 m/s')
   const slider = page.getByRole('slider', { name: 'Redundancy', exact: true })
   await slider.focus()
@@ -262,7 +262,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     await packButton(page, 'RSS').click()
     await node(page, 'rss:phobos:surface').click()
     await node(page, 'rss:io:surface').click()
-    await roundTrip(page).check()
+    await missionMode(page).selectOption('round-trip')
     const slider = page.getByRole('slider', { name: 'Redundancy', exact: true })
     await slider.focus()
     await slider.press('End')
@@ -282,7 +282,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     await detailsToggle(page).uncheck()
     await detailsToggle(page).check()
     await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
-    await expect(roundTrip(page)).not.toBeChecked()
+    await expect(missionMode(page)).toHaveValue('one-way')
   })
 }
 
@@ -313,7 +313,7 @@ for (const viewport of [
     await assertRssFitsScreen(page)
     await node(page, 'rss:earth:surface').click()
     await node(page, 'rss:moon:surface').click()
-    await roundTrip(page).check()
+    await missionMode(page).selectOption('round-trip')
     await expect(page.getByTestId('route-total')).toBeVisible()
     await assertRssFitsScreen(page)
     await detailsToggle(page).check()
@@ -324,7 +324,7 @@ for (const viewport of [
     }
     await detailsToggle(page).uncheck()
     await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
-    await expect(roundTrip(page)).not.toBeChecked()
+    await expect(missionMode(page)).toHaveValue('one-way')
     await expect(packButton(page, 'RSS')).toHaveAttribute('aria-pressed', 'true')
     await assertRssFitsScreen(page)
   })

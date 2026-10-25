@@ -3,7 +3,7 @@ import { opmPack } from '../src/data/opm'
 
 const node = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
 const packButton = (page: Page, name: 'Stock' | 'OPM') => page.getByRole('button', { name, exact: true })
-const roundTrip = (page: Page) => page.getByLabel('Round trip', { exact: true })
+const missionMode = (page: Page) => page.getByRole('combobox', { name: 'Mission mode', exact: true })
 const detailsToggle = (page: Page) => page.getByLabel('Show breakdown', { exact: true })
 const maneuverList = (page: Page) => page.getByRole('list', { name: 'Maneuver breakdown' })
 
@@ -71,9 +71,9 @@ async function assertOpmFitsScreen(page: Page) {
 }
 
 test('budgets both directions of a round trip and shows each leg in compact tabs', async ({ page }) => {
-  await expect(roundTrip(page)).not.toBeChecked()
+  await expect(missionMode(page)).toHaveValue('one-way')
   await planMunLanding(page)
-  await roundTrip(page).check()
+  await missionMode(page).selectOption('round-trip')
   await expect(page.getByTestId('route-total')).toHaveText('10,240 m/s')
   await expect(page.locator('[data-route-edge="true"]')).toHaveCount(8)
   await expect(page.locator('[data-aerobraking-edge][data-selected="true"]')).toHaveCount(2)
@@ -94,14 +94,14 @@ test('budgets both directions of a round trip and shows each leg in compact tabs
   await expect(maneuverList(page).getByRole('listitem').last()).toContainText('Kerbin surface')
   await expect(page.getByTestId('route-total')).toHaveText('12,288 m/s')
   await detailsToggle(page).uncheck()
-  await roundTrip(page).uncheck()
+  await missionMode(page).selectOption('one-way')
   await expect(page.getByTestId('route-total')).toHaveText('6,144 m/s')
   await expect(page.locator('[data-route-edge="true"]')).toHaveCount(4)
 })
 
 test('preserves shared endpoints and mission options across packs while clearing unavailable endpoints', async ({ page }) => {
   await planMunLanding(page)
-  await roundTrip(page).check()
+  await missionMode(page).selectOption('round-trip')
   await addTwentyPercentReserve(page)
   await detailsToggle(page).check()
   await packButton(page, 'OPM').click()
@@ -109,7 +109,7 @@ test('preserves shared endpoints and mission options across packs while clearing
   await expect(page.getByRole('button', { name: 'Choose origin', exact: true })).toContainText('Kerbin surface')
   await expect(page.getByRole('button', { name: 'Choose destination', exact: true })).toContainText('Mun surface')
   await expect(page.getByTestId('route-total')).toHaveText('12,288 m/s')
-  await expect(roundTrip(page)).toBeChecked()
+  await expect(missionMode(page)).toHaveValue('round-trip')
   await expect(page.getByRole('slider', { name: 'Redundancy', exact: true })).toHaveAttribute('aria-valuenow', '20')
   await expect(detailsToggle(page)).not.toBeChecked()
 
@@ -122,7 +122,7 @@ test('preserves shared endpoints and mission options across packs while clearing
   await expect(page.getByRole('button', { name: 'Choose destination', exact: true })).toContainText('Select destination')
   await expect(page.getByTestId('route-total')).toHaveCount(0)
   await expect(detailsToggle(page)).not.toBeChecked()
-  await expect(roundTrip(page)).toBeChecked()
+  await expect(missionMode(page)).toHaveValue('round-trip')
   await expect(page.getByRole('slider', { name: 'Redundancy', exact: true })).toHaveAttribute('aria-valuenow', '20')
 
   await packButton(page, 'OPM').click()
@@ -141,14 +141,14 @@ test('clears mission options without changing the active planet pack', async ({ 
   await node(page, 'stock:kerbin:surface').click()
   await node(page, 'opm:tekto:surface').click()
   await expect(page.getByTestId('route-total')).toHaveText('13,470 m/s')
-  await roundTrip(page).check()
+  await missionMode(page).selectOption('round-trip')
   await expect(page.getByTestId('route-total')).toHaveText('26,940 m/s')
   await addTwentyPercentReserve(page)
   await expect(page.getByTestId('route-total')).toHaveText('32,328 m/s')
   await detailsToggle(page).check()
   await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
   await expect(packButton(page, 'OPM')).toHaveAttribute('aria-pressed', 'true')
-  await expect(roundTrip(page)).not.toBeChecked()
+  await expect(missionMode(page)).toHaveValue('one-way')
   await expect(detailsToggle(page)).not.toBeChecked()
   await expect(page.getByRole('slider', { name: 'Redundancy', exact: true })).toHaveAttribute('aria-valuenow', '0')
   await expect(page.getByTestId('route-total')).toHaveCount(0)
@@ -191,7 +191,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     await packButton(page, 'OPM').click()
     await node(page, 'opm:tal:surface').click()
     await node(page, 'stock:gilly:surface').click()
-    await roundTrip(page).check()
+    await missionMode(page).selectOption('round-trip')
     const slider = page.getByRole('slider', { name: 'Redundancy', exact: true })
     await slider.focus()
     await slider.press('End')
@@ -225,7 +225,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     await detailsToggle(page).check()
     await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
     await expect(detailsToggle(page)).not.toBeChecked()
-    await expect(roundTrip(page)).not.toBeChecked()
+    await expect(missionMode(page)).toHaveValue('one-way')
   })
 }
 
@@ -243,7 +243,7 @@ for (const viewport of [
     await assertOpmFitsScreen(page)
     await node(page, 'stock:kerbin:surface').click()
     await node(page, 'opm:tekto:surface').click()
-    await roundTrip(page).check()
+    await missionMode(page).selectOption('round-trip')
     await expect(page.getByTestId('route-total')).toBeVisible()
     await assertOpmFitsScreen(page)
     await detailsToggle(page).check()
@@ -262,7 +262,7 @@ for (const viewport of [
     }
     await detailsToggle(page).uncheck()
     await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
-    await expect(roundTrip(page)).not.toBeChecked()
+    await expect(missionMode(page)).toHaveValue('one-way')
     await expect(packButton(page, 'OPM')).toHaveAttribute('aria-pressed', 'true')
     await assertOpmFitsScreen(page)
   })

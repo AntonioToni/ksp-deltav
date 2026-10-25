@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle,
-  FormControlLabel, IconButton, Link, Paper, Popper, Slider, Stack, Tab, Tabs,
+  FormControlLabel, IconButton, Link, Paper, Popper, Select, Slider, Stack, Tab, Tabs,
   ToggleButton, ToggleButtonGroup, Tooltip, Typography,
 } from '@mui/material'
 import RocketLaunchRounded from '@mui/icons-material/RocketLaunchRounded'
@@ -14,7 +14,7 @@ import { planetPacks } from './data/planetPacks'
 import DeltaVMap from './components/DeltaVMap'
 import SpaceBackground from './components/SpaceBackground'
 import { buildGraph } from './utils/buildGraph'
-import { findMissionRoute } from './utils/mission'
+import { findMissionRoute, type MissionMode } from './utils/mission'
 import { calculateBudget } from './utils/budget'
 
 const format = new Intl.NumberFormat('en-US')
@@ -30,18 +30,20 @@ export default function App() {
   const [endId, setEndId] = useState<string | null>(null)
   const [selection, setSelection] = useState<'start' | 'end'>('start')
   const [redundancy, setRedundancy] = useState(0)
-  const [roundTrip, setRoundTrip] = useState(false)
+  const [missionMode, setMissionMode] = useState<MissionMode>('one-way')
+  const roundTrip = missionMode === 'round-trip'
+  const returnOnly = missionMode === 'return-only'
   const [breakdownLeg, setBreakdownLeg] = useState<'outbound' | 'return'>('outbound')
   const [showBreakdown, setShowBreakdown] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
   const [breakdownAnchor, setBreakdownAnchor] = useState<HTMLDivElement | null>(null)
   const breakdownToggle = useRef<HTMLInputElement>(null)
   const route = useMemo(
-    () => startId !== null && endId !== null ? findMissionRoute(graph, startId, endId, roundTrip) : null,
-    [graph, startId, endId, roundTrip],
+    () => startId !== null && endId !== null ? findMissionRoute(graph, startId, endId, missionMode) : null,
+    [graph, startId, endId, missionMode],
   )
   const activeLeg = route?.status === 'success'
-    ? breakdownLeg === 'return' && route.returnRoute ? route.returnRoute : route.outbound
+    ? returnOnly || breakdownLeg === 'return' && route.returnRoute ? route.returnRoute : route.outbound
     : null
   const budget = route?.status === 'success' ? calculateBudget(route.totalDeltaV, redundancy) : null
   const hasAtmosphericLanding = route?.status === 'success' && route.legs.some(({ edge }) =>
@@ -91,17 +93,20 @@ export default function App() {
     setEndId(null)
     setSelection('start')
     setRedundancy(0)
-    setRoundTrip(false)
+    setMissionMode('one-way')
     setBreakdownLeg('outbound')
     setShowBreakdown(false)
   }
 
-  const status = route?.status === 'invalid' || route?.status === 'unreachable' ? route.message
+  const routeStatus = route?.status === 'invalid' || route?.status === 'unreachable' ? route.message
     : route?.status === 'success' && route.legs.length === 0 ? 'No maneuvers required.'
       : hasAtmosphericLanding ? `Atmospheric landing uses a planning allowance.${hasLayover ? ` Includes a ${hubName} parking-orbit layover.` : ''}`
         : hasLayover ? `Includes a ${hubName} parking-orbit layover.`
           : route?.status === 'success' ? `${route.legs.length} maneuvers · Select a state to update your ${selection === 'start' ? 'origin' : 'destination'}.`
             : `Select ${selection === 'start' ? 'an origin' : 'a destination'} on the map.`
+  const status = returnOnly && route?.status === 'success'
+    ? `Return only: ${nodesById.get(endId ?? '')?.label} → ${nodesById.get(startId ?? '')?.label}. ${routeStatus}`
+    : routeStatus
 
   return (
     <Box sx={{ width: '100%', height: '100dvh', display: 'grid', gridTemplateRows: '44px minmax(0, 1fr) auto', overflow: 'hidden', '@media (max-height: 500px)': { gridTemplateRows: '34px minmax(0, 1fr) auto' } }}>
@@ -135,7 +140,11 @@ export default function App() {
           <ToggleButtonGroup exclusive size="small" aria-label="Planet pack" value={pack.id} onChange={(_, value: string | null) => { if (value !== null) changePack(value) }} sx={{ '& .MuiToggleButton-root': { px: 1.25, py: .15, fontSize: 10, textTransform: 'none', color: 'text.secondary', borderColor: 'divider', '&.Mui-selected': { bgcolor: '#73c8fa18', color: 'primary.main' } } }}>
             {planetPacks.map(candidate => <ToggleButton key={candidate.id} value={candidate.id} title={candidate.name}>{candidate.shortName ?? candidate.name}</ToggleButton>)}
           </ToggleButtonGroup>
-          <FormControlLabel sx={{ m: 0, '& .MuiFormControlLabel-label': { fontSize: 11 } }} control={<Checkbox size="small" checked={roundTrip} onChange={(_, checked) => { setRoundTrip(checked); setBreakdownLeg('outbound') }} slotProps={{ input: { 'aria-label': 'Round trip' } }} sx={{ p: .5, '& .MuiSvgIcon-root': { fontSize: 17 } }} />} label="Round trip" />
+          <Select native size="small" value={missionMode} onChange={event => { setMissionMode(event.target.value as MissionMode); setBreakdownLeg('outbound') }} inputProps={{ 'aria-label': 'Mission mode' }} sx={{ minWidth: 119, height: 26, fontSize: 11, color: 'primary.main', bgcolor: '#73c8fa08', '& select': { py: .25, pl: 1 }, '& option': { bgcolor: 'background.paper', color: 'text.primary' } }}>
+            <option value="one-way">One way</option>
+            <option value="round-trip">Round trip</option>
+            <option value="return-only">Return only</option>
+          </Select>
         </Stack>
         <Box component="section" aria-label="Mission controls" sx={{
           display: 'grid', minWidth: 0, columnGap: 2, rowGap: .75,
@@ -177,7 +186,7 @@ export default function App() {
           </Box>
 
           <Box sx={{ gridArea: 'budget', minWidth: 0 }}>
-            <Typography sx={{ fontSize: 10, color: 'text.secondary', letterSpacing: '.1em', textTransform: 'uppercase' }}>{roundTrip ? 'Round-trip budget' : 'Delta-V budget'}</Typography>
+            <Typography sx={{ fontSize: 10, color: 'text.secondary', letterSpacing: '.1em', textTransform: 'uppercase' }}>{roundTrip ? 'Round-trip budget' : returnOnly ? 'Return-only budget' : 'Delta-V budget'}</Typography>
             {budget ? <Typography component="output" data-testid="route-total" sx={{ display: 'block', fontSize: { xs: 25, sm: 32 }, lineHeight: 1.1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 700, letterSpacing: '-.025em' }}>
               {format.format(budget.totalDeltaV)} <Box component="span" sx={{ fontSize: '.55em', color: 'text.secondary' }}>m/s</Box>
             </Typography> : <Typography sx={{ fontSize: 25, lineHeight: 1.1, color: 'text.secondary' }}>— <Box component="span" sx={{ fontSize: 13 }}>m/s</Box></Typography>}
@@ -233,7 +242,7 @@ export default function App() {
         <DialogTitle id="model-info-heading">About these estimates</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 1.5 }}>{pack.description}</Typography>
-          <Typography variant="body2" sx={{ mb: 1.5 }}>Round trips calculate outbound and return maneuvers separately. Redundancy applies once to the complete mission budget. Arrows show potential atmospheric braking; no atmospheric savings are included.</Typography>
+          <Typography variant="body2" sx={{ mb: 1.5 }}>Round trips calculate outbound and return maneuvers separately. Return only calculates destination → origin from the selected destination state, without including the outbound journey. Redundancy applies once to the selected mission budget. Arrows show potential atmospheric braking; no atmospheric savings are included.</Typography>
           <Box component="ul" sx={{ pl: 2.5, '& li': { fontSize: 13, mb: 1 } }}>
             {pack.assumptions.map(assumption => <li key={assumption}>{assumption}</li>)}
           </Box>

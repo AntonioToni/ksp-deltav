@@ -52,6 +52,22 @@ orbit and an elliptical orbit are different states.
 - Add a mission margin. A shortest path is the lowest estimate in this dataset,
   not a universal minimum over all possible KSP trajectories.
 
+## Mission modes
+
+These modes apply to Stock, OPM, and RSS. **One way** calculates origin →
+destination. **Round trip** searches each direction separately and carries the
+outbound arrival context through the turnaround, so an encounter waypoint cannot
+erase a required parking-orbit capture. The total budget is not assumed to be
+twice the outbound budget.
+
+**Return only** leaves the selected endpoints in place and calculates destination
+→ origin. It assumes the craft is already at the selected destination state;
+it neither requires an outbound route nor inherits an unmodeled outbound
+arrival. Thus a return-only route from an encounter or high ellipse can differ
+from the return leg of a full round trip. The map and breakdown show only the
+selected journey, with its actual start and end states. Reserves apply once to
+the selected mode's total.
+
 ## Atmospheric-braking markers
 
 Small arrows point inward on atmospheric capture and descent segments. These

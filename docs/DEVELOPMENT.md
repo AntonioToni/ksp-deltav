@@ -23,7 +23,7 @@ Production output is written to `dist`. Production builds and previews use the
 ## Checks
 
 ```sh
-npm test             # Unit tests for packs, layouts, routing, round trips, and reserves
+npm test             # Unit tests for packs, layouts, mission modes, routing, and reserves
 npm run lint         # ESLint
 npm run build        # Strict TypeScript checks and production bundle
 ```
@@ -67,7 +67,7 @@ On Linux CI machines that also need browser system dependencies, use
 | OPM and RSS packs, and pack registry | `src/data/opm.ts`, `src/data/rss.ts`, `src/data/planetPacks.ts` |
 | Pack and topology validation | `src/utils/validatePlanetPack.ts` |
 | Graph construction and contextual route search | `src/utils/buildGraph.ts`, `src/utils/findRoute.ts` |
-| Outbound/return mission planning | `src/utils/mission.ts` |
+| One-way, round-trip, and return-only planning | `src/utils/mission.ts` |
 | Reserve calculations | `src/utils/budget.ts` |
 | Informational atmospheric-braking markers | `src/utils/aerobraking.ts` |
 | Schematic layouts and SVG interaction | `src/components/mapLayout.ts`, `src/components/DeltaVMap.tsx` |
@@ -78,7 +78,8 @@ On Linux CI machines that also need browser system dependencies, use
 Maneuvers have explicit directed costs. Route search tracks arrival context to
 prevent incompatible encounter chaining, and round trips carry that context
 across the turnaround. Reserve calculations and atmospheric markers are separate
-from routing costs.
+from routing costs. Return-only mode searches destination → origin independently,
+without requiring an outbound route or inheriting its arrival context.
 
 To add a planet pack, define its bodies, states, directed maneuvers, sources,
 assumptions, and display metadata, then register it in `planetPacks.ts`. Generic

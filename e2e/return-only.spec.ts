@@ -1,0 +1,224 @@
+import { expect, test, type Page } from '@playwright/test'
+
+const missionMode = (page: Page) => page.getByRole('combobox', { name: 'Mission mode', exact: true })
+const node = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
+const origin = (page: Page) => page.getByRole('button', { name: 'Choose origin', exact: true })
+const destination = (page: Page) => page.getByRole('button', { name: 'Choose destination', exact: true })
+const detailsToggle = (page: Page) => page.getByLabel('Show breakdown', { exact: true })
+const panel = (page: Page) => page.getByRole('region', { name: 'Maneuver breakdown panel', exact: true })
+const maneuvers = (page: Page) => page.getByRole('list', { name: 'Maneuver breakdown', exact: true }).getByRole('listitem')
+const highlightedEdges = (page: Page) => page.locator('[data-route-edge="true"]')
+const packButton = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
+
+const missions = [
+  { pack: 'Stock', home: 'stock:kerbin:surface', target: 'stock:mun:surface', homeName: 'Kerbin surface', targetName: 'Mun surface', base: '5,120', reserve: '1,024', total: '6,144' },
+  { pack: 'OPM', home: 'stock:kerbin:surface', target: 'opm:tekto:surface', homeName: 'Kerbin surface', targetName: 'Tekto surface', base: '13,470', reserve: '2,694', total: '16,164' },
+  { pack: 'RSS', home: 'rss:earth:surface', target: 'rss:moon:surface', homeName: 'Earth surface', targetName: 'Moon surface', base: '14,660', reserve: '2,932', total: '17,592' },
+] as const
+
+let browserErrors: string[]
+
+test.beforeEach(async ({ page }) => {
+  browserErrors = []
+  page.on('pageerror', error => browserErrors.push(error.message))
+  page.on('console', message => {
+    if (message.type() === 'error') browserErrors.push(message.text())
+  })
+  await page.goto('./')
+  await expect(missionMode(page)).toHaveValue('one-way')
+})
+
+test.afterEach(() => {
+  expect(browserErrors, 'Mission modes should not produce browser exceptions or console errors').toEqual([])
+})
+
+async function addTwentyPercentReserve(page: Page) {
+  const slider = page.getByRole('slider', { name: 'Redundancy', exact: true })
+  await slider.focus()
+  await slider.press('Home')
+  for (let step = 0; step < 4; step++) await slider.press('ArrowRight')
+  await expect(slider).toHaveAttribute('aria-valuenow', '20')
+}
+
+async function edgeIds(page: Page) {
+  return highlightedEdges(page).evaluateAll(edges => edges.map(edge => edge.getAttribute('data-edge-id')).sort())
+}
+
+async function assertScreenBounds(page: Page) {
+  const viewport = page.viewportSize()
+  expect(viewport).not.toBeNull()
+  if (!viewport) return
+  const geometry = await page.evaluate(() => ({
+    width: document.documentElement.scrollWidth,
+    height: document.documentElement.scrollHeight,
+    x: window.scrollX,
+    y: window.scrollY,
+  }))
+  expect(geometry.width).toBeLessThanOrEqual(viewport.width)
+  expect(geometry.height).toBeLessThanOrEqual(viewport.height)
+  expect(geometry.x).toBe(0)
+  expect(geometry.y).toBe(0)
+  await expect(missionMode(page)).toBeInViewport({ ratio: 1 })
+  for (const name of ['Stock', 'OPM', 'RSS']) {
+    await expect(packButton(page, name)).toBeInViewport({ ratio: 1 })
+  }
+  for (const control of [origin(page), destination(page), page.locator('.MuiSlider-root'), page.getByRole('button', { name: 'Reset mission', exact: true })]) {
+    await expect(control).toBeInViewport({ ratio: 1 })
+  }
+  const bounds = await missionMode(page).boundingBox()
+  expect(bounds).not.toBeNull()
+  if (bounds) {
+    expect(bounds.x).toBeGreaterThanOrEqual(0)
+    expect(bounds.y).toBeGreaterThanOrEqual(0)
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width)
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height)
+  }
+}
+
+for (const mission of missions) {
+  test(`plans only the ${mission.pack} return with unchanged endpoints and one reserve`, async ({ page }) => {
+    await packButton(page, mission.pack).click()
+    await node(page, mission.home).click()
+    await node(page, mission.target).click()
+    await expect(page.getByTestId('route-total')).toHaveText(`${mission.base} m/s`)
+    const outboundEdges = await edgeIds(page)
+
+    await missionMode(page).selectOption('return-only')
+    await expect(page.getByText('Return-only budget', { exact: true })).toBeVisible()
+    await expect(origin(page)).toContainText(mission.homeName)
+    await expect(destination(page)).toContainText(mission.targetName)
+    await expect(detailsToggle(page)).not.toBeChecked()
+    await expect(page.getByTestId('route-total')).toHaveText(`${mission.base} m/s`)
+    const returnEdges = await edgeIds(page)
+    expect(returnEdges).not.toEqual(outboundEdges)
+    expect(returnEdges).toEqual(outboundEdges.map(id => {
+      if (id === null) throw new Error('A highlighted maneuver is missing its directed ID')
+      const [from, to] = id.split('->')
+      return `${to}->${from}`
+    }).sort())
+
+    await addTwentyPercentReserve(page)
+    await expect(page.getByTestId('route-base')).toHaveText(`${mission.base} m/s`)
+    await expect(page.getByTestId('route-margin')).toHaveText(`+${mission.reserve} m/s`)
+    await expect(page.getByTestId('route-total')).toHaveText(`${mission.total} m/s`)
+    expect(await edgeIds(page)).toEqual(returnEdges)
+    await detailsToggle(page).check()
+    await expect(panel(page).getByText(`Start · ${mission.targetName}`, { exact: true })).toBeVisible()
+    await expect(panel(page).getByText(`End · ${mission.homeName}`, { exact: true })).toBeVisible()
+    await expect(maneuvers(page).last()).toContainText(mission.homeName)
+    await expect(page.getByRole('tab', { name: 'Outbound', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: 'Return', exact: true })).toHaveCount(0)
+    if (mission.pack === 'Stock') {
+      await expect(highlightedEdges(page)).toHaveCount(4)
+      await expect(page.locator('[data-aerobraking-edge][data-selected="true"]')).toHaveCount(2)
+      await expect(maneuvers(page).first()).toContainText('580 m/s')
+      await expect(maneuvers(page).last()).toContainText('3,400 m/s')
+    }
+  })
+}
+
+test('switches modes, swaps the return direction, and clears a zero-distance mission', async ({ page }) => {
+  await node(page, 'stock:kerbin:surface').click()
+  await node(page, 'stock:mun:surface').click()
+  const outboundEdges = await edgeIds(page)
+  await detailsToggle(page).check()
+  await missionMode(page).selectOption('return-only')
+  await expect(panel(page).getByText('Start · Mun surface', { exact: true })).toBeVisible()
+  await missionMode(page).selectOption('round-trip')
+  await expect(page.getByTestId('route-total')).toHaveText('10,240 m/s')
+  await expect(page.getByRole('tab', { name: 'Outbound', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: 'Return', exact: true }).click()
+  await missionMode(page).selectOption('one-way')
+  await expect(page.getByTestId('route-total')).toHaveText('5,120 m/s')
+  await expect(panel(page).getByText('Start · Kerbin surface', { exact: true })).toBeVisible()
+  await expect(page.getByRole('tab')).toHaveCount(0)
+  expect(await edgeIds(page)).toEqual(outboundEdges)
+
+  await missionMode(page).selectOption('return-only')
+  await page.getByRole('button', { name: 'Swap origin and destination', exact: true }).click()
+  await expect(missionMode(page)).toHaveValue('return-only')
+  await expect(origin(page)).toContainText('Mun surface')
+  await expect(destination(page)).toContainText('Kerbin surface')
+  await expect(panel(page).getByText('Start · Kerbin surface', { exact: true })).toBeVisible()
+  await expect(panel(page).getByText('End · Mun surface', { exact: true })).toBeVisible()
+  expect(await edgeIds(page)).toEqual(outboundEdges)
+
+  await destination(page).click()
+  await node(page, 'stock:mun:surface').click()
+  await expect(page.getByTestId('route-total')).toHaveText('0 m/s')
+  await expect(highlightedEdges(page)).toHaveCount(0)
+  await expect(maneuvers(page)).toHaveCount(0)
+  await expect(panel(page).getByText('No maneuvers required.', { exact: true })).toBeVisible()
+  await addTwentyPercentReserve(page)
+  await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
+  await expect(missionMode(page)).toHaveValue('one-way')
+  await expect(detailsToggle(page)).not.toBeChecked()
+  await expect(page.getByRole('slider', { name: 'Redundancy', exact: true })).toHaveAttribute('aria-valuenow', '0')
+  await expect(page.getByTestId('route-total')).toHaveCount(0)
+})
+
+test('retains return-only mode and reserve through compatible and incompatible pack changes', async ({ page }) => {
+  await node(page, 'stock:kerbin:surface').click()
+  await node(page, 'stock:mun:surface').click()
+  await missionMode(page).selectOption('return-only')
+  await addTwentyPercentReserve(page)
+  await detailsToggle(page).check()
+  await packButton(page, 'OPM').click()
+  await expect(missionMode(page)).toHaveValue('return-only')
+  await expect(origin(page)).toContainText('Kerbin surface')
+  await expect(destination(page)).toContainText('Mun surface')
+  await expect(page.getByTestId('route-total')).toHaveText('6,144 m/s')
+  await expect(detailsToggle(page)).not.toBeChecked()
+  await packButton(page, 'RSS').click()
+  await expect(missionMode(page)).toHaveValue('return-only')
+  await expect(origin(page)).toContainText('Select origin')
+  await expect(destination(page)).toContainText('Select destination')
+  await expect(page.getByTestId('route-total')).toHaveCount(0)
+  await expect(page.getByRole('slider', { name: 'Redundancy', exact: true })).toHaveAttribute('aria-valuenow', '20')
+  await node(page, 'rss:earth:surface').click()
+  await node(page, 'rss:moon:surface').click()
+  await expect(page.getByTestId('route-total')).toHaveText('17,592 m/s')
+  await detailsToggle(page).check()
+  await expect(panel(page).getByText('Start · Moon surface', { exact: true })).toBeVisible()
+  await expect(panel(page).getByText('End · Earth surface', { exact: true })).toBeVisible()
+})
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1280, height: 720 },
+  { width: 390, height: 844 },
+  { width: 320, height: 568 },
+  { width: 844, height: 390 },
+  { width: 667, height: 375 },
+]) {
+  test(`keeps all mission modes usable without scrolling at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    for (const mission of missions) {
+      await packButton(page, mission.pack).click()
+      await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
+      await node(page, mission.home).click()
+      await node(page, mission.target).click()
+      for (const mode of ['round-trip', 'return-only', 'one-way', 'return-only']) {
+        await missionMode(page).selectOption(mode)
+        await expect(missionMode(page)).toHaveValue(mode)
+        await assertScreenBounds(page)
+      }
+      await expect(page.getByText('Return-only budget', { exact: true })).toBeInViewport({ ratio: 1 })
+      await detailsToggle(page).check()
+      await expect(panel(page).getByText(`Start · ${mission.targetName}`, { exact: true })).toBeInViewport({ ratio: 1 })
+      await expect(panel(page).getByText(`End · ${mission.homeName}`, { exact: true })).toBeInViewport({ ratio: 1 })
+      const bounds = await panel(page).boundingBox()
+      const footer = await page.getByRole('contentinfo').boundingBox()
+      expect(bounds).not.toBeNull()
+      expect(footer).not.toBeNull()
+      if (bounds && footer) {
+        expect(bounds.x).toBeGreaterThanOrEqual(0)
+        expect(bounds.y).toBeGreaterThanOrEqual(0)
+        expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width)
+        expect(bounds.y + bounds.height, 'Return-only details must leave mission controls usable').toBeLessThanOrEqual(footer.y + 1)
+      }
+      await assertScreenBounds(page)
+      await detailsToggle(page).uncheck()
+    }
+  })
+}
