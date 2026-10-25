@@ -39,4 +39,18 @@ describe('potential atmospheric braking markers', () => {
     expect(marked.some(edge => edge.to.startsWith('stock:kerbin:'))).toBe(false)
     expect(marked.some(edge => edge.id === edgeId('laythe', 'encounter', 'orbit'))).toBe(true)
   })
+
+  it('keeps an atmosphere without promising reference-unsupported braking', () => {
+    const pack = {
+      ...stockPack,
+      bodies: stockPack.bodies.map(body => body.id === 'stock:kerbin'
+        ? { ...body, supportsAtmosphericBraking: false }
+        : body),
+    }
+    expect(pack.bodies.find(body => body.id === 'stock:kerbin')?.hasAtmosphere).toBe(true)
+    const marked = getAerobrakingEdges(pack)
+    expect(marked).toHaveLength(10)
+    expect(marked.some(edge => edge.to.startsWith('stock:kerbin:'))).toBe(false)
+    expect(marked.some(edge => edge.id === edgeId('laythe', 'encounter', 'orbit'))).toBe(true)
+  })
 })

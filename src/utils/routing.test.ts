@@ -65,6 +65,12 @@ function interplanetaryPack(): PlanetPack {
 }
 
 describe('planet pack validation', () => {
+  it('rejects a nonboolean reference-braking policy', () => {
+    const pack = makePack()
+    Object.assign(pack.bodies[0]!, { supportsAtmosphericBraking: 'false' })
+    expect(validatePlanetPack(pack).some(error => error.includes('supportsAtmosphericBraking must be a boolean'))).toBe(true)
+  })
+
   it('accepts a consistent hierarchy and explicit directed maneuvers', () => {
     expect(validatePlanetPack(makePack())).toEqual([])
   })

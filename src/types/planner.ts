@@ -9,6 +9,8 @@ export interface CelestialBody {
   kind: BodyKind
   hasSurface: boolean
   hasAtmosphere: boolean
+  /** Reference-backed braking markers; false excludes unmodeled atmospheric assistance. */
+  supportsAtmosphericBraking?: boolean
   color: string
 }
 

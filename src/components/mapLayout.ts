@@ -18,7 +18,7 @@ export interface MapLayout {
   hubId: string | undefined
   nodeFontSize: number
   labelFontSize: number
-  presentation: 'stock' | 'opm' | 'generated'
+  presentation: 'stock' | 'opm' | 'rss' | 'generated'
   bodyRails?: Map<string, number>
 }
 
@@ -110,6 +110,63 @@ const opmLabels: Record<string, Point & { anchor?: BodyLabel['anchor'] }> = {
   nissee: { ...p(1945, 1093), anchor: 'start' },
 }
 
+// A solar-system schematic: terrestrial/dwarf chains on the left, giant-planet
+// satellite families above/right, and Earth/Moon below the real Earth hub.
+// Moon transfers still use the pack's actual elliptical/parking-orbit edges.
+const rssStates: Record<string, BodyStates> = {
+  mercury: { surface: p(140, 610), orbit: p(280, 610), elliptical: p(420, 610), encounter: p(560, 610) },
+  venus: { surface: p(140, 740), orbit: p(280, 740), elliptical: p(420, 740), encounter: p(560, 740) },
+  earth: { surface: p(800, 1100), orbit: p(800, 850), encounter: p(800, 650) },
+  moon: { surface: p(260, 1090), orbit: p(440, 1030), encounter: p(620, 970) },
+  mars: { surface: p(140, 480), orbit: p(280, 480), elliptical: p(420, 480), encounter: p(560, 480) },
+  phobos: { surface: p(140, 80), orbit: p(140, 180), encounter: p(140, 280) },
+  deimos: { surface: p(280, 80), orbit: p(280, 180), encounter: p(280, 280) },
+  ceres: { surface: p(140, 870), orbit: p(280, 870), elliptical: p(420, 870), encounter: p(560, 870) },
+  vesta: { surface: p(140, 1250), orbit: p(280, 1250), elliptical: p(420, 1250), encounter: p(560, 1250) },
+  jupiter: { orbit: p(1300, 520), elliptical: p(1160, 520), encounter: p(1020, 520) },
+  io: { surface: p(1000, 80), orbit: p(1000, 215), encounter: p(1000, 350) },
+  europa: { surface: p(1130, 80), orbit: p(1130, 215), encounter: p(1130, 350) },
+  ganymede: { surface: p(1260, 80), orbit: p(1260, 215), encounter: p(1260, 350) },
+  callisto: { surface: p(1390, 80), orbit: p(1390, 215), encounter: p(1390, 350) },
+  saturn: { orbit: p(2200, 570), elliptical: p(2060, 520), encounter: p(1920, 620) },
+  titan: { surface: p(1560, 80), orbit: p(1560, 215), encounter: p(1560, 350) },
+  rhea: { surface: p(1690, 80), orbit: p(1690, 215), encounter: p(1690, 350) },
+  iapetus: { surface: p(1820, 80), orbit: p(1820, 215), encounter: p(1820, 350) },
+  dione: { surface: p(1950, 80), orbit: p(1950, 215), encounter: p(1950, 350) },
+  tethys: { surface: p(2080, 80), orbit: p(2080, 215), encounter: p(2080, 350) },
+  enceladus: { surface: p(2210, 80), orbit: p(2210, 215), encounter: p(2210, 350) },
+  mimas: { surface: p(2340, 80), orbit: p(2340, 215), encounter: p(2340, 350) },
+  uranus: { orbit: p(2020, 850), elliptical: p(2020, 710), encounter: p(1880, 710) },
+  titania: { surface: p(2660, 570), orbit: p(2530, 570), encounter: p(2400, 570) },
+  oberon: { surface: p(2660, 710), orbit: p(2530, 710), encounter: p(2400, 710) },
+  umbriel: { surface: p(2660, 850), orbit: p(2530, 850), encounter: p(2400, 850) },
+  ariel: { surface: p(2660, 990), orbit: p(2530, 990), encounter: p(2400, 990) },
+  miranda: { surface: p(2660, 1130), orbit: p(2530, 1130), encounter: p(2400, 1130) },
+  neptune: { orbit: p(1500, 700), elliptical: p(1360, 770), encounter: p(1200, 700) },
+  triton: { surface: p(1980, 1050), orbit: p(1840, 980), encounter: p(1700, 910) },
+  pluto: { surface: p(1420, 1110), orbit: p(1320, 1000), elliptical: p(1220, 890), encounter: p(1120, 780) },
+  charon: { surface: p(1700, 1180), orbit: p(1580, 1080), encounter: p(1460, 980) },
+}
+
+const rssLabels: Record<string, Point & { anchor?: BodyLabel['anchor'] }> = {
+  mercury: { ...p(100, 618), anchor: 'end' },
+  venus: { ...p(100, 748), anchor: 'end' },
+  mars: { ...p(100, 488), anchor: 'end' },
+  ceres: { ...p(100, 878), anchor: 'end' },
+  vesta: { ...p(100, 1258), anchor: 'end' },
+  jupiter: { ...p(1370, 528), anchor: 'start' },
+  saturn: { ...p(2270, 578), anchor: 'start' },
+  uranus: { ...p(2080, 858), anchor: 'start' },
+  neptune: { ...p(1560, 708), anchor: 'start' },
+  earth: p(800, 1150), moon: p(260, 1140), pluto: p(1420, 1160), charon: p(1700, 1230),
+  titania: { ...p(2725, 578), anchor: 'start' },
+  oberon: { ...p(2725, 718), anchor: 'start' },
+  umbriel: { ...p(2725, 858), anchor: 'start' },
+  ariel: { ...p(2725, 998), anchor: 'start' },
+  miranda: { ...p(2725, 1138), anchor: 'start' },
+  triton: { ...p(2045, 1058), anchor: 'start' },
+}
+
 function canUsePreset(pack: PlanetPack, positions: Record<string, BodyStates>): boolean {
   const used = new Set<string>()
   return pack.nodes.length > 0 && pack.nodes.every(node => {
@@ -136,12 +193,42 @@ function findHub(pack: PlanetPack): string | undefined {
 }
 
 export function createMapLayout(pack: PlanetPack, mode: MapMode = 'wide'): MapLayout {
+  if (pack.id === 'rss' && canUsePreset(pack, rssStates)) {
+    return mode === 'portrait' ? createGeneratedLayout(pack, mode) : createRssLayout(pack, mode)
+  }
   const hasOuterPlanets = pack.bodies.some(body => shortId(body.id) === 'sarnus')
   if (hasOuterPlanets && canUsePreset(pack, opmStates)) {
     return mode === 'portrait' ? createGeneratedLayout(pack, mode) : createOpmLayout(pack, mode)
   }
   if (canUsePreset(pack, wideStates)) return createStockLayout(pack, mode)
   return createGeneratedLayout(pack, mode)
+}
+
+function createRssLayout(pack: PlanetPack, mode: MapMode): MapLayout {
+  const nodePositions = new Map<string, Point>()
+  const labels: BodyLabel[] = []
+  const short = mode === 'short'
+  const transform = (point: Point) => short ? p(point.x, 40 + point.y * 0.54) : point
+  for (const body of pack.bodies) {
+    const nodes = pack.nodes.filter(node => node.bodyId === body.id)
+    if (!nodes.length) continue
+    const id = shortId(body.id)
+    const positions = rssStates[id]!
+    for (const node of nodes) nodePositions.set(node.id, transform(positions[node.kind]!))
+    const surface = positions.surface
+    const label: Point & { anchor?: BodyLabel['anchor'] } = rssLabels[id]
+      ?? (surface ? p(surface.x, surface.y - 44) : p(positions.orbit!.x, positions.orbit!.y - 44))
+    const point = transform(label)
+    if (short && surface && ['earth', 'moon', 'pluto', 'charon'].includes(id)) point.y = transform(surface).y + 42
+    if (short && surface && !rssLabels[id]) point.y = transform(surface).y - 36
+    labels.push({ body, ...point, anchor: label.anchor ?? 'middle' })
+  }
+  return {
+    width: 2880, height: short ? 800 : 1320, mode, nodePositions, labels,
+    radius: short ? 24 : 29, hitRadius: short ? 32 : 36,
+    hubId: findHub(pack), nodeFontSize: short ? 18 : 19, labelFontSize: short ? 23 : 25,
+    presentation: 'rss',
+  }
 }
 
 function createOpmLayout(pack: PlanetPack, mode: MapMode): MapLayout {
@@ -310,6 +397,35 @@ export function connectionPoints(from: RouteNode, to: RouteNode, layout: MapLayo
   const a = layout.nodePositions.get(from.id)
   const b = layout.nodePositions.get(to.id)
   if (!a || !b) return []
+  if (layout.presentation === 'rss' && (from.id === layout.hubId || to.id === layout.hubId)) {
+    const forward = from.id === layout.hubId
+    const planet = shortId(forward ? to.bodyId : from.bodyId)
+    // Keep outer solar branches in the clear corridor between Jupiter's states
+    // and the lower Neptune/Pluto families, including compressed landscapes.
+    const bends = planet === 'saturn' ? [p(1160, 590), p(1840, 590)]
+      : planet === 'uranus' ? [p(1160, 620), p(1800, 620)] : []
+    if (bends.length) {
+      const points = [forward ? a : b,
+        ...bends.map(point => layout.mode === 'short' ? p(point.x, 40 + point.y * 0.54) : point),
+        forward ? b : a]
+      return forward ? points : points.reverse()
+    }
+  }
+  if (layout.presentation === 'rss' && from.bodyId !== to.bodyId) {
+    const fromBody = pack.bodies.find(body => body.id === from.bodyId)
+    const toBody = pack.bodies.find(body => body.id === to.bodyId)
+    const parentFirst = toBody?.parentId === from.bodyId
+    const parent = parentFirst ? fromBody : toBody
+    if (parent && shortId(parent.id) === 'saturn') {
+      const parentPoint = parentFirst ? a : b
+      const childPoint = parentFirst ? b : a
+      // The seven satellite fans need a landing corridor below their encounter
+      // row, especially when the vertical distances are compressed on phones.
+      const bendY = layout.mode === 'short' ? 40 + 445 * 0.54 : 445
+      const points = [parentPoint, p(childPoint.x, bendY), childPoint]
+      return parentFirst ? points : points.reverse()
+    }
+  }
   if (layout.presentation === 'opm' && (from.id === layout.hubId || to.id === layout.hubId)) {
     const forward = from.id === layout.hubId
     const planet = shortId(forward ? to.bodyId : from.bodyId)

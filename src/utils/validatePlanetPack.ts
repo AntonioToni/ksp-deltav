@@ -71,6 +71,7 @@ export function validatePlanetPack(pack: PlanetPack): string[] {
     if (typeof body.kind !== 'string' || !bodyKinds.has(body.kind)) errors.push(`${label} has an unsupported kind.`)
     if (typeof body.hasSurface !== 'boolean') errors.push(`${label} must declare hasSurface.`)
     if (typeof body.hasAtmosphere !== 'boolean') errors.push(`${label} must declare hasAtmosphere.`)
+    if (body.supportsAtmosphericBraking !== undefined && typeof body.supportsAtmosphericBraking !== 'boolean') errors.push(`${label} supportsAtmosphericBraking must be a boolean when supplied.`)
     if (body.parentId !== null && !isText(body.parentId)) errors.push(`${label} must declare a parent ID or null.`)
     const parent = typeof body.parentId === 'string' ? bodyById.get(body.parentId) : undefined
     if (typeof body.parentId === 'string' && !parent) errors.push(`${label} references unknown parent ${body.parentId}.`)

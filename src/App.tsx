@@ -132,12 +132,9 @@ export default function App() {
 
       <Box ref={setBreakdownAnchor} component="footer" sx={{ bgcolor: 'background.paper', backgroundImage: 'linear-gradient(180deg, #16243b, #101b2f)', borderTop: '2px solid', borderColor: 'primary.dark', minWidth: 0, boxShadow: '0 -8px 24px #00000018, inset 0 1px 0 #ffffff03' }}>
         <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', px: { xs: 1.25, sm: 2.5 }, pt: .5, gap: 1 }}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
-            <ToggleButtonGroup exclusive size="small" aria-label="Planet pack" value={pack.id} onChange={(_, value: string | null) => { if (value !== null) changePack(value) }} sx={{ '& .MuiToggleButton-root': { px: 1.25, py: .15, fontSize: 10, textTransform: 'none', color: 'text.secondary', borderColor: 'divider', '&.Mui-selected': { bgcolor: '#73c8fa18', color: 'primary.main' } } }}>
-              {planetPacks.map(candidate => <ToggleButton key={candidate.id} value={candidate.id} title={candidate.name}>{candidate.shortName ?? candidate.name}</ToggleButton>)}
-            </ToggleButtonGroup>
-            {pack.dataNotice && <Button size="small" color="secondary" onClick={() => setShowInfo(true)} title={pack.description} sx={{ minHeight: 22, minWidth: 0, py: 0, px: .5, fontSize: 10, whiteSpace: 'nowrap' }}>{pack.dataNotice}</Button>}
-          </Stack>
+          <ToggleButtonGroup exclusive size="small" aria-label="Planet pack" value={pack.id} onChange={(_, value: string | null) => { if (value !== null) changePack(value) }} sx={{ '& .MuiToggleButton-root': { px: 1.25, py: .15, fontSize: 10, textTransform: 'none', color: 'text.secondary', borderColor: 'divider', '&.Mui-selected': { bgcolor: '#73c8fa18', color: 'primary.main' } } }}>
+            {planetPacks.map(candidate => <ToggleButton key={candidate.id} value={candidate.id} title={candidate.name}>{candidate.shortName ?? candidate.name}</ToggleButton>)}
+          </ToggleButtonGroup>
           <FormControlLabel sx={{ m: 0, '& .MuiFormControlLabel-label': { fontSize: 11 } }} control={<Checkbox size="small" checked={roundTrip} onChange={(_, checked) => { setRoundTrip(checked); setBreakdownLeg('outbound') }} slotProps={{ input: { 'aria-label': 'Round trip' } }} sx={{ p: .5, '& .MuiSvgIcon-root': { fontSize: 17 } }} />} label="Round trip" />
         </Stack>
         <Box component="section" aria-label="Mission controls" sx={{
@@ -195,7 +192,8 @@ export default function App() {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, px: { xs: 1.25, sm: 2.5 }, pb: .75, minHeight: 20 }}>
-          <Typography role={hasAtmosphericLanding || route?.status === 'invalid' ? 'alert' : 'status'} title={status} sx={{ fontSize: 10, color: hasAtmosphericLanding ? 'secondary.main' : 'text.secondary', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{status}</Typography>
+          <Typography role={hasAtmosphericLanding || route?.status === 'invalid' ? 'alert' : 'status'} title={status} sx={{ flex: 1, minWidth: 0, fontSize: 10, color: hasAtmosphericLanding ? 'secondary.main' : 'text.secondary', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{status}</Typography>
+          {pack.dataNotice && <Button size="small" color="secondary" onClick={() => setShowInfo(true)} title={pack.description} sx={{ minHeight: 15, minWidth: 0, flexShrink: 0, p: 0, fontSize: 10, lineHeight: 1.5, whiteSpace: 'nowrap' }}>{pack.dataNotice}</Button>}
           <Typography sx={{ display: { xs: 'none', md: 'block' }, fontSize: 10, color: 'text.secondary', whiteSpace: 'nowrap' }}>Estimates in m/s · {redundancy}% reserve · Schematic, not to scale</Typography>
         </Box>
       </Box>

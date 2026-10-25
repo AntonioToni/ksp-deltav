@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { opmPack } from '../data/opm'
+import { rssPack } from '../data/rss'
 import { stockPack } from '../data/stock'
 import type { ManeuverEdge, PlanetPack, RouteNode } from '../types/planner'
 import { arrowPosition, connectionPoints, createMapLayout, type MapMode, type Point } from './mapLayout'
@@ -51,7 +52,7 @@ function futurePackFixture(): PlanetPack {
 
 const futurePack = futurePackFixture()
 
-describe.each([stockPack, opmPack, futurePack])('$name', (pack) => {
+describe.each([stockPack, opmPack, rssPack, futurePack])('$name', (pack) => {
   describe.each<MapMode>(['wide', 'portrait', 'short'])('%s schematic layout', (mode) => {
     it('places every supported state at a distinct point with room for selection and touch targets', () => {
       const layout = createMapLayout(pack, mode)
@@ -101,11 +102,14 @@ describe.each([stockPack, opmPack, futurePack])('$name', (pack) => {
   })
 })
 
-it('preserves the Stock layout while using OPM and generic presentations only where appropriate', () => {
+it('preserves the Stock/OPM layouts while selecting the solar-system and generic presentations appropriately', () => {
   expect(createMapLayout(stockPack).presentation).toBe('stock')
   expect(createMapLayout(stockPack).nodePositions.get('stock:kerbin:encounter')).toEqual({ x: 620, y: 460 })
   expect(createMapLayout(opmPack).presentation).toBe('opm')
   expect(createMapLayout(opmPack, 'portrait').presentation).toBe('generated')
+  expect(createMapLayout(rssPack).presentation).toBe('rss')
+  expect(createMapLayout(rssPack, 'portrait').presentation).toBe('generated')
+  expect(createMapLayout(rssPack).hubId).toBe('rss:earth:encounter')
   expect(createMapLayout(futurePack).presentation).toBe('generated')
 })
 
@@ -134,20 +138,38 @@ function distanceToSegment(point: Point, start: Point, end: Point): number {
   return Math.hypot(point.x - start.x - fraction * dx, point.y - start.y - fraction * dy)
 }
 
-it.each<MapMode>(['wide', 'short'])('keeps OPM %s interplanetary bands clear of unrelated state circles', (mode) => {
-  const layout = createMapLayout(opmPack, mode)
-  const nodes = new Map(opmPack.nodes.map(node => [node.id, node]))
-  const planets = new Set(opmPack.bodies.filter(body => body.kind === 'planet').map(body => body.id))
-  const transfers = opmPack.maneuvers.filter(edge => edge.from === layout.hubId
-    && nodes.get(edge.to)?.kind === 'encounter' && planets.has(nodes.get(edge.to)!.bodyId))
-  expect(transfers.length).toBeGreaterThan(0)
+describe.each([opmPack, rssPack])('$shortName branch clearance', (pack) => {
+  it.each<MapMode>(['wide', 'short'])('keeps %s interplanetary bands clear of unrelated state circles', (mode) => {
+    const layout = createMapLayout(pack, mode)
+    const nodes = new Map(pack.nodes.map(node => [node.id, node]))
+    const planets = new Set(pack.bodies.filter(body => body.kind === 'planet').map(body => body.id))
+    const transfers = pack.maneuvers.filter(edge => edge.from === layout.hubId
+      && nodes.get(edge.to)?.kind === 'encounter' && planets.has(nodes.get(edge.to)!.bodyId))
+    expect(transfers.length).toBeGreaterThan(0)
+    for (const edge of transfers) {
+      const points = connectionPoints(nodes.get(edge.from)!, nodes.get(edge.to)!, layout, pack)
+      for (const node of pack.nodes) {
+        if (node.id === edge.from || node.id === edge.to) continue
+        const point = layout.nodePositions.get(node.id)!
+        const distance = Math.min(...points.slice(1).map((end, index) => distanceToSegment(point, points[index]!, end)))
+        // Selected bands are 19 units wide, in addition to the state radius.
+        expect(distance, `${edge.id} passes ${node.label}`).toBeGreaterThan(layout.radius + 10)
+      }
+    }
+  })
+})
+
+it.each<MapMode>(['wide', 'short'])('keeps RSS %s satellite transfer bands clear of unrelated states', (mode) => {
+  const layout = createMapLayout(rssPack, mode)
+  const nodes = new Map(rssPack.nodes.map(node => [node.id, node]))
+  const moons = new Set(rssPack.bodies.filter(body => body.kind === 'moon').map(body => body.id))
+  const transfers = rssPack.maneuvers.filter(edge => edge.kind === 'transfer' && moons.has(nodes.get(edge.to)!.bodyId))
   for (const edge of transfers) {
-    const points = connectionPoints(nodes.get(edge.from)!, nodes.get(edge.to)!, layout, opmPack)
-    for (const node of opmPack.nodes) {
+    const points = connectionPoints(nodes.get(edge.from)!, nodes.get(edge.to)!, layout, rssPack)
+    for (const node of rssPack.nodes) {
       if (node.id === edge.from || node.id === edge.to) continue
       const point = layout.nodePositions.get(node.id)!
       const distance = Math.min(...points.slice(1).map((end, index) => distanceToSegment(point, points[index]!, end)))
-      // Selected bands are 19 units wide, in addition to the state radius.
       expect(distance, `${edge.id} passes ${node.label}`).toBeGreaterThan(layout.radius + 10)
     }
   }

@@ -64,7 +64,7 @@ On Linux CI machines that also need browser system dependencies, use
 | --- | --- |
 | Body hierarchy, states, maneuvers, and pack types | `src/types/planner.ts` |
 | Stock reference data | `src/data/stock.ts` |
-| OPM extension and pack registry | `src/data/opm.ts`, `src/data/planetPacks.ts` |
+| OPM and RSS packs, and pack registry | `src/data/opm.ts`, `src/data/rss.ts`, `src/data/planetPacks.ts` |
 | Pack and topology validation | `src/utils/validatePlanetPack.ts` |
 | Graph construction and contextual route search | `src/utils/buildGraph.ts`, `src/utils/findRoute.ts` |
 | Outbound/return mission planning | `src/utils/mission.ts` |

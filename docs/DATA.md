@@ -219,3 +219,146 @@ changes and using the stated Plock range policy:
 The registry in `src/data/planetPacks.ts` is the single list of selectable packs.
 Adding a pack means adding its reviewed dataset and registry entry. The selector,
 routing engine, and map consume the pack's metadata and supported states.
+
+## Real Solar System pack
+
+`src/data/rss.ts` adds the **RSS** pack with independent `rss:` IDs and Earth as
+its interplanetary transfer hub. It contains **33 bodies, 102 selectable states,
+and 202 directed maneuvers**. No stock KSP costs are scaled or copied into RSS.
+The Stock and OPM datasets remain separate and unchanged.
+
+### Sources and scope
+
+The numeric reference is the community **Delta-V Map of the Solar System**,
+preserved as [rss-dvmap.webp](https://github.com/davidson16807/mission-planner/blob/dc472f56101b260baee8814a94de985f44a6c9b2/rss-dvmap.webp)
+at `davidson16807/mission-planner` commit
+`dc472f56101b260baee8814a94de985f44a6c9b2`. The diagram has no visible version,
+publication date, or author credit. This repository revision identifies the
+exact artifact used; it does not establish its authorship or official RSS
+calibration. No source artwork is bundled into this application.
+
+Body hierarchy and atmosphere presence were checked against the
+[official KSP-RO/RealSolarSystem configs](https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus),
+pinned to `75139b961567f4dab61af83fe162a7e52026558b`.
+
+Coverage is the intersection of the diagram and the named bodies in those base
+RSS configs:
+
+- Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, and Ceres.
+- Jupiter, Io, Europa, Ganymede, and Callisto.
+- Saturn, Mimas, Enceladus, Tethys, Dione, Rhea, Titan, and Iapetus.
+- Uranus, Miranda, Ariel, Umbriel, Titania, and Oberon.
+- Neptune, Triton, Pluto, and Charon.
+
+The Sun is a context body with no selectable mission states. Gas giants have no
+surface states. Ceres, Vesta, and Pluto use the application's generic `planet`
+category for bodies orbiting the central star; that field is not an IAU
+classification claim. Diagram-only minor moons and trans-Neptunian objects,
+optional RSS expansion packs, GEO, Lagrange points, and solar approach/landing
+missions are outside this dataset. No unsupported figures are invented to fill
+those omissions.
+
+The pack follows the main transfer rails. Inset/direct moon-transfer alternatives
+shown elsewhere in the diagram are not supplied. Route minima therefore apply
+only to this graph, rather than every trajectory or alternative in the source.
+
+### Numeric interpretation and graph normalization
+
+The diagram prints **km/s**. Every numeric segment is converted into integer
+**m/s** before storage. Labels along a shared rail are consecutive increments,
+not independent departure totals. The arrays retained beside each record in
+`rss.ts` make those sums auditable.
+
+For example, Earth's low-orbit escape budget is
+`2440 + 680 + 90 = 3210 m/s`. The Earth-centered increment to Jupiter is
+`390 + 920 + 380 + 1400 = 3090 m/s`. The latter is added to Earth escape; it is
+not a complete launch, orbit, or capture budget. Venus uses `280 m/s`, while
+Mercury uses `280 + 2060 = 2340 m/s`. The energy-reference junctions for Mars,
+Vesta, and Ceres do not imply a visit or capture at those bodies.
+
+Similarly, Jovian moon transfers branch from **Jupiter's high elliptical
+capture orbit**, with cumulative rail increments. Io's transfer budget is
+`190 + 930 + 800 + 1060 + 1560 = 4540 m/s`, and its local capture/orbit cost is
+`5790 + 730 = 6520 m/s`. Source intermediate junctions such as Himalia are kept
+in the sum even when that body is outside base RSS coverage; they are not free
+flybys or actual moon visits. The Jupiter high-to-low-orbit sum is
+`190 + 930 + 800 + 1060 + 1560 + 4650 + 8020 = 17210 m/s`, separate from its
+`270 m/s` arrival capture.
+
+All supported moons except Earth's Moon attach to their parent's **elliptical
+capture orbit**, not its low orbit. Earth's lunar transfer leaves low Earth
+orbit at `2440 + 680 = 3120 m/s`. The Moon encounter-to-low-orbit cost is
+`140 + 680 = 820 m/s`; it is not the rounded `800 m/s` figure found in some
+secondary tables. Surface/orbit cost is `1720 m/s`. The resulting source-based
+Earth surface → Moon surface budget is **14,660 m/s**, including the source's
+**9,000 m/s** Earth ascent allowance. Reverse edges reuse the same idealized
+reference convention, giving **29,320 m/s** for that round trip without
+atmospheric savings.
+
+### Assumptions and modern-atmosphere limitations
+
+The diagram assumes idealized Hohmann transfers and low-periapsis burns. This
+pack does not simulate launch windows, inclination changes, gravity assists,
+finite-thrust losses, vehicle performance, or travel time. The diagram also
+suggests a rough low-thrust multiplier; the planner does not apply it because
+it does not model a specific propulsion system. Add a mission margin and verify
+the vehicle-specific trajectory independently.
+
+Atmospheric powered-descent budgets reuse the corresponding source ascent
+allowance as an explicit placeholder. No parachute, aerocapture, or aerobraking
+savings change route costs. Braking markers reflect source-supported
+opportunities for Earth, Venus, Mars, Titan, and the four gas giants. Pluto and
+Triton have atmospheres in the official RSS configs, but the reference does not
+mark atmospheric-braking opportunities there; they retain `hasAtmosphere: true`
+and explicitly set `supportsAtmosphericBraking: false`.
+
+Some historical parking altitudes are incompatible with modern RSS atmosphere
+depths. The planner omits those altitude claims rather than silently claiming
+that source budgets were recalculated at a safe modern altitude:
+
+| Body | Diagram parking altitude (km) | Pinned RSS atmosphere depth (km) |
+| --- | ---: | ---: |
+| Saturn | 2,000 | 2,000 (boundary, no clearance) |
+| Uranus | 1,000 | 1,400 |
+| Neptune | 1,000 | 1,250 |
+| Pluto | 100 | 110 |
+| Triton | 100 | 110 |
+
+Other advertised atmospheric parking altitudes clear the pinned atmosphere:
+Earth 250/140 km, Venus 400/145 km, Mars 200/125 km, Jupiter 2000/1550 km, and
+Titan 1000/600 km (parking altitude / atmosphere depth). The underlying costs
+remain community-map estimates, not contemporary flight-tested RSS budgets.
+
+Earth is the supplied interplanetary hub. Travel between other planetary systems
+requires capture into a low parking orbit at Earth before the next departure.
+Encounter energies cannot be chained as an invented free gravity assist.
+
+### RSS regression landmarks
+
+`src/data/rss.test.ts` checks all 102 supported states in both directions, the
+Earth layover policy, safe altitude metadata, pack isolation, and independent
+reference sums. Examples from Earth surface, without plane changes or
+atmospheric savings:
+
+| Destination | Budget (m/s) |
+| --- | ---: |
+| Moon surface | 14,660 |
+| Mercury surface | 25,140 |
+| Venus surface | 42,790 |
+| Mars surface | 18,310 |
+| Phobos surface | 14,559 |
+| Deimos surface | 14,266 |
+| Vesta surface | 17,890 |
+| Ceres surface | 18,710 |
+| Jupiter low orbit | 32,780 |
+| Io surface | 28,410 |
+| Europa surface | 26,490 |
+| Ganymede surface | 25,020 |
+| Callisto surface | 23,170 |
+| Saturn low orbit | 26,930 |
+| Titan surface | 28,030 |
+| Uranus low orbit | 23,620 |
+| Neptune low orbit | 24,350 |
+| Triton surface | 21,560 |
+| Pluto surface | 21,300 |
+| Charon surface | 20,700 |

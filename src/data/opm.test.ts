@@ -8,7 +8,7 @@ import { stockPack } from './stock'
 
 describe('the reviewed OPM planning pack', () => {
   it('registers packs by metadata without changing shared stock IDs', () => {
-    expect(planetPacks.map(pack => pack.id)).toEqual(['stock', 'opm'])
+    expect(planetPacks.map(pack => pack.id)).toEqual(['stock', 'opm', 'rss'])
     expect(planetPacks.find(pack => pack.id === 'opm')).toBe(opmPack)
     expect(opmPack.nodes.filter(node => node.id.startsWith('stock:')).map(node => node.id))
       .toEqual(stockPack.nodes.map(node => node.id))

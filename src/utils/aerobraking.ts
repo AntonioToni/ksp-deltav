@@ -14,7 +14,7 @@ export function getAerobrakingEdges(pack: PlanetPack): ManeuverEdge[] {
     const to = nodes.get(edge.to)
     if (!from || !to) return false
     const destination = bodies.get(to.bodyId)
-    if (!destination?.hasAtmosphere) return false
+    if (!destination?.hasAtmosphere || destination.supportsAtmosphericBraking === false) return false
 
     if (from.bodyId === to.bodyId) {
       if (edge.kind === 'descent') return from.kind === 'orbit' && to.kind === 'surface'
