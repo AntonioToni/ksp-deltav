@@ -66,7 +66,7 @@ async function assertScreenBounds(page: Page) {
     const bounds = await button.boundingBox()
     expect(bounds).not.toBeNull()
     if (bounds) {
-      expect(bounds.height, 'Trip choices need a usable touch target').toBeGreaterThanOrEqual(36)
+      expect(bounds.height, 'Trip choices should remain compact and usable').toBeGreaterThanOrEqual(32)
       modeBounds.push(bounds)
     }
     const textFits = await button.evaluate(element => {
@@ -84,23 +84,56 @@ async function assertScreenBounds(page: Page) {
     expect(modeBounds[index].x, 'Trip choices must not overlap').toBeGreaterThanOrEqual(modeBounds[index - 1].x + modeBounds[index - 1].width - 1)
   }
   await expect(missionMode(page).getByRole('button', { pressed: true })).toHaveCount(1)
+  const packSelector = page.getByRole('group', { name: 'Planet pack', exact: true })
+  await expect(packSelector).toBeInViewport({ ratio: 1 })
+  const packBounds = []
   for (const name of ['Stock', 'OPM', 'RSS']) {
-    await expect(packButton(page, name)).toBeInViewport({ ratio: 1 })
+    const button = packButton(page, name)
+    await expect(button).toBeInViewport({ ratio: 1 })
+    const bounds = await button.boundingBox()
+    expect(bounds).not.toBeNull()
+    if (bounds) {
+      expect(bounds.height, 'System choices should be as usable as the trip choices').toBeGreaterThanOrEqual(32)
+      packBounds.push(bounds)
+    }
+    const label = await button.evaluate(element => {
+      const bounds = element.getBoundingClientRect()
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      const text = range.getBoundingClientRect()
+      return {
+        fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+        fits: text.left >= bounds.left - 1 && text.right <= bounds.right + 1
+          && text.top >= bounds.top - 1 && text.bottom <= bounds.bottom + 1,
+      }
+    })
+    expect(label.fontSize, 'System labels should be easy to read').toBeGreaterThanOrEqual(12)
+    expect(label.fits, 'Every system label should fit inside its button').toBe(true)
   }
+  expect(packBounds).toHaveLength(3)
+  for (let index = 1; index < packBounds.length; index++) {
+    expect(packBounds[index].x, 'System choices must not overlap').toBeGreaterThanOrEqual(packBounds[index - 1].x + packBounds[index - 1].width - 1)
+  }
+  await expect(packSelector.getByRole('button', { pressed: true })).toHaveCount(1)
   for (const control of [origin(page), destination(page), page.locator('.MuiSlider-root'), page.getByRole('button', { name: 'Reset mission', exact: true })]) {
     await expect(control).toBeInViewport({ ratio: 1 })
   }
   const bounds = await missionMode(page).boundingBox()
+  const systemBounds = await packSelector.boundingBox()
   expect(bounds).not.toBeNull()
-  if (bounds) {
+  expect(systemBounds).not.toBeNull()
+  if (bounds && systemBounds) {
     expect(bounds.x).toBeGreaterThanOrEqual(0)
     expect(bounds.y).toBeGreaterThanOrEqual(0)
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width)
     expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height)
+    expect(Math.abs(bounds.y - systemBounds.y), 'System and trip choices should share one toolbar row').toBeLessThanOrEqual(1)
+    expect(systemBounds.x + systemBounds.width, 'System choices belong beside the trip choices without overlap').toBeLessThanOrEqual(bounds.x + 1)
     const originBounds = await origin(page).boundingBox()
     expect(originBounds).not.toBeNull()
     if (originBounds) {
       expect(bounds.y + bounds.height, 'Trip choices belong directly above the selected endpoints').toBeLessThanOrEqual(originBounds.y + 1)
+      expect(systemBounds.y + systemBounds.height, 'System choices belong above the selected endpoints').toBeLessThanOrEqual(originBounds.y + 1)
     }
   }
 }

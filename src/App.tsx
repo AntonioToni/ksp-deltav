@@ -19,6 +19,16 @@ import { calculateBudget } from './utils/budget'
 
 const format = new Intl.NumberFormat('en-US')
 const compactBreakdown = '@media (max-height: 500px), (max-width: 699px) and (max-height: 650px)'
+const selectorGroupStyles = {
+  display: 'flex', width: '100%', border: '1px solid #456080', borderRadius: 1, bgcolor: '#080f2180',
+  '& .MuiToggleButtonGroup-grouped': { flex: 1, minWidth: 0, m: 0, border: '1px solid transparent', borderRadius: '7px !important' },
+  '& .MuiToggleButton-root': {
+    minHeight: 32, px: .25, py: .5, gap: .75, fontSize: 12, lineHeight: 1.2, fontWeight: 500, whiteSpace: 'nowrap', color: 'text.secondary',
+    '&:hover': { bgcolor: '#ffffff0a', color: 'text.primary' },
+    '&.Mui-selected': { color: '#d9f1ff', borderColor: '#73c8fa70', bgcolor: '#285278', backgroundImage: 'linear-gradient(180deg, #315f86, #23486b)', boxShadow: '0 2px 6px #0003, inset 0 1px 0 #ffffff12', '&:hover': { bgcolor: '#315f86' } },
+    '&.Mui-focusVisible': { outline: '2px solid #b3e3ff', outlineOffset: 1, zIndex: 1 },
+  },
+} as const
 
 export default function App() {
   const [packId, setPackId] = useState('stock')
@@ -139,31 +149,29 @@ export default function App() {
         <Box component="section" aria-label="Mission controls" sx={{
           display: 'grid', minWidth: 0, columnGap: 2, rowGap: .75,
           gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
-          gridTemplateAreas: '"mission mission" "reserve budget" "actions actions"',
+          gridTemplateAreas: '"selectors selectors" "mission mission" "reserve budget" "actions actions"',
           px: { xs: 1.25, sm: 2.5 }, pt: { xs: 1, sm: 1.5 }, pb: .5,
-          '@media (min-width: 700px), (min-width: 600px) and (max-height: 500px)': { gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) auto', gridTemplateAreas: '"mission reserve budget actions"', alignItems: 'center', columnGap: 3 },
-          [compactBreakdown]: { pt: .5, pb: .25, rowGap: .5 },
+          '@media (min-width: 700px), (min-width: 600px) and (max-height: 500px)': { gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) auto', gridTemplateAreas: '"selectors selectors selectors selectors" "mission reserve budget actions"', alignItems: 'center', columnGap: 3 },
+          [compactBreakdown]: { pt: .25, pb: .125, rowGap: .5 },
           '@media (max-height: 500px)': { pt: .25, columnGap: 1.5 },
         }}>
-          <Box sx={{ gridArea: 'mission', minWidth: 0 }}>
-            <ToggleButtonGroup exclusive fullWidth aria-label="Mission mode" value={missionMode} onChange={(_, value: MissionMode | null) => { if (value !== null) { setMissionMode(value); setBreakdownLeg('outbound') } }} sx={{
-              display: 'flex', p: .375, mb: .75, border: '1px solid #456080', borderRadius: 1.25, bgcolor: '#080f2180',
-              '& .MuiToggleButtonGroup-grouped': { flex: 1, minWidth: 0, m: 0, border: '1px solid transparent', borderRadius: '7px !important' },
-              '& .MuiToggleButton-root': {
-                minHeight: 40, px: .5, py: .5, gap: .75, fontSize: 12, lineHeight: 1.2, fontWeight: 500, whiteSpace: 'nowrap', color: 'text.secondary',
-                '&:hover': { bgcolor: '#ffffff0a', color: 'text.primary' },
-                '&.Mui-selected': { color: '#d9f1ff', borderColor: '#73c8fa70', bgcolor: '#285278', backgroundImage: 'linear-gradient(180deg, #315f86, #23486b)', boxShadow: '0 2px 6px #0003, inset 0 1px 0 #ffffff12', '&:hover': { bgcolor: '#315f86' } },
-                '&.Mui-focusVisible': { outline: '2px solid #b3e3ff', outlineOffset: 1, zIndex: 1 },
-              },
-              [compactBreakdown]: { p: .125, mb: .5 },
-              '@media (max-height: 500px)': { '& .MuiToggleButton-root': { minHeight: 36 } },
-              '@media (min-width: 700px) and (max-width: 899px), (max-height: 500px) and (max-width: 899px)': { '& .MuiToggleButton-root': { fontSize: 11, gap: 0 }, '& [aria-hidden]': { display: 'none' } },
-            }}>
+          <Box sx={{ gridArea: 'selectors', display: 'grid', gridTemplateColumns: 'minmax(0, .62fr) minmax(0, 1fr)', gap: { xs: .75, sm: 1.5 }, width: '100%', maxWidth: 520, minWidth: 0 }}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ mb: .25, fontSize: 10, lineHeight: 1.1, color: 'text.secondary', letterSpacing: '.06em', textTransform: 'uppercase', '@media (max-height: 500px)': { display: 'none' } }}>System</Typography>
+              <ToggleButtonGroup exclusive aria-label="Planet pack" value={pack.id} onChange={(_, value: string | null) => { if (value !== null) changePack(value) }} sx={selectorGroupStyles}>
+                {planetPacks.map(candidate => <ToggleButton key={candidate.id} value={candidate.id} title={candidate.name}>{candidate.shortName ?? candidate.name}</ToggleButton>)}
+              </ToggleButtonGroup>
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ mb: .25, fontSize: 10, lineHeight: 1.1, color: 'text.secondary', letterSpacing: '.06em', textTransform: 'uppercase', '@media (max-height: 500px)': { display: 'none' } }}>Trip</Typography>
+              <ToggleButtonGroup exclusive fullWidth aria-label="Mission mode" value={missionMode} onChange={(_, value: MissionMode | null) => { if (value !== null) { setMissionMode(value); setBreakdownLeg('outbound') } }} sx={{ ...selectorGroupStyles, '@media (max-width: 599px)': { '& [aria-hidden]': { display: 'none' }, '& .MuiToggleButton-root': { gap: 0 } }, '@media (max-width: 359px)': { '& .MuiToggleButton-root': { fontSize: 11 } } }}>
               <ToggleButton value="one-way"><Box component="span" aria-hidden="true" sx={{ fontSize: 17, lineHeight: 1 }}>→</Box>One way</ToggleButton>
               <ToggleButton value="round-trip"><Box component="span" aria-hidden="true" sx={{ fontSize: 17, lineHeight: 1 }}>⇄</Box>Round trip</ToggleButton>
               <ToggleButton value="return-only"><Box component="span" aria-hidden="true" sx={{ fontSize: 17, lineHeight: 1 }}>←</Box>Return only</ToggleButton>
-            </ToggleButtonGroup>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 30px minmax(0, 1fr)', gap: .5, alignItems: 'center', minWidth: 0 }}>
+              </ToggleButtonGroup>
+            </Box>
+          </Box>
+          <Box sx={{ gridArea: 'mission', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 30px minmax(0, 1fr)', gap: .5, alignItems: 'center', minWidth: 0 }}>
             {(['start', 'end'] as const).map((endpoint, index) => {
               const nodeId = endpoint === 'start' ? startId : endId
               const color = endpoint === 'start' ? 'primary' : 'secondary'
@@ -185,7 +193,6 @@ export default function App() {
             })}
             <Tooltip title="Swap origin and destination"><span style={{ gridColumn: 2, gridRow: 1 }}><IconButton aria-label="Swap origin and destination" disabled={!startId || !endId} onClick={() => { setStartId(endId); setEndId(startId); setBreakdownLeg('outbound') }} size="small"><SwapHorizRounded sx={{ fontSize: 20 }} /></IconButton></span></Tooltip>
           </Box>
-          </Box>
 
           <Box sx={{ gridArea: 'reserve', minWidth: 0, px: .5 }}>
             <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -206,9 +213,6 @@ export default function App() {
           </Box>
 
           <Box sx={{ gridArea: 'actions', display: 'flex', alignItems: 'center', justifyContent: { xs: 'space-between', sm: 'flex-start' }, gap: 1, '@media (min-width: 700px), (min-width: 600px) and (max-height: 500px)': { flexDirection: 'column', alignItems: 'flex-start', gap: 0 } }}>
-            <ToggleButtonGroup exclusive size="small" aria-label="Planet pack" value={pack.id} onChange={(_, value: string | null) => { if (value !== null) changePack(value) }} sx={{ '& .MuiToggleButton-root': { px: 1.25, py: .15, fontSize: 10, textTransform: 'none', color: 'text.secondary', borderColor: 'divider', '&.Mui-selected': { bgcolor: '#73c8fa18', color: 'primary.main' } } }}>
-              {planetPacks.map(candidate => <ToggleButton key={candidate.id} value={candidate.id} title={candidate.name}>{candidate.shortName ?? candidate.name}</ToggleButton>)}
-            </ToggleButtonGroup>
             <FormControlLabel sx={{ m: 0, '& .MuiFormControlLabel-label': { fontSize: 11 } }} control={<Checkbox size="small" checked={showBreakdown} onChange={(_, checked) => setShowBreakdown(checked)} slotProps={{ input: { 'aria-label': 'Show breakdown', ref: breakdownToggle } }} sx={{ p: .5, '& .MuiSvgIcon-root': { fontSize: 17 } }} />} label="Breakdown" />
             <Button startIcon={<RestartAltRounded sx={{ fontSize: '16px !important' }} />} aria-label="Reset mission" size="small" onClick={reset} sx={{ minHeight: 28, fontSize: 11, px: .5 }}>Clear</Button>
           </Box>
