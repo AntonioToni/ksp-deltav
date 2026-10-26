@@ -5,7 +5,8 @@ the stock Kerbol system, **Outer Planets Mod**, or **Real Solar System**, calcul
 one-way, round-trip, and return-only budgets, and add a reserve for your mission.
 
 **[Open the planner](https://antoniotoni.github.io/ksp-deltav/)** ·
-[Data and assumptions](docs/DATA.md) · [Developer guide](docs/DEVELOPMENT.md)
+[Data and assumptions](docs/DATA.md) · [Relay guide](docs/RELAYS.md) ·
+[Developer guide](docs/DEVELOPMENT.md)
 
 ## Features
 
@@ -27,6 +28,8 @@ one-way, round-trip, and return-only budgets, and add a reserve for your mission
 - **Optional atmospheric assistance**, with per-body ideal capture choices and
   powered landing allowances you enter yourself. Routes recalculate before the
   mission reserve is added.
+- **CommNet relay planning** for circular, equally spaced constellations, with
+  equatorial coverage, antenna ranges, and resonant deployment estimates.
 - **A responsive map** with keyboard and touch selection, a deep-blue starfield,
   and no page or map scrolling.
 
@@ -66,6 +69,13 @@ on this browser; files are not uploaded. Use **Export current pack** to save a c
 start editing a new pack. See the [custom pack guide](docs/CUSTOM_PACKS.md) for
 the format and a small working example.
 
+Open **Relays** in the header (the satellite icon on phones) to plan a local
+CommNet constellation. Choose a
+body, orbit altitude, relay count, and antennas, then inspect **Network**,
+**Deployment**, and **Body data**. Closing the tool keeps your current Delta-V
+mission intact. The [relay guide](docs/RELAYS.md) explains the calculations and
+editable body inputs.
+
 ## About the estimates
 
 These are schematic planning estimates within the supplied maneuver graph,
@@ -94,6 +104,10 @@ estimates from official mod constants. The planner's information dialog and
 Some reference orbit altitudes differ from modern RSS; incompatible altitude
 claims are omitted. See the data guide for coverage and calculation assumptions.
 
+**Relay coverage is equatorial.** A visible surface receiver and a working local
+ring do not establish a connection back to the DSN. The radio presets use stock
+CommNet rules; RealAntennas and RemoteTech are not modeled.
+
 ## Run locally
 
 Built with **React, TypeScript, Vite, and Material UI**. Use **Node.js 24 LTS** and
@@ -121,7 +135,8 @@ the [developer guide](docs/DEVELOPMENT.md).
 - Kcalbeloh configurations alongside Stock or OPM, plus other mod packs.
 - Atmospheric entry feasibility and vehicle-specific landing estimates.
 - Additional direct interplanetary transfers in the supplied packs.
-- Longer term: CommNet coverage and relay planning.
+- Advanced relay planning: inclined constellations, multiple antennas, and
+  complete DSN paths.
 
 Suggestions, bug reports, and contributions are welcome through
 [GitHub issues](https://github.com/AntonioToni/ksp-deltav/issues) and pull requests.
@@ -129,6 +144,7 @@ Suggestions, bug reports, and contributions are welcome through
 ## License
 
 The application is licensed under the [MIT License](LICENSE). Reference-map
-attribution and licensing are documented in the [data guide](docs/DATA.md).
+attribution and licensing are documented in the [data guide](docs/DATA.md), and
+relay references in the [relay guide](docs/RELAYS.md).
 Kerbal Space Program is the property of its respective owners; this is a
 community project.

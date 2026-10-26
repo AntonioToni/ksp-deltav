@@ -141,3 +141,12 @@ The importer reads this JSON format. It does not read Kopernicus `.cfg` files,
 calculate budgets from orbital elements, or model binary stars, wormholes,
 gravity assists, or interstellar transitions. These require additional routing
 models and reference data before they can be represented faithfully.
+
+## Relay planning for custom bodies
+
+The separate [Relays workspace](RELAYS.md) can use bodies from an imported pack.
+Recognized body IDs and parent contexts can use a reference physical preset.
+Other bodies need their radius, gravitational parameter, and atmosphere height
+entered under **Body data**; add a sphere of influence when known. These are
+session inputs, not additional fields in the imported JSON, and editing them does
+not rewrite the pack. The radio model remains stock CommNet.

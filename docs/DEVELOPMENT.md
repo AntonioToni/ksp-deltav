@@ -23,7 +23,7 @@ Production output is written to `dist`. Production builds and previews use the
 ## Checks
 
 ```sh
-npm test             # Unit tests for packs, imports, layouts, missions, routing, and reserves
+npm test             # Unit tests for packs, imports, layouts, missions, relays, and reserves
 npm run lint         # ESLint
 npm run build        # Strict TypeScript checks and production bundle
 ```
@@ -77,6 +77,9 @@ On Linux CI machines that also need browser system dependencies, use
 | Searchable stop editor and reorder controls | `src/components/StopsDialog.tsx` |
 | Custom pack import, export, and selection | `src/components/PlanetPacksDialog.tsx` |
 | Per-body atmospheric options and landing inputs | `src/components/AtmosphereDialog.tsx` |
+| CommNet presets and body reference constants | `src/data/commnet.ts` |
+| Relay geometry, antenna ranges, and resonant deployment | `src/utils/relay.ts` |
+| Relay workspace and constellation diagram | `src/components/RelayPlannerDialog.tsx`, `src/components/RelayDiagram.tsx` |
 | Theme and decorative background | `src/main.tsx`, `src/components/SpaceBackground.tsx` |
 | Browser workflows | `e2e/` |
 
@@ -134,6 +137,32 @@ sources, assumptions, and display metadata, then register it in
 moon systems; optional presets can refine presentation. Add data, topology,
 routing, and layout checks for the new pack. See the [data guide](DATA.md) before
 changing reference figures.
+
+## Relay planning
+
+The **Relays** workspace is separate from Delta-V mission state. Its inputs stay
+available when closed and reopened during the same session; changing the active
+planet pack resets the workspace. It does not add deployment burns to the route
+graph or persist settings across page reloads.
+
+`calculateRelayPlan` takes explicit SI-unit inputs and returns validated network
+geometry and deployment results. Antenna presets represent one stock CommNet
+antenna per craft. Equatorial visibility, neighboring relay links, and maximum
+DSN range are separate results. A local constellation is not a complete DSN
+connection.
+
+Body presets are separate from maneuver budgets and are matched by body ID and
+parent context. This matters for Eeloo, whose parent and sphere of influence
+change in OPM. The editable Body data tab supports bodies without a recognized
+preset; missing physical inputs do not silently fall back to Kerbin. A missing
+sphere of influence leaves that orbital bound unchecked.
+
+The diagram displays the same geometry used by the calculations, including the
+chosen effective occlusion radius. Rotation changes the sample surface station's
+links while retaining the uniformly spaced constellation. Tests cover analytical
+landmarks, range and limb boundaries, unsupported inputs, atmospheric clearance,
+SOI bounds, and responsive workflows. See [Relay planning](RELAYS.md) for formulas,
+sources, and scope.
 
 ## GitHub Pages
 

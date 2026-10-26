@@ -8,6 +8,10 @@ The original map credits the KSP community and is published under
 No source artwork or layout is bundled. This planner uses a new schematic layout;
 reference figures have been reorganized into named, directed maneuver records.
 
+The separate [CommNet relay guide](RELAYS.md) documents relay body constants,
+antenna presets, coverage geometry, and deployment estimates. Those calculations
+do not replace or recalibrate the maneuver-map figures below.
+
 ## Coverage and units
 
 The pack describes all 17 stock bodies: Kerbol, seven planets, and nine moons.
