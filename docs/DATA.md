@@ -38,9 +38,10 @@ orbit and an elliptical orbit are different states.
   trajectories.
 - Vacuum surface descent reverses the map ascent estimate. Atmospheric powered
   descent deliberately uses a **conservative placeholder budget equal to the
-  ascent budget**. This is not a verified landing calculation. No parachute,
-  aerobraking, or aerocapture savings are credited. Vehicle-dependent descent
-  modeling remains future work.
+  ascent budget** in the source dataset and default planner configuration.
+  This is not a verified landing calculation. Optional atmospheric choices can
+  replace eligible costs as described below; vehicle-dependent descent modeling
+  remains future work.
 - Only interplanetary branches to/from Kerbin are supplied by this pack. A
   route between two other planetary systems must capture into a low parking
   orbit at Kerbin before escaping for the next transfer. The routing search
@@ -94,7 +95,7 @@ limitations apply to multi-stop missions as well as routes without stops.
 
 Small arrows point inward on atmospheric capture and descent segments. These
 are informational opportunities, covering aerocapture, aerobraking, and entry or
-landing assistance; they do not change maneuver costs or calculate a trajectory.
+landing assistance; the markers alone do not change costs or calculate a trajectory.
 The stock map shows 14 directed markers: eight local captures, four atmospheric
 descents, and the Mun/Minmus returns to Kerbin low orbit. Outbound maneuvers and
 airless-body captures and landings have no atmospheric-braking arrow.
@@ -103,7 +104,71 @@ Moon returns ending at a parent's high elliptical reference orbit remain
 unmarked. Interplanetary encounter-to-encounter increments also remain unmarked;
 their destination's atmospheric capture is shown on its separate inward
 capture segment. Actual atmospheric assistance depends on the trajectory and
-vehicle, and no atmospheric savings are applied to the budget.
+vehicle. The optional controls below change only the supported standalone
+maneuvers, rather than treating every arrow as a free transfer.
+
+## Optional atmospheric assistance
+
+Open **Atmosphere** (**Aero** on phones) in the header to edit **Atmospheric
+assistance**. Choices apply by body ID to every eligible visit, including
+endpoints, ordered stops, and intermediate layovers. All choices start disabled.
+The dialog stages edits:
+**Apply** uses them, **Cancel** discards them, and **Disable all** clears the draft.
+Swapping endpoints and changing mission mode retain body choices. Changing packs
+retains compatible eligible choices, while **Clear** resets them. The choices
+are session settings and do not modify or export with source data.
+
+- **Ideal capture** sets separate same-body inward `capture` segments to zero,
+  including encounter → high ellipse/low orbit and high ellipse → low orbit.
+  This is an optimistic lower bound on powered burns, not a calculated entry
+  trajectory. Capture cleanup burns are excluded and must be planned separately.
+  A percentage reserve does not calculate them and adds nothing to a zero budget.
+- **Atmospheric landing** replaces an eligible same-body low-orbit → surface
+  `descent` with the powered allowance entered for that body. An enabled landing
+  requires an explicit finite value from **0 to 1,000,000 m/s**; there is no
+  invented default landing estimate. Zero explicitly assumes no powered landing
+  burn. A higher allowance can increase the original budget.
+- Atmospheric assistance requires `hasAtmosphere: true` and a supported inward
+  maneuver. `supportsAtmosphericBraking: false` excludes a body, including RSS
+  Pluto and Triton. Gas giants can have capture options but no landing option.
+- Ascent, escape, airless-body maneuvers, and interplanetary increments retain
+  their source costs. A moon encounter → parent orbit `transfer` can combine
+  departure and arrival costs. Its entire cost is retained because the dataset
+  does not isolate a trustworthy atmospheric discount. For example, Mun and
+  Minmus returns to Kerbin low orbit remain **860 and 930 m/s** respectively,
+  even though their arrows indicate potential assistance.
+
+The planner applies the selected costs to a copy of the maneuver graph **before
+optimizing the whole selected mission**. The cheapest adjusted path can differ
+from the cheapest powered path. The reference comparison uses the original
+powered mission estimate, and the reserve applies once to the adjusted mission
+total. Map details and the breakdown use the effective maneuver costs while
+retaining their original figures for comparison. Repeated visits apply the
+chosen allowance each time the affected maneuver is flown.
+
+Zero-cost capture does not reset arrival context at an encounter or high ellipse.
+The route must still reach the actual low-orbit state before another
+interplanetary transfer. Round trips and return-only journeys use the same
+directional edges and body choices; a landing setting does not discount ascent.
+
+For example, Stock **Kerbin surface → Duna surface** has the following budgets:
+
+| Selected assumptions | Budget before reserve (m/s) |
+| --- | ---: |
+| Original powered estimate | 6,540 |
+| Ideal Duna capture: remove separate 250 + 360 m/s capture segments | 5,930 |
+| Also enter a Duna powered landing allowance of 100 m/s, replacing 1,450 m/s | 4,580 |
+
+The **100 m/s** landing value is a user-selected example, not a default or a
+validated Duna descent estimate. A 20% reserve on that adjusted one-way budget
+gives **5,496 m/s**. With only these Duna choices enabled, the round trip is
+**11,120 m/s** before reserve: 4,580 outward plus the unchanged 6,540 return,
+whose Duna ascent still costs 1,450 m/s.
+
+These controls do not simulate atmospheric entry heating, guidance, parachute
+performance, lift, or vehicle-specific feasibility. They also do not recalibrate
+historical OPM/RSS references or prove that an advertised reference orbit is
+safe in a current mod version.
 
 ## Auditing changes
 
@@ -178,9 +243,10 @@ beside branches are excluded, consistently with the stock pack.
 
 Plock's original transfer is a **1900–2700 m/s range**. The planner chooses the
 upper endpoint, **2700 m/s**, as a conservative map-budget selection. It does
-not invent a midpoint or simulate the launch epoch. Atmospheric powered-descent
+not invent a midpoint or simulate the launch epoch. The original powered-descent
 budgets for Tekto and Thatmo use the same explicitly labeled placeholder policy
-as atmospheric stock bodies: ascent budget reused without atmospheric savings.
+as atmospheric stock bodies: the ascent budget is reused. Optional atmospheric
+choices adjust the effective route without recalibrating those source figures.
 
 ### Karen analytic estimate
 
@@ -342,9 +408,9 @@ suggests a rough low-thrust multiplier; the planner does not apply it because
 it does not model a specific propulsion system. Add a mission margin and verify
 the vehicle-specific trajectory independently.
 
-Atmospheric powered-descent budgets reuse the corresponding source ascent
-allowance as an explicit placeholder. No parachute, aerocapture, or aerobraking
-savings change route costs. Braking markers reflect source-supported
+Original atmospheric powered-descent budgets reuse the corresponding source
+ascent allowance as an explicit placeholder. They remain the default until a
+supported atmospheric option is enabled. Braking markers reflect source-supported
 opportunities for Earth, Venus, Mars, Titan, and the four gas giants. Pluto and
 Triton have atmospheres in the official RSS configs, but the reference does not
 mark atmospheric-braking opportunities there; they retain `hasAtmosphere: true`

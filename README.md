@@ -24,6 +24,9 @@ one-way, round-trip, and return-only budgets, and add a reserve for your mission
   hidden until you enable them.
 - **Atmospheric-braking markers** showing where atmospheric assistance may be
   possible in the indicated direction.
+- **Optional atmospheric assistance**, with per-body ideal capture choices and
+  powered landing allowances you enter yourself. Routes recalculate before the
+  mission reserve is added.
 - **A responsive map** with keyboard and touch selection, a deep-blue starfield,
   and no page or map scrolling.
 
@@ -39,7 +42,10 @@ one-way, round-trip, and return-only budgets, and add a reserve for your mission
 4. Open **Stops** to add up to four intermediate states in outbound order. Use
    **Choose a stop** or **Select stop on map**, then reorder or remove entries.
    Numbered teal badges identify the stops on the map.
-5. Adjust **Redundancy** for your reserve and enable **Breakdown** to inspect
+5. Open **Atmosphere** (**Aero** on phones) in the header to choose ideal capture
+   or enter a powered landing allowance for each atmospheric body, then choose
+   **Apply**. These options start disabled.
+6. Adjust **Redundancy** for your reserve and enable **Breakdown** to inspect
    individual maneuvers. Use the stage arrows to browse a multi-stop journey.
 
 All budgets are shown in **m/s**. For example, the stock Kerbin surface → Mun
@@ -51,7 +57,9 @@ flight or its arrival conditions. The reserve applies once to the full budget.
 
 **Swap** reverses both the endpoints and the stop order. Changing systems keeps
 states available in the new pack and removes unsupported stops; **Clear** also
-removes all stops.
+removes all stops and atmospheric choices. Atmospheric choices follow body IDs,
+so swapping or changing mission modes keeps them, and changing systems retains
+compatible choices.
 
 The **Custom planet packs** manager accepts up to five JSON packs and keeps them
 on this browser; files are not uploaded. Use **Export current pack** to save a copy or
@@ -67,8 +75,15 @@ Routes between other planetary systems in these packs include a parking-orbit
 layover at that homeworld. Custom pack estimates depend on their supplied data.
 Flight dates, plane changes, gravity assists, and vehicle performance are not modeled.
 
-**Aerobraking arrows do not reduce the budget.** Atmospheric savings are not
-calculated, and atmospheric landings use an ascent-sized planning allowance.
+**Atmospheric choices are estimates, not entry simulations.** Ideal capture
+uses a zero-powered-burn lower bound for separate capture and circularization
+segments; capture cleanup burns are excluded. Landing uses the powered allowance
+you enter, including an explicit zero if appropriate for your plan. Entry
+heating, guidance, and parachute performance are not modeled. Bundled transfer
+costs remain intact even when their arrow indicates possible atmospheric
+assistance. With options disabled, atmospheric landings retain their original
+ascent-sized planning allowance. See the [data guide](docs/DATA.md) for a worked
+example and the exact scope of the adjustments.
 
 **OPM uses legacy estimates.** Its historical community-map budgets are not
 calibrated for current OPM atmospheres and orbits. Karen's budgets are analytical
@@ -104,7 +119,7 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 - Modern OPM budget calibration.
 - Kcalbeloh configurations alongside Stock or OPM, plus other mod packs.
-- Atmospheric savings and improved landing estimates.
+- Atmospheric entry feasibility and vehicle-specific landing estimates.
 - Additional direct interplanetary transfers in the supplied packs.
 - Longer term: CommNet coverage and relay planning.
 

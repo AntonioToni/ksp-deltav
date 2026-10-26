@@ -13,6 +13,8 @@ import AltRouteRounded from '@mui/icons-material/AltRouteRounded'
 import ChevronLeftRounded from '@mui/icons-material/ChevronLeftRounded'
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import ExtensionOutlined from '@mui/icons-material/ExtensionOutlined'
+import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
+import AirRounded from '@mui/icons-material/AirRounded'
 import { stockPack } from './data/stock'
 import { planetPacks } from './data/planetPacks'
 import type { PlanetPack } from './types/planner'
@@ -20,10 +22,12 @@ import DeltaVMap from './components/DeltaVMap'
 import SpaceBackground from './components/SpaceBackground'
 import StopsDialog from './components/StopsDialog'
 import PlanetPacksDialog from './components/PlanetPacksDialog'
+import AtmosphereDialog from './components/AtmosphereDialog'
 import { buildGraph } from './utils/buildGraph'
 import { findMissionRoute, type MissionMode } from './utils/mission'
 import { calculateBudget } from './utils/budget'
 import { readCustomPacks, saveCustomPacks, validateCustomPackAddition } from './utils/customPacks'
+import { applyAtmosphericAssistance, getAtmosphericCapabilities, type AtmosphericPlan } from './utils/atmosphericAssistance'
 
 const format = new Intl.NumberFormat('en-US')
 const compactBreakdown = '@media (max-height: 500px), (max-width: 699px) and (max-height: 650px)'
@@ -49,7 +53,11 @@ export default function App() {
   const pack = availablePacks.find(candidate => candidate.id === packId) ?? stockPack
   const isCustomPack = customPacks.some(candidate => candidate.id === pack.id)
   const [showPacks, setShowPacks] = useState(false)
-  const graph = useMemo(() => buildGraph(pack), [pack])
+  const [showAtmosphere, setShowAtmosphere] = useState(false)
+  const [atmosphericPlan, setAtmosphericPlan] = useState<AtmosphericPlan>([])
+  const hasAtmosphericOptions = atmosphericPlan.some(option => option.capture || option.landing)
+  const referenceGraph = useMemo(() => buildGraph(pack), [pack])
+  const { graph, adjustments } = useMemo(() => applyAtmosphericAssistance(referenceGraph, pack, atmosphericPlan), [referenceGraph, pack, atmosphericPlan])
   const nodesById = useMemo(() => new Map(pack.nodes.map(node => [node.id, node])), [pack])
   const bodiesById = useMemo(() => new Map(pack.bodies.map(body => [body.id, body])), [pack])
   const [startId, setStartId] = useState<string | null>(null)
@@ -73,6 +81,14 @@ export default function App() {
     () => startId !== null && endId !== null ? findMissionRoute(graph, startId, endId, missionMode, waypointIds) : null,
     [graph, startId, endId, missionMode, waypointIds],
   )
+  const referenceRoute = useMemo(
+    () => hasAtmosphericOptions && startId !== null && endId !== null ? findMissionRoute(referenceGraph, startId, endId, missionMode, waypointIds) : null,
+    [referenceGraph, hasAtmosphericOptions, startId, endId, missionMode, waypointIds],
+  )
+  const atmosphericDifference = route?.status === 'success' && referenceRoute?.status === 'success'
+    ? route.totalDeltaV - referenceRoute.totalDeltaV : null
+  const atmosphericComparison = atmosphericDifference !== null && referenceRoute?.status === 'success'
+    ? `${atmosphericDifference > 0 ? '+' : ''}${format.format(atmosphericDifference)} m/s atmosphere · ${format.format(referenceRoute.totalDeltaV)} m/s reference, before reserve.` : null
   const showingReturn = returnOnly || roundTrip && breakdownLeg === 'return'
   const activeJourney = route?.status === 'success'
     ? showingReturn ? route.returnRoute : route.outbound
@@ -162,9 +178,18 @@ export default function App() {
     setStartId(nextStart)
     setEndId(nextEnd)
     setWaypointIds(ids => ids.filter(nodeId => available.has(nodeId)))
+    const capabilities = new Map(getAtmosphericCapabilities(nextPack).map(capability => [capability.body.id, capability]))
+    setAtmosphericPlan(options => options.flatMap(option => {
+      const capability = capabilities.get(option.bodyId)
+      if (!capability) return []
+      const capture = option.capture && capability.capture
+      const landing = option.landing && capability.landing
+      return capture || landing ? [{ ...option, capture, landing }] : []
+    }))
     setSelection(nextStart === null ? 'start' : nextEnd === null || selection === 'stop' ? 'end' : selection)
     setShowStops(false)
     setShowBreakdown(false)
+    setShowAtmosphere(false)
     resetDetails()
   }
 
@@ -194,6 +219,8 @@ export default function App() {
     setWaypointIds([])
     setShowStops(false)
     setRedundancy(0)
+    setAtmosphericPlan([])
+    setShowAtmosphere(false)
     setMissionMode('one-way')
     resetDetails()
     setShowBreakdown(false)
@@ -218,13 +245,22 @@ export default function App() {
           <Typography component="h1" sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 }, letterSpacing: '-.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>KSP DeltaV Planner</Typography>
         </Stack>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
-          <Tooltip title="Arrows point toward potential aerocapture, aerobraking, or atmospheric landing assistance. Savings are not included in the budget.">
-            <Box role="note" aria-label="Aerobraking legend" sx={{ display: 'flex', alignItems: 'center', gap: .75, px: .75, py: .45, border: '1px solid #c6e8d81c', borderRadius: 4, bgcolor: '#1a202c99', color: '#b5c9bf', whiteSpace: 'nowrap' }}>
+          <Tooltip title="Configure ideal atmospheric capture and landing allowances. Map arrows show potential assistance; bundled transfers keep their reference cost.">
+            <Box role="note" aria-label="Aerobraking legend">
+            <Button aria-label="Atmospheric assistance" aria-haspopup="dialog" aria-expanded={showAtmosphere} aria-pressed={hasAtmosphericOptions} onClick={() => {
+              if (selection === 'stop') setSelection(previousSelection.current)
+              setShowStops(false)
+              setShowPacks(false)
+              setShowBreakdown(false)
+              setShowAtmosphere(true)
+            }} sx={{ display: 'flex', alignItems: 'center', gap: .5, minWidth: 0, minHeight: 28, px: .75, py: .35, border: '1px solid', borderColor: hasAtmosphericOptions ? '#92d5c680' : '#c6e8d830', borderRadius: 4, bgcolor: hasAtmosphericOptions ? '#285044' : '#1a202c99', color: hasAtmosphericOptions ? '#c1efdf' : '#b5c9bf', whiteSpace: 'nowrap', '&:hover': { bgcolor: '#285044' } }}>
               <svg width="10" height="10" viewBox="-8 -8 16 16" aria-hidden="true"><path d="M -7 -6 L 7 0 L -7 6 Z" fill="#c6e8d8" /></svg>
               <Typography component="span" sx={{ fontSize: 10, lineHeight: 1.4 }}>
-                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Aerobraking possible</Box>
-                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Aerobrake</Box>
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Atmosphere</Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Aero</Box>
               </Typography>
+              <ExpandMoreRounded sx={{ fontSize: 14 }} />
+            </Button>
             </Box>
           </Tooltip>
           <Typography variant="caption" color="text.secondary" title={pack.name} sx={{ display: { xs: 'none', sm: 'block' }, minWidth: 0, fontSize: 10, letterSpacing: '.1em', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.shortName ?? pack.name} · KSP 1</Typography>
@@ -234,7 +270,7 @@ export default function App() {
 
       <Box component="main" aria-label="Interactive Delta-V map" sx={{ minHeight: 0, minWidth: 0, overflow: 'hidden', position: 'relative' }}>
         <SpaceBackground />
-        <DeltaVMap pack={pack} startId={startId} endId={endId} waypointIds={waypointIds} route={route} onSelect={selectNode} />
+        <DeltaVMap pack={pack} startId={startId} endId={endId} waypointIds={waypointIds} route={route} adjustments={adjustments} onSelect={selectNode} />
       </Box>
 
       <Box ref={setBreakdownAnchor} component="footer" sx={{ bgcolor: 'background.paper', backgroundImage: 'linear-gradient(180deg, #16243b, #101b2f)', borderTop: '2px solid', borderColor: 'primary.dark', minWidth: 0, boxShadow: '0 -8px 24px #00000018, inset 0 1px 0 #ffffff03' }}>
@@ -302,7 +338,7 @@ export default function App() {
 
           <Box sx={{ gridArea: 'budget', minWidth: 0, containerType: 'inline-size' }}>
             <Typography sx={{ fontSize: 10, color: 'text.secondary', letterSpacing: '.1em', textTransform: 'uppercase' }}>{roundTrip ? 'Round-trip budget' : returnOnly ? 'Return-only budget' : 'Delta-V budget'}</Typography>
-            {budget ? <Typography component="output" data-testid="route-total" sx={{ display: 'block', fontSize: { xs: 25, sm: 32 }, lineHeight: 1.1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 700, letterSpacing: '-.025em', '@container (max-width: 170px)': { fontSize: 25 }, ...(isCustomPack ? { fontSize: `min(32px, ${100 / budgetTextWidth}cqi)`, '@container (max-width: 170px)': { fontSize: `min(25px, ${100 / budgetTextWidth}cqi)` } } : {}) }}>
+            {budget ? <Typography component="output" data-testid="route-total" sx={{ display: 'block', fontSize: { xs: 25, sm: 32 }, lineHeight: 1.1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 700, letterSpacing: '-.025em', '@container (max-width: 170px)': { fontSize: 25 }, ...(isCustomPack || hasAtmosphericOptions ? { fontSize: `min(32px, ${100 / budgetTextWidth}cqi)`, '@container (max-width: 170px)': { fontSize: `min(25px, ${100 / budgetTextWidth}cqi)` } } : {}) }}>
               {budgetText} <Box component="span" sx={{ fontSize: '.55em', color: 'text.secondary' }}>m/s</Box>
             </Typography> : <Typography sx={{ fontSize: 25, lineHeight: 1.1, color: 'text.secondary' }}>— <Box component="span" sx={{ fontSize: 13 }}>m/s</Box></Typography>}
             <Typography title={budget ? `${format.format(budget.baseDeltaV)} m/s base +${format.format(budget.extraDeltaV)} m/s reserve` : undefined} sx={{ fontSize: 9, color: 'text.secondary', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -323,7 +359,9 @@ export default function App() {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, px: { xs: 1.25, sm: 2.5 }, pb: .75, minHeight: 20 }}>
-          <Typography role={selection !== 'stop' && (hasAtmosphericLanding || route?.status === 'invalid') ? 'alert' : 'status'} title={status} sx={{ flex: 1, minWidth: 0, fontSize: 10, color: selection === 'stop' ? '#92d5c6' : hasAtmosphericLanding ? 'secondary.main' : 'text.secondary', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{status}</Typography>
+          <Typography role={selection !== 'stop' && (hasAtmosphericLanding || route?.status === 'invalid') ? 'alert' : 'status'} title={atmosphericComparison && selection !== 'stop' ? `${atmosphericComparison} ${status}` : status} sx={{ flex: 1, minWidth: 0, fontSize: 10, color: selection === 'stop' ? '#92d5c6' : hasAtmosphericOptions ? '#92d5c6' : hasAtmosphericLanding ? 'secondary.main' : 'text.secondary', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{atmosphericDifference !== null && referenceRoute?.status === 'success' && selection !== 'stop' ? <>
+            <Box component="output" data-testid="atmospheric-change">{atmosphericDifference > 0 ? '+' : ''}{format.format(atmosphericDifference)} m/s</Box> atmosphere · <Box component="output" data-testid="atmospheric-reference">{format.format(referenceRoute.totalDeltaV)} m/s</Box> base ref
+          </> : status}</Typography>
           {pack.dataNotice && <Button size="small" color="secondary" onClick={() => setShowInfo(true)} title={pack.dataNotice} sx={{ minHeight: 15, minWidth: 0, maxWidth: isCustomPack ? '40%' : undefined, flexShrink: 0, p: 0, fontSize: 10, lineHeight: 1.5 }}><Box component="span" sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.dataNotice}</Box></Button>}
           <Typography sx={{ display: { xs: 'none', md: 'block' }, fontSize: 10, color: 'text.secondary', whiteSpace: 'nowrap' }}>Estimates in m/s · {redundancy}% reserve · Schematic, not to scale</Typography>
         </Box>
@@ -356,9 +394,10 @@ export default function App() {
               {stages.length > 1 && <Typography component="output" data-testid="stage-total" sx={{ flexShrink: 0, color: 'text.secondary', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>{format.format(activeLeg.totalDeltaV)} m/s</Typography>}
             </Box>
             <Box component="ol" aria-label="Maneuver breakdown" sx={{ listStyle: 'none', m: 0, p: 0, '@media (max-height: 500px)': { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' } }}>
-              {visibleManeuvers.map(({ edge }, index) => <Box component="li" key={`${edge.id}:${pageStart + index}`} title={edge.label} sx={{ display: 'flex', alignItems: 'center', gap: .75, px: 1.5, py: .45, bgcolor: index % 2 === 0 ? '#ffffff08' : undefined, minWidth: 0, [compactBreakdown]: { py: 0, '& .MuiTypography-root': { fontSize: 10, lineHeight: 1.25 } } }}>
+              {visibleManeuvers.map(({ edge }, index) => <Box component="li" key={`${edge.id}:${pageStart + index}`} data-assisted={adjustments.has(edge.id) ? 'true' : undefined} title={adjustments.has(edge.id) ? `${edge.label}: ${format.format(edge.deltaV)} m/s · ${adjustments.get(edge.id)?.kind === 'capture' ? 'Ideal atmospheric capture; cleanup excluded' : 'User landing allowance'} · Reference ${format.format(adjustments.get(edge.id)!.originalDeltaV)} m/s` : edge.label} sx={{ display: 'flex', alignItems: 'center', gap: .75, px: 1.5, py: .45, bgcolor: index % 2 === 0 ? '#ffffff08' : undefined, minWidth: 0, [compactBreakdown]: { py: 0, '& .MuiTypography-root': { fontSize: 10, lineHeight: 1.25 } } }}>
                 <Box component="span" sx={{ width: 5, height: 5, flexShrink: 0, borderRadius: '50%', bgcolor: bodiesById.get(nodesById.get(edge.to)?.bodyId ?? '')?.color ?? 'primary.main' }} />
                 <Typography sx={{ flex: 1, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nodesById.get(edge.to)?.label}</Typography>
+                {adjustments.has(edge.id) && <AirRounded aria-label="Atmospheric allowance" sx={{ fontSize: 11, color: '#92d5c6', flexShrink: 0 }} />}
                 <Typography sx={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{format.format(edge.deltaV)} m/s</Typography>
               </Box>)}
             </Box>
@@ -379,12 +418,14 @@ export default function App() {
 
       <PlanetPacksDialog open={showPacks} currentPack={pack} customPacks={customPacks} storageWarning={customPackState.warning} onImport={importPack} onSelect={id => { changePack(id); setShowPacks(false) }} onRemove={removePack} onClose={() => setShowPacks(false)} />
 
+      <AtmosphereDialog open={showAtmosphere} pack={pack} plan={atmosphericPlan} onApply={options => { setAtmosphericPlan(options); setShowAtmosphere(false); resetDetails() }} onClose={() => setShowAtmosphere(false)} />
+
       <Dialog open={showInfo} onClose={() => setShowInfo(false)} maxWidth="sm" fullWidth aria-labelledby="model-info-heading">
         <DialogTitle id="model-info-heading">About these estimates</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 1.5 }}>{pack.description}</Typography>
           {isCustomPack && <Typography variant="body2" sx={{ mb: 1.5, color: 'secondary.main' }}>Custom pack · These estimates and sources are supplied by the pack author.</Typography>}
-          <Typography variant="body2" sx={{ mb: 1.5 }}>Stops are visited in outbound order, and return journeys visit them in reverse. Arrival conditions carry through each stop and the round-trip turnaround. Return only starts independently at the destination. Redundancy applies once to the selected mission budget. Arrows show potential atmospheric braking; no atmospheric savings are included.</Typography>
+          <Typography variant="body2" sx={{ mb: 1.5 }}>Stops are visited in outbound order, and return journeys visit them in reverse. Arrival conditions carry through each stop and the round-trip turnaround. Return only starts independently at the destination. Redundancy applies once to the selected mission budget. Arrows show potential atmospheric braking; {hasAtmosphericOptions ? 'selected ideal capture options use a zero-powered-burn estimate, and selected atmospheric landings use your entered allowances. Cleanup burns and entry feasibility are not simulated. Bundled transfer costs are retained. The source assumptions below describe the original unassisted data.' : 'no atmospheric savings are included.'}</Typography>
           <Box component="ul" sx={{ pl: 2.5, '& li': { fontSize: 13, mb: 1 } }}>
             {pack.assumptions.map((assumption, index) => <li key={index}>{assumption}</li>)}
           </Box>

@@ -71,10 +71,12 @@ On Linux CI machines that also need browser system dependencies, use
 | Mission modes, ordered stops, and stage budgets | `src/utils/mission.ts` |
 | Reserve calculations | `src/utils/budget.ts` |
 | Informational atmospheric-braking markers | `src/utils/aerobraking.ts` |
+| Atmospheric capabilities and adjusted routing costs | `src/utils/atmosphericAssistance.ts` |
 | Schematic layouts and SVG interaction | `src/components/mapLayout.ts`, `src/components/DeltaVMap.tsx` |
 | Mission controls and presentation | `src/App.tsx` |
 | Searchable stop editor and reorder controls | `src/components/StopsDialog.tsx` |
 | Custom pack import, export, and selection | `src/components/PlanetPacksDialog.tsx` |
+| Per-body atmospheric options and landing inputs | `src/components/AtmosphereDialog.tsx` |
 | Theme and decorative background | `src/main.tsx`, `src/components/SpaceBackground.tsx` |
 | Browser workflows | `e2e/` |
 
@@ -90,8 +92,25 @@ starts independently at the destination.
 ordered visit sequences. `findMissionRoute` accepts up to four intermediate
 states and exposes aggregate outbound/return routes plus their stage slices.
 Stage costs restart their cumulative totals locally; the complete mission retains
-its full cumulative budget. Reserve calculations and atmospheric markers remain
-separate from routing costs.
+its full cumulative budget. Reserve calculations remain separate from routing
+costs and apply once after the selected atmospheric adjustments.
+
+Atmospheric choices are session state keyed by body ID. The dialog edits a draft;
+Apply commits it, Cancel discards it, and Disable all clears the draft. A checked
+landing option requires an explicit finite allowance from 0 to 1,000,000 m/s.
+Pack changes retain only compatible eligible choices, while Clear resets them.
+
+`getAtmosphericCapabilities` identifies bodies with standalone inward capture or
+descent edges supported by the atmospheric markers. `applyAtmosphericAssistance`
+copies changed edges into an effective graph before ordered mission search and
+returns adjustments keyed by edge ID for presentation. Ideal capture sets those
+capture costs to zero; landing replaces eligible descent costs with the entered
+allowance, which may be higher than the source figure. The source pack and base
+graph stay unchanged, so export and attribution retain the original data.
+Comparison uses the selected mission's original powered budget, and reserves
+apply to its adjusted total. Atmospheric arrows themselves remain informational:
+bundled moon-return transfer edges are not discounted. Arrival-context and
+parking-orbit rules remain part of the same global search.
 
 The Stops editor stores visits in outbound order. Pack changes filter out
 unsupported stops, swapping reverses their order, and reset empties the list.

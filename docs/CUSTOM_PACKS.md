@@ -87,8 +87,24 @@ multiple parking orbits, and give them distinct IDs and clear labels.
 
 Atmospheric-braking arrows depend on the destination body's atmosphere and the
 connection type. Set optional `supportsAtmosphericBraking: false` when the
-reference does not support such markers. Arrows remain informational and never
-discount a route's cost.
+reference does not support such markers. That flag also excludes the body from
+the optional atmospheric assistance controls.
+
+The **Atmospheric assistance** dialog works with imported packs using the same
+rules as built-in packs. Ideal capture replaces separate same-body inward
+capture and circularization costs with a zero-powered-burn lower bound. An
+enabled atmospheric landing replaces a same-body orbit → surface descent with
+the powered allowance entered by the user, from 0 to 1,000,000 m/s. An allowance
+may increase the original budget. Ascent and escape edges, airless-body costs,
+and bundled transfer costs stay unchanged. An arrow on a moon-return transfer
+does not discount that indivisible edge.
+
+These choices change the effective routing graph for the session; they do not
+edit the imported pack or its exported JSON, and require no additional JSON
+fields. They start disabled, are not saved with the pack, and reset with Clear.
+Entry heating, guidance, parachutes, and capture cleanup burns are not simulated;
+choose appropriate powered allowances and mission reserves. See the
+[data guide](DATA.md#optional-atmospheric-assistance) for the calculation model.
 
 ### Maneuvers
 
