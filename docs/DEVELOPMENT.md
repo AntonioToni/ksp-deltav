@@ -23,7 +23,7 @@ Production output is written to `dist`. Production builds and previews use the
 ## Checks
 
 ```sh
-npm test             # Unit tests for packs, layouts, ordered missions, routing, and reserves
+npm test             # Unit tests for packs, imports, layouts, missions, routing, and reserves
 npm run lint         # ESLint
 npm run build        # Strict TypeScript checks and production bundle
 ```
@@ -66,6 +66,7 @@ On Linux CI machines that also need browser system dependencies, use
 | Stock reference data | `src/data/stock.ts` |
 | OPM and RSS packs, and pack registry | `src/data/opm.ts`, `src/data/rss.ts`, `src/data/planetPacks.ts` |
 | Pack and topology validation | `src/utils/validatePlanetPack.ts` |
+| Custom JSON imports and browser storage | `src/utils/customPacks.ts` |
 | Graph construction and ordered contextual route search | `src/utils/buildGraph.ts`, `src/utils/findRoute.ts` |
 | Mission modes, ordered stops, and stage budgets | `src/utils/mission.ts` |
 | Reserve calculations | `src/utils/budget.ts` |
@@ -73,6 +74,7 @@ On Linux CI machines that also need browser system dependencies, use
 | Schematic layouts and SVG interaction | `src/components/mapLayout.ts`, `src/components/DeltaVMap.tsx` |
 | Mission controls and presentation | `src/App.tsx` |
 | Searchable stop editor and reorder controls | `src/components/StopsDialog.tsx` |
+| Custom pack import, export, and selection | `src/components/PlanetPacksDialog.tsx` |
 | Theme and decorative background | `src/main.tsx`, `src/components/SpaceBackground.tsx` |
 | Browser workflows | `e2e/` |
 
@@ -95,12 +97,24 @@ The Stops editor stores visits in outbound order. Pack changes filter out
 unsupported stops, swapping reverses their order, and reset empties the list.
 The map shows numbered stop badges, and the optional breakdown pages through
 stages to keep long missions compact.
+Custom pack stages also page through maneuvers in groups of eight, keeping
+arbitrary imported paths within the available map area without page scrolling.
 
-To add a planet pack, define its bodies, states, directed maneuvers, sources,
-assumptions, and display metadata, then register it in `planetPacks.ts`. Generic
-map layouts cover unfamiliar body names and nested moon systems; optional
-presets can refine presentation. Add data, topology, routing, and layout checks
-for the new pack. See the [data guide](DATA.md) before changing reference figures.
+To try a pack without rebuilding the app, open **Custom planet packs** using the
+puzzle button beside the system selectors and import its JSON.
+The [custom pack guide](CUSTOM_PACKS.md) explains the format and supported
+topology, with a complete synthetic example. Imports are validated before use
+and stored in a versioned browser-local collection. Storage is revalidated on
+load; rejected data or unavailable storage produces a visible message instead
+of preventing the planner from opening. Stored packs are separate from the
+reviewed, bundled registry. Pack selection itself is not saved between visits.
+
+To bundle a reviewed pack, define its bodies, states, directed maneuvers,
+sources, assumptions, and display metadata, then register it in
+`planetPacks.ts`. Generic map layouts cover unfamiliar body names and nested
+moon systems; optional presets can refine presentation. Add data, topology,
+routing, and layout checks for the new pack. See the [data guide](DATA.md) before
+changing reference figures.
 
 ## GitHub Pages
 

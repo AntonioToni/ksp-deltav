@@ -11,6 +11,8 @@ one-way, round-trip, and return-only budgets, and add a reserve for your mission
 
 - **Stock, OPM, and RSS maps** with selectable surface, low-orbit, encounter, and high
   elliptical-orbit states. OPM includes Eeloo under Sarnus and Tal under Wal.
+- **Custom planet packs** imported from JSON, stored in your browser, and usable
+  with the same route planner. Export any pack as a starting point for your own.
 - **One-way, round-trip, and return-only planning** with highlighted routes, editable
   endpoints, swap, and reset.
 - **Ordered multi-stop missions** with up to four intermediate states. Search for
@@ -27,7 +29,8 @@ one-way, round-trip, and return-only budgets, and add a reserve for your mission
 
 ## How to use it
 
-1. Choose **Stock**, **OPM**, or **RSS**.
+1. Choose **Stock**, **OPM**, or **RSS**, or open **Custom planet packs** using the
+   puzzle button beside them to import and select your own pack.
 2. Select an origin, then a destination on the map. Use the Origin and
    Destination controls to edit either endpoint.
 3. Choose a mission mode: **One way** for origin → destination, **Round trip**
@@ -50,12 +53,18 @@ flight or its arrival conditions. The reserve applies once to the full budget.
 states available in the new pack and removes unsupported stops; **Clear** also
 removes all stops.
 
+The **Custom planet packs** manager accepts up to five JSON packs and keeps them
+on this browser; files are not uploaded. Use **Export current pack** to save a copy or
+start editing a new pack. See the [custom pack guide](docs/CUSTOM_PACKS.md) for
+the format and a small working example.
+
 ## About the estimates
 
 These are schematic planning estimates within the supplied maneuver graph,
-rather than simulated trajectories. Interplanetary branches are centered on the
-active pack's homeworld: Kerbin for Stock/OPM or Earth for RSS. Routes between
-other planetary systems include a parking-orbit layover at that homeworld.
+rather than simulated trajectories. The supplied interplanetary branches are
+centered on each built-in pack's homeworld: Kerbin for Stock/OPM or Earth for RSS.
+Routes between other planetary systems in these packs include a parking-orbit
+layover at that homeworld. Custom pack estimates depend on their supplied data.
 Flight dates, plane changes, gravity assists, and vehicle performance are not modeled.
 
 **Aerobraking arrows do not reduce the budget.** Atmospheric savings are not
@@ -96,7 +105,7 @@ the [developer guide](docs/DEVELOPMENT.md).
 - Modern OPM budget calibration.
 - Kcalbeloh configurations alongside Stock or OPM, plus other mod packs.
 - Atmospheric savings and improved landing estimates.
-- User-supplied planet packs and additional direct interplanetary transfers.
+- Additional direct interplanetary transfers in the supplied packs.
 - Longer term: CommNet coverage and relay planning.
 
 Suggestions, bug reports, and contributions are welcome through

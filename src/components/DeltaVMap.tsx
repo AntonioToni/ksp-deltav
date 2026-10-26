@@ -57,7 +57,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   const connections = useMemo(() => {
     const seen = new Set<string>()
     return pack.maneuvers.filter(edge => {
-      const pair = [edge.from, edge.to].sort().join('|')
+      const pair = JSON.stringify([edge.from, edge.to].sort())
       if (seen.has(pair)) return false
       seen.add(pair)
       return true

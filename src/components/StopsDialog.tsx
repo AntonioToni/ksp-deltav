@@ -80,7 +80,7 @@ function StopsContent({ pack, waypointIds, startId, endId, onChange, onSelectOnM
       </Box>
       <Box sx={{ minWidth: 0 }}>
         <Stack direction="row" spacing={.75} sx={{ alignItems: 'center' }}>
-          <Autocomplete<RouteNode> fullWidth size="small" options={pack.nodes} value={selected} onChange={(_, value) => setSelected(value)} getOptionLabel={option => option.label} isOptionEqualToValue={(option, value) => option.id === value.id} disabled={atLimit} renderInput={params => <TextField {...params} label="Choose a stop" />} sx={{ minWidth: 0, '& .MuiInputBase-root': { fontSize: 12 }, '& .MuiInputLabel-root': { fontSize: 12 } }} slotProps={{ listbox: { sx: { fontSize: 12 } } }} />
+          <Autocomplete<RouteNode> fullWidth size="small" options={pack.nodes} value={selected} onChange={(_, value) => setSelected(value)} getOptionLabel={option => option.label} getOptionKey={option => option.id} isOptionEqualToValue={(option, value) => option.id === value.id} disabled={atLimit} renderInput={params => <TextField {...params} label="Choose a stop" />} sx={{ minWidth: 0, '& .MuiInputBase-root': { fontSize: 12 }, '& .MuiInputLabel-root': { fontSize: 12 } }} slotProps={{ listbox: { sx: { fontSize: 12 } } }} />
           <Button size="small" variant="outlined" aria-label="Add stop" disabled={!selected || atLimit} onClick={add} sx={{ minWidth: 36, minHeight: 36, px: .5 }}><AddRounded sx={{ fontSize: 20 }} /></Button>
         </Stack>
         <Button size="small" startIcon={<TouchAppRounded sx={{ fontSize: '17px !important' }} />} disabled={atLimit} onClick={onSelectOnMap} sx={{ fontSize: 12, minHeight: 32, mt: .5, px: .5 }}>Select stop on map</Button>

@@ -123,6 +123,46 @@ it('falls back for an extension of a familiar pack instead of dropping its new s
   expect(layout.nodePositions.size).toBe(extended.nodes.length)
 })
 
+it.each<MapMode>(['wide', 'portrait', 'short'])('keeps a custom selectable star named like a preset body visible in %s mode', mode => {
+  const pack: PlanetPack = {
+    ...stockPack, id: 'custom-star',
+    bodies: [{ id: 'custom:moho', name: 'Custom star', kind: 'star', parentId: null, hasSurface: false, hasAtmosphere: false, color: '#ffffff' }],
+    nodes: [{ id: 'custom:stellar-orbit', bodyId: 'custom:moho', kind: 'orbit', label: 'Stellar orbit' }],
+    maneuvers: [], transferHubBodyId: undefined,
+  }
+  const layout = createMapLayout(pack, mode)
+  expect(layout.presentation).toBe('generated')
+  expect(layout.nodePositions.has('custom:stellar-orbit')).toBe(true)
+  expect(layout.labels.map(label => label.body.id)).toEqual(['custom:moho'])
+})
+
+it.each<MapMode>(['wide', 'portrait', 'short'])('separates familiar body names in different custom namespaces in %s mode', mode => {
+  const original = stockPack.bodies.find(body => body.id === 'stock:moho')!
+  const pack: PlanetPack = {
+    ...stockPack, id: 'custom-names',
+    bodies: [stockPack.bodies[0]!, { ...original, id: 'one:moho' }, { ...original, id: 'two:moho' }],
+    nodes: [
+      { id: 'one:orbit', bodyId: 'one:moho', kind: 'orbit', label: 'One orbit' },
+      { id: 'two:encounter', bodyId: 'two:moho', kind: 'encounter', label: 'Two encounter' },
+    ],
+    maneuvers: [], transferHubBodyId: undefined,
+  }
+  const layout = createMapLayout(pack, mode)
+  expect(layout.presentation).toBe('generated')
+  expect(new Set(layout.labels.map(label => `${label.x},${label.y}`)).size).toBe(2)
+  expect(layout.nodePositions.size).toBe(2)
+})
+
+it.each<MapMode>(['wide', 'portrait', 'short'])('omits labels for custom bodies without routing states in %s mode', mode => {
+  const pack: PlanetPack = {
+    ...stockPack, id: 'custom-unmapped',
+    bodies: [...stockPack.bodies, { ...stockPack.bodies[1]!, id: 'custom:unmapped', name: 'Unmapped body' }],
+  }
+  const layout = createMapLayout(pack, mode)
+  expect(layout.nodePositions.size).toBe(pack.nodes.length)
+  expect(layout.labels.some(label => label.body.id === 'custom:unmapped')).toBe(false)
+})
+
 it('chooses a supported, connected real hub when a future pack has no home-body metadata', () => {
   const pack = { ...futurePack, transferHubBodyId: undefined }
   const layout = createMapLayout(pack)

@@ -12,14 +12,18 @@ import CloseRounded from '@mui/icons-material/CloseRounded'
 import AltRouteRounded from '@mui/icons-material/AltRouteRounded'
 import ChevronLeftRounded from '@mui/icons-material/ChevronLeftRounded'
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
+import ExtensionOutlined from '@mui/icons-material/ExtensionOutlined'
 import { stockPack } from './data/stock'
 import { planetPacks } from './data/planetPacks'
+import type { PlanetPack } from './types/planner'
 import DeltaVMap from './components/DeltaVMap'
 import SpaceBackground from './components/SpaceBackground'
 import StopsDialog from './components/StopsDialog'
+import PlanetPacksDialog from './components/PlanetPacksDialog'
 import { buildGraph } from './utils/buildGraph'
 import { findMissionRoute, type MissionMode } from './utils/mission'
 import { calculateBudget } from './utils/budget'
+import { readCustomPacks, saveCustomPacks, validateCustomPackAddition } from './utils/customPacks'
 
 const format = new Intl.NumberFormat('en-US')
 const compactBreakdown = '@media (max-height: 500px), (max-width: 699px) and (max-height: 650px)'
@@ -35,8 +39,16 @@ const selectorGroupStyles = {
 } as const
 
 export default function App() {
+  const [customPackState, setCustomPackState] = useState(() => {
+    try { return readCustomPacks(window.localStorage) }
+    catch { return { packs: [] as PlanetPack[], warning: 'Browser storage is unavailable. Imported packs will work for this session; export a copy to keep them.' } }
+  })
+  const customPacks = customPackState.packs
+  const availablePacks = useMemo(() => [...planetPacks, ...customPacks], [customPacks])
   const [packId, setPackId] = useState('stock')
-  const pack = planetPacks.find(candidate => candidate.id === packId) ?? stockPack
+  const pack = availablePacks.find(candidate => candidate.id === packId) ?? stockPack
+  const isCustomPack = customPacks.some(candidate => candidate.id === pack.id)
+  const [showPacks, setShowPacks] = useState(false)
   const graph = useMemo(() => buildGraph(pack), [pack])
   const nodesById = useMemo(() => new Map(pack.nodes.map(node => [node.id, node])), [pack])
   const bodiesById = useMemo(() => new Map(pack.bodies.map(body => [body.id, body])), [pack])
@@ -52,6 +64,7 @@ export default function App() {
   const returnOnly = missionMode === 'return-only'
   const [breakdownLeg, setBreakdownLeg] = useState<'outbound' | 'return'>('outbound')
   const [breakdownStage, setBreakdownStage] = useState(0)
+  const [breakdownPage, setBreakdownPage] = useState(0)
   const [showBreakdown, setShowBreakdown] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
   const [breakdownAnchor, setBreakdownAnchor] = useState<HTMLDivElement | null>(null)
@@ -67,11 +80,19 @@ export default function App() {
   const stages = route?.status === 'success' ? showingReturn ? route.returnStages : route.outboundStages : []
   const stageIndex = Math.min(breakdownStage, Math.max(0, stages.length - 1))
   const activeLeg = stages[stageIndex] ?? activeJourney
+  const pageSize = isCustomPack ? 8 : activeLeg?.legs.length || 1
+  const pageCount = Math.ceil((activeLeg?.legs.length ?? 0) / pageSize)
+  const pageIndex = Math.min(breakdownPage, Math.max(0, pageCount - 1))
+  const pageStart = pageIndex * pageSize
+  const visibleManeuvers = activeLeg?.legs.slice(pageStart, pageStart + pageSize) ?? []
   const activeStart = activeLeg?.nodeIds[0]
   const activeEnd = activeLeg?.nodeIds.at(-1)
   const startColor = activeStart === endId ? 'secondary.main' : activeStart === startId ? 'primary.main' : '#92d5c6'
   const endColor = activeEnd === endId ? 'secondary.main' : activeEnd === startId ? 'primary.main' : '#92d5c6'
   const budget = route?.status === 'success' ? calculateBudget(route.totalDeltaV, redundancy) : null
+  const budgetText = budget ? format.format(budget.totalDeltaV) : ''
+  // Reserve enough width for tabular digits, separators, and the smaller unit.
+  const budgetTextWidth = [...budgetText].reduce((width, char) => width + (/\d/.test(char) ? .58 : .3), 1.5)
   const hasAtmosphericLanding = route?.status === 'success' && route.legs.some(({ edge }) =>
     edge.kind === 'descent' && bodiesById.get(nodesById.get(edge.to)?.bodyId ?? '')?.hasAtmosphere,
   )
@@ -79,6 +100,7 @@ export default function App() {
   const hasLayover = route?.status === 'success' && [...route.outboundStages, ...route.returnStages].some(leg => leg.legs.filter(({ edge }) =>
     edge.kind === 'transfer' && nodesById.get(edge.from)?.kind === 'encounter' && nodesById.get(edge.to)?.kind === 'encounter',
   ).length > 1)
+  const layoverNotice = isCustomPack ? 'Includes intermediate parking orbits.' : `Includes a ${hubName} parking-orbit layover.`
 
   useEffect(() => {
     if (!showBreakdown && selection !== 'stop') return
@@ -100,6 +122,7 @@ export default function App() {
   function resetDetails() {
     setBreakdownLeg('outbound')
     setBreakdownStage(0)
+    setBreakdownPage(0)
   }
 
   function changeStops(ids: string[]) {
@@ -130,7 +153,7 @@ export default function App() {
   }
 
   function changePack(id: string) {
-    const nextPack = planetPacks.find(candidate => candidate.id === id)
+    const nextPack = availablePacks.find(candidate => candidate.id === id)
     if (!nextPack || id === packId) return
     const available = new Set(nextPack.nodes.map(node => node.id))
     const nextStart = startId !== null && available.has(startId) ? startId : null
@@ -143,6 +166,25 @@ export default function App() {
     setShowStops(false)
     setShowBreakdown(false)
     resetDetails()
+  }
+
+  function storeCustomPacks(packs: PlanetPack[]) {
+    let warning: string | null
+    try { warning = saveCustomPacks(window.localStorage, packs) }
+    catch { warning = 'Browser storage is unavailable. Imported packs will work for this session; export a copy to keep them.' }
+    setCustomPackState({ packs, warning })
+  }
+
+  function importPack(candidate: PlanetPack): string | null {
+    const error = validateCustomPackAddition(candidate, customPacks)
+    if (error) return error
+    storeCustomPacks([...customPacks, candidate])
+    return null
+  }
+
+  function removePack(id: string) {
+    if (id === pack.id) changePack(stockPack.id)
+    storeCustomPacks(customPacks.filter(candidate => candidate.id !== id))
   }
 
   function reset() {
@@ -159,8 +201,8 @@ export default function App() {
 
   const routeStatus = route?.status === 'invalid' || route?.status === 'unreachable' ? route.message
     : route?.status === 'success' && route.legs.length === 0 ? 'No maneuvers required.'
-      : hasAtmosphericLanding ? `Atmospheric landing uses a planning allowance.${hasLayover ? ` Includes a ${hubName} parking-orbit layover.` : ''}`
-        : hasLayover ? `Includes a ${hubName} parking-orbit layover.`
+      : hasAtmosphericLanding ? `Atmospheric landing uses a planning allowance.${hasLayover ? ` ${layoverNotice}` : ''}`
+        : hasLayover ? layoverNotice
           : route?.status === 'success' ? `${route.legs.length} maneuvers · Select a state to update your ${selection === 'start' ? 'origin' : 'destination'}.`
             : `Select ${selection === 'start' ? 'an origin' : 'a destination'} on the map.`
   const status = selection === 'stop' ? `Select stop ${waypointIds.length + 1} on the map. Escape cancels.`
@@ -173,9 +215,9 @@ export default function App() {
       <Box component="header" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: { xs: 1.25, sm: 2.5 }, borderBottom: '1px solid', borderColor: 'divider', gap: 1, background: 'linear-gradient(100deg, #111d32, #0c1628)', boxShadow: 'inset 0 1px 0 #ffffff04' }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
           <RocketLaunchRounded sx={{ color: 'primary.main', fontSize: 21 }} />
-          <Typography component="h1" sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 }, letterSpacing: '-.015em', whiteSpace: 'nowrap' }}>KSP DeltaV Planner</Typography>
+          <Typography component="h1" sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 }, letterSpacing: '-.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>KSP DeltaV Planner</Typography>
         </Stack>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
           <Tooltip title="Arrows point toward potential aerocapture, aerobraking, or atmospheric landing assistance. Savings are not included in the budget.">
             <Box role="note" aria-label="Aerobraking legend" sx={{ display: 'flex', alignItems: 'center', gap: .75, px: .75, py: .45, border: '1px solid #c6e8d81c', borderRadius: 4, bgcolor: '#1a202c99', color: '#b5c9bf', whiteSpace: 'nowrap' }}>
               <svg width="10" height="10" viewBox="-8 -8 16 16" aria-hidden="true"><path d="M -7 -6 L 7 0 L -7 6 Z" fill="#c6e8d8" /></svg>
@@ -185,7 +227,7 @@ export default function App() {
               </Typography>
             </Box>
           </Tooltip>
-          <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' }, fontSize: 10, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>{pack.shortName ?? pack.name} · KSP 1</Typography>
+          <Typography variant="caption" color="text.secondary" title={pack.name} sx={{ display: { xs: 'none', sm: 'block' }, minWidth: 0, fontSize: 10, letterSpacing: '.1em', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.shortName ?? pack.name} · KSP 1</Typography>
           <Tooltip title="Model assumptions and data sources"><IconButton aria-label="Model assumptions and data sources" size="small" onClick={() => setShowInfo(true)}><InfoOutlined sx={{ fontSize: 19 }} /></IconButton></Tooltip>
         </Stack>
       </Box>
@@ -205,11 +247,17 @@ export default function App() {
           [compactBreakdown]: { pt: .25, pb: .125, rowGap: .5 },
           '@media (max-height: 500px)': { pt: .25, columnGap: 1.5 },
         }}>
-          <Box sx={{ gridArea: 'selectors', display: 'grid', gridTemplateColumns: 'minmax(0, .62fr) minmax(0, 1fr)', gap: { xs: .75, sm: 1.5 }, width: '100%', maxWidth: 520, minWidth: 0 }}>
+          <Box sx={{ gridArea: 'selectors', display: 'grid', gridTemplateColumns: 'minmax(0, .78fr) minmax(0, 1fr)', gap: { xs: .75, sm: 1.5 }, width: '100%', maxWidth: 560, minWidth: 0 }}>
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ mb: .25, fontSize: 10, lineHeight: 1.1, color: 'text.secondary', letterSpacing: '.06em', textTransform: 'uppercase', '@media (max-height: 500px)': { display: 'none' } }}>System</Typography>
-              <ToggleButtonGroup exclusive aria-label="Planet pack" value={pack.id} onChange={(_, value: string | null) => { if (value !== null) changePack(value) }} sx={selectorGroupStyles}>
+              <Typography title={isCustomPack ? pack.name : undefined} sx={{ mb: .25, fontSize: 10, lineHeight: 1.1, color: 'text.secondary', letterSpacing: '.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', '@media (max-height: 500px)': { display: 'none' } }}>{isCustomPack ? `System · ${pack.shortName ?? pack.name}` : 'System'}</Typography>
+              <ToggleButtonGroup exclusive aria-label="Planet pack" value={isCustomPack ? 'custom' : pack.id} onChange={(_, value: string | null) => { if (value !== null && value !== 'custom') changePack(value) }} sx={selectorGroupStyles}>
                 {planetPacks.map(candidate => <ToggleButton key={candidate.id} value={candidate.id} title={candidate.name}>{candidate.shortName ?? candidate.name}</ToggleButton>)}
+                <ToggleButton value="custom" aria-label="Custom planet packs" aria-haspopup="dialog" aria-expanded={showPacks} title="Custom planet packs" onClick={() => {
+                  if (selection === 'stop') setSelection(previousSelection.current)
+                  setShowStops(false)
+                  setShowBreakdown(false)
+                  setShowPacks(true)
+                }} sx={{ flex: '0 0 28px !important' }}><ExtensionOutlined sx={{ fontSize: 17 }} /></ToggleButton>
               </ToggleButtonGroup>
             </Box>
             <Box sx={{ minWidth: 0 }}>
@@ -254,10 +302,10 @@ export default function App() {
 
           <Box sx={{ gridArea: 'budget', minWidth: 0, containerType: 'inline-size' }}>
             <Typography sx={{ fontSize: 10, color: 'text.secondary', letterSpacing: '.1em', textTransform: 'uppercase' }}>{roundTrip ? 'Round-trip budget' : returnOnly ? 'Return-only budget' : 'Delta-V budget'}</Typography>
-            {budget ? <Typography component="output" data-testid="route-total" sx={{ display: 'block', fontSize: { xs: 25, sm: 32 }, lineHeight: 1.1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 700, letterSpacing: '-.025em', '@container (max-width: 170px)': { fontSize: 25 } }}>
-              {format.format(budget.totalDeltaV)} <Box component="span" sx={{ fontSize: '.55em', color: 'text.secondary' }}>m/s</Box>
+            {budget ? <Typography component="output" data-testid="route-total" sx={{ display: 'block', fontSize: { xs: 25, sm: 32 }, lineHeight: 1.1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 700, letterSpacing: '-.025em', '@container (max-width: 170px)': { fontSize: 25 }, ...(isCustomPack ? { fontSize: `min(32px, ${100 / budgetTextWidth}cqi)`, '@container (max-width: 170px)': { fontSize: `min(25px, ${100 / budgetTextWidth}cqi)` } } : {}) }}>
+              {budgetText} <Box component="span" sx={{ fontSize: '.55em', color: 'text.secondary' }}>m/s</Box>
             </Typography> : <Typography sx={{ fontSize: 25, lineHeight: 1.1, color: 'text.secondary' }}>— <Box component="span" sx={{ fontSize: 13 }}>m/s</Box></Typography>}
-            <Typography sx={{ fontSize: 9, color: 'text.secondary', whiteSpace: 'nowrap' }}>
+            <Typography title={budget ? `${format.format(budget.baseDeltaV)} m/s base +${format.format(budget.extraDeltaV)} m/s reserve` : undefined} sx={{ fontSize: 9, color: 'text.secondary', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {budget ? <><Box component="span" data-testid="route-base">{format.format(budget.baseDeltaV)} m/s</Box> base <Box component="span" sx={{ color: 'primary.main' }} data-testid="route-margin">+{format.format(budget.extraDeltaV)} m/s</Box></> : 'Select two states to calculate'}
             </Typography>
           </Box>
@@ -276,7 +324,7 @@ export default function App() {
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, px: { xs: 1.25, sm: 2.5 }, pb: .75, minHeight: 20 }}>
           <Typography role={selection !== 'stop' && (hasAtmosphericLanding || route?.status === 'invalid') ? 'alert' : 'status'} title={status} sx={{ flex: 1, minWidth: 0, fontSize: 10, color: selection === 'stop' ? '#92d5c6' : hasAtmosphericLanding ? 'secondary.main' : 'text.secondary', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{status}</Typography>
-          {pack.dataNotice && <Button size="small" color="secondary" onClick={() => setShowInfo(true)} title={pack.description} sx={{ minHeight: 15, minWidth: 0, flexShrink: 0, p: 0, fontSize: 10, lineHeight: 1.5, whiteSpace: 'nowrap' }}>{pack.dataNotice}</Button>}
+          {pack.dataNotice && <Button size="small" color="secondary" onClick={() => setShowInfo(true)} title={pack.dataNotice} sx={{ minHeight: 15, minWidth: 0, maxWidth: isCustomPack ? '40%' : undefined, flexShrink: 0, p: 0, fontSize: 10, lineHeight: 1.5 }}><Box component="span" sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.dataNotice}</Box></Button>}
           <Typography sx={{ display: { xs: 'none', md: 'block' }, fontSize: 10, color: 'text.secondary', whiteSpace: 'nowrap' }}>Estimates in m/s · {redundancy}% reserve · Schematic, not to scale</Typography>
         </Box>
       </Box>
@@ -287,16 +335,16 @@ export default function App() {
             <Typography sx={{ fontSize: 12, fontWeight: 600 }}>Maneuver breakdown</Typography>
             <Stack direction="row" sx={{ alignItems: 'center', gap: .25 }}>
               {stages.length > 1 && <>
-                <IconButton aria-label="Previous stage" disabled={stageIndex === 0} onClick={() => setBreakdownStage(stageIndex - 1)} size="small" sx={{ p: .25 }}><ChevronLeftRounded sx={{ fontSize: 16 }} /></IconButton>
+                <IconButton aria-label="Previous stage" disabled={stageIndex === 0} onClick={() => { setBreakdownStage(stageIndex - 1); setBreakdownPage(0) }} size="small" sx={{ p: .25 }}><ChevronLeftRounded sx={{ fontSize: 16 }} /></IconButton>
                 <Typography component="output" data-testid="stage-position" aria-label={`Stage ${stageIndex + 1} of ${stages.length}`} sx={{ fontSize: 11, whiteSpace: 'nowrap', color: '#92d5c6', fontVariantNumeric: 'tabular-nums' }}>{stageIndex + 1} / {stages.length}</Typography>
-                <IconButton aria-label="Next stage" disabled={stageIndex === stages.length - 1} onClick={() => setBreakdownStage(stageIndex + 1)} size="small" sx={{ p: .25 }}><ChevronRightRounded sx={{ fontSize: 16 }} /></IconButton>
+                <IconButton aria-label="Next stage" disabled={stageIndex === stages.length - 1} onClick={() => { setBreakdownStage(stageIndex + 1); setBreakdownPage(0) }} size="small" sx={{ p: .25 }}><ChevronRightRounded sx={{ fontSize: 16 }} /></IconButton>
               </>}
               <IconButton aria-label="Close breakdown" size="small" onClick={() => { setShowBreakdown(false); breakdownToggle.current?.focus() }} sx={{ [compactBreakdown]: { p: .25 } }}><CloseRounded sx={{ fontSize: 16 }} /></IconButton>
             </Stack>
           </Box>
           {route?.status === 'success' && activeLeg && budget ? <>
             {roundTrip && <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Tabs aria-label="Trip leg" value={breakdownLeg} onChange={(_, value: 'outbound' | 'return') => { setBreakdownLeg(value); setBreakdownStage(0) }} sx={{ minHeight: 28, flex: 1, '& .MuiTab-root': { minHeight: 28, minWidth: 72, py: .25, px: 1.25, fontSize: 11, textTransform: 'none' } }}>
+              <Tabs aria-label="Trip leg" value={breakdownLeg} onChange={(_, value: 'outbound' | 'return') => { setBreakdownLeg(value); setBreakdownStage(0); setBreakdownPage(0) }} sx={{ minHeight: 28, flex: 1, '& .MuiTab-root': { minHeight: 28, minWidth: 72, py: .25, px: 1.25, fontSize: 11, textTransform: 'none' } }}>
                 <Tab id="outbound-trip-tab" aria-controls="trip-breakdown-panel" value="outbound" label="Outbound" />
                 <Tab id="return-trip-tab" aria-controls="trip-breakdown-panel" value="return" label="Return" />
               </Tabs>
@@ -308,12 +356,17 @@ export default function App() {
               {stages.length > 1 && <Typography component="output" data-testid="stage-total" sx={{ flexShrink: 0, color: 'text.secondary', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>{format.format(activeLeg.totalDeltaV)} m/s</Typography>}
             </Box>
             <Box component="ol" aria-label="Maneuver breakdown" sx={{ listStyle: 'none', m: 0, p: 0, '@media (max-height: 500px)': { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' } }}>
-              {activeLeg.legs.map(({ edge }, index) => <Box component="li" key={`${edge.id}:${index}`} title={edge.label} sx={{ display: 'flex', alignItems: 'center', gap: .75, px: 1.5, py: .45, bgcolor: index % 2 === 0 ? '#ffffff08' : undefined, minWidth: 0, [compactBreakdown]: { py: 0, '& .MuiTypography-root': { fontSize: 10, lineHeight: 1.25 } } }}>
+              {visibleManeuvers.map(({ edge }, index) => <Box component="li" key={`${edge.id}:${pageStart + index}`} title={edge.label} sx={{ display: 'flex', alignItems: 'center', gap: .75, px: 1.5, py: .45, bgcolor: index % 2 === 0 ? '#ffffff08' : undefined, minWidth: 0, [compactBreakdown]: { py: 0, '& .MuiTypography-root': { fontSize: 10, lineHeight: 1.25 } } }}>
                 <Box component="span" sx={{ width: 5, height: 5, flexShrink: 0, borderRadius: '50%', bgcolor: bodiesById.get(nodesById.get(edge.to)?.bodyId ?? '')?.color ?? 'primary.main' }} />
                 <Typography sx={{ flex: 1, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nodesById.get(edge.to)?.label}</Typography>
                 <Typography sx={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{format.format(edge.deltaV)} m/s</Typography>
               </Box>)}
             </Box>
+            {pageCount > 1 && <Stack direction="row" sx={{ px: 1.5, py: .25, gap: .75, alignItems: 'center', justifyContent: 'flex-end', borderTop: '1px solid', borderColor: 'divider' }}>
+              <Typography component="output" data-testid="maneuver-position" aria-live="polite" sx={{ mr: 'auto', fontSize: 10, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>{pageStart + 1}–{pageStart + visibleManeuvers.length} of {activeLeg.legs.length}</Typography>
+              <IconButton aria-label="Previous maneuvers" disabled={pageIndex === 0} onClick={() => setBreakdownPage(pageIndex - 1)} size="small" sx={{ p: .25 }}><ChevronLeftRounded sx={{ fontSize: 16 }} /></IconButton>
+              <IconButton aria-label="Next maneuvers" disabled={pageIndex === pageCount - 1} onClick={() => setBreakdownPage(pageIndex + 1)} size="small" sx={{ p: .25 }}><ChevronRightRounded sx={{ fontSize: 16 }} /></IconButton>
+            </Stack>}
             {activeLeg.legs.length === 0 && <Typography sx={{ px: 1.5, py: 1, fontSize: 12 }}>No maneuvers required.</Typography>}
             <Typography title={nodesById.get(activeEnd ?? '')?.label} sx={{ px: 1.5, py: .5, color: endColor, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', [compactBreakdown]: { py: .125 } }}>End · {nodesById.get(activeEnd ?? '')?.label}</Typography>
             </Box>
@@ -324,13 +377,16 @@ export default function App() {
 
       <StopsDialog open={showStops} pack={pack} waypointIds={waypointIds} startId={startId} endId={endId} onChange={changeStops} onClose={() => setShowStops(false)} onSelectOnMap={selectStopOnMap} />
 
+      <PlanetPacksDialog open={showPacks} currentPack={pack} customPacks={customPacks} storageWarning={customPackState.warning} onImport={importPack} onSelect={id => { changePack(id); setShowPacks(false) }} onRemove={removePack} onClose={() => setShowPacks(false)} />
+
       <Dialog open={showInfo} onClose={() => setShowInfo(false)} maxWidth="sm" fullWidth aria-labelledby="model-info-heading">
         <DialogTitle id="model-info-heading">About these estimates</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 1.5 }}>{pack.description}</Typography>
+          {isCustomPack && <Typography variant="body2" sx={{ mb: 1.5, color: 'secondary.main' }}>Custom pack · These estimates and sources are supplied by the pack author.</Typography>}
           <Typography variant="body2" sx={{ mb: 1.5 }}>Stops are visited in outbound order, and return journeys visit them in reverse. Arrival conditions carry through each stop and the round-trip turnaround. Return only starts independently at the destination. Redundancy applies once to the selected mission budget. Arrows show potential atmospheric braking; no atmospheric savings are included.</Typography>
           <Box component="ul" sx={{ pl: 2.5, '& li': { fontSize: 13, mb: 1 } }}>
-            {pack.assumptions.map(assumption => <li key={assumption}>{assumption}</li>)}
+            {pack.assumptions.map((assumption, index) => <li key={index}>{assumption}</li>)}
           </Box>
           <Stack spacing={.75}>{pack.sources.map(source => <Link key={source.id} href={source.url} target="_blank" rel="noreferrer" variant="body2">{source.title}</Link>)}</Stack>
         </DialogContent>

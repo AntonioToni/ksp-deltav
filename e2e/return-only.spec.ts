@@ -261,9 +261,9 @@ for (const viewport of [
   { width: 844, height: 390 },
   { width: 667, height: 375 },
 ]) {
-  test(`keeps all mission modes usable without scrolling at ${viewport.width}×${viewport.height}`, async ({ page }) => {
-    await page.setViewportSize(viewport)
-    for (const mission of missions) {
+  for (const mission of missions) {
+    test(`keeps all ${mission.pack} mission modes usable without scrolling at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+      await page.setViewportSize(viewport)
       await packButton(page, mission.pack).click()
       await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
       await node(page, mission.home).click()
@@ -289,6 +289,6 @@ for (const viewport of [
       }
       await assertScreenBounds(page)
       await detailsToggle(page).uncheck()
-    }
-  })
+    })
+  }
 }

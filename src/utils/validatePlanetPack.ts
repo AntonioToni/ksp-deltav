@@ -1,5 +1,3 @@
-import type { PlanetPack } from '../types/planner'
-
 const bodyKinds = new Set(['star', 'planet', 'moon'])
 const nodeKinds = new Set(['surface', 'orbit', 'elliptical', 'encounter'])
 const maneuverKinds = new Set(['ascent', 'descent', 'escape', 'capture', 'transfer'])
@@ -13,8 +11,14 @@ function isText(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+// Invalid imported objects may shadow toString; never coerce them for diagnostics.
+function display(value: unknown): string {
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+    ? String(value) : '[invalid]'
+}
+
 /** Validate both imported data shape and the supported maneuver topology. */
-export function validatePlanetPack(pack: PlanetPack): string[] {
+export function validatePlanetPack(pack: unknown): string[] {
   const errors: string[] = []
   const raw: unknown = pack
   if (!isEntry(raw)) return ['Planet pack must be an object.']
@@ -52,6 +56,9 @@ export function validatePlanetPack(pack: PlanetPack): string[] {
   }
 
   for (const field of ['id', 'name', 'version', 'description']) text(raw[field], `Pack ${field}`)
+  for (const field of ['shortName', 'dataNotice', 'transferHubBodyId']) {
+    if (raw[field] !== undefined) text(raw[field], `Pack ${field}`)
+  }
   texts(raw.assumptions, 'Pack assumptions')
   const bodies = entries(raw.bodies, 'Bodies')
   const nodes = entries(raw.nodes, 'Nodes')
@@ -63,9 +70,16 @@ export function validatePlanetPack(pack: PlanetPack): string[] {
   index(maneuvers, 'maneuver')
   if (bodies.length === 0) errors.push('A planet pack must contain at least one body.')
   if (nodes.length === 0) errors.push('A planet pack must contain at least one routing node.')
+  if (isText(raw.transferHubBodyId)) {
+    const hub = bodyById.get(raw.transferHubBodyId)
+    if (!hub || hub.kind !== 'planet') errors.push('Pack transferHubBodyId must reference a planet.')
+    else if (!nodes.some(node => node.bodyId === raw.transferHubBodyId && node.kind === 'orbit')) {
+      errors.push('Pack transfer hub must have a low-orbit routing state.')
+    }
+  }
 
   for (const body of bodies) {
-    const label = `Body ${String(body.id)}`
+    const label = `Body ${display(body.id)}`
     text(body.name, `${label} name`)
     text(body.color, `${label} color`)
     if (typeof body.kind !== 'string' || !bodyKinds.has(body.kind)) errors.push(`${label} has an unsupported kind.`)
@@ -92,30 +106,30 @@ export function validatePlanetPack(pack: PlanetPack): string[] {
   }
 
   for (const source of sources) {
-    text(source.title, `Source ${String(source.id)} title`)
+    text(source.title, `Source ${display(source.id)} title`)
     try {
       if (typeof source.url !== 'string' || new URL(source.url).protocol !== 'https:') throw new Error('Invalid URL')
     } catch {
-      errors.push(`Source ${String(source.id)} must have a valid HTTPS URL.`)
+      errors.push(`Source ${display(source.id)} must have a valid HTTPS URL.`)
     }
   }
 
   for (const node of nodes) {
-    const label = `Node ${String(node.id)}`
+    const label = `Node ${display(node.id)}`
     text(node.label, `${label} label`)
     const body = typeof node.bodyId === 'string' ? bodyById.get(node.bodyId) : undefined
-    if (!body) errors.push(`${label} references unknown body ${String(node.bodyId)}.`)
+    if (!body) errors.push(`${label} references unknown body ${display(node.bodyId)}.`)
     if (typeof node.kind !== 'string' || !nodeKinds.has(node.kind)) errors.push(`${label} has an unsupported kind.`)
-    if (node.kind === 'surface' && body && body.hasSurface !== true) errors.push(`${label}: ${String(body.name)} has no landable surface.`)
+    if (node.kind === 'surface' && body && body.hasSurface !== true) errors.push(`${label}: ${display(body.name)} has no landable surface.`)
     if (node.altitudeKm !== undefined && (typeof node.altitudeKm !== 'number' || !Number.isFinite(node.altitudeKm) || node.altitudeKm < 0)) errors.push(`${label} altitude must be finite and nonnegative.`)
   }
 
   for (const edge of maneuvers) {
-    const label = `Maneuver ${String(edge.id)}`
+    const label = `Maneuver ${display(edge.id)}`
     text(edge.label, `${label} label`)
     texts(edge.assumptions, `${label} assumptions`)
     if (typeof edge.deltaV !== 'number' || !Number.isFinite(edge.deltaV) || edge.deltaV < 0) errors.push(`${label} Delta-V must be finite and nonnegative.`)
-    if (typeof edge.sourceId !== 'string' || !sourceById.has(edge.sourceId)) errors.push(`${label} references unknown source ${String(edge.sourceId)}.`)
+    if (typeof edge.sourceId !== 'string' || !sourceById.has(edge.sourceId)) errors.push(`${label} references unknown source ${display(edge.sourceId)}.`)
     if (typeof edge.kind !== 'string' || !maneuverKinds.has(edge.kind)) errors.push(`${label} has an unsupported kind.`)
     const from = typeof edge.from === 'string' ? nodeById.get(edge.from) : undefined
     const to = typeof edge.to === 'string' ? nodeById.get(edge.to) : undefined
@@ -141,7 +155,7 @@ export function validatePlanetPack(pack: PlanetPack): string[] {
         break
       }
     }
-    if (!allowed) errors.push(`${label} has an unsupported ${String(edge.kind)} transition (${String(edge.from)} → ${String(edge.to)}).`)
+    if (!allowed) errors.push(`${label} has an unsupported ${display(edge.kind)} transition (${display(edge.from)} → ${display(edge.to)}).`)
   }
   return errors
 }

@@ -1,0 +1,70 @@
+{
+  "id": "example-haven",
+  "name": "Haven example system",
+  "shortName": "Haven",
+  "version": "1.0",
+  "description": "A synthetic teaching pack with one planet and one moon. Its costs are invented and must not be used for flight planning.",
+  "dataNotice": "Teaching example",
+  "transferHubBodyId": "example:haven",
+  "sources": [
+    {
+      "id": "example-guide",
+      "title": "Custom pack guide: invented example values",
+      "url": "https://github.com/AntonioToni/ksp-deltav/blob/main/docs/CUSTOM_PACKS.md"
+    }
+  ],
+  "assumptions": [
+    "All costs are invented teaching values, not measured or sourced KSP or mod budgets.",
+    "Directed costs deliberately differ between ascent and descent, and between outbound and return transfers.",
+    "No atmospheric assistance, timing constraints, plane changes, or vehicle performance are modeled."
+  ],
+  "bodies": [
+    {
+      "id": "example:ember",
+      "name": "Ember",
+      "parentId": null,
+      "kind": "star",
+      "hasSurface": false,
+      "hasAtmosphere": false,
+      "color": "#e7bd7b"
+    },
+    {
+      "id": "example:haven",
+      "name": "Haven",
+      "parentId": "example:ember",
+      "kind": "planet",
+      "hasSurface": true,
+      "hasAtmosphere": false,
+      "color": "#73c8fa"
+    },
+    {
+      "id": "example:pebble",
+      "name": "Pebble",
+      "parentId": "example:haven",
+      "kind": "moon",
+      "hasSurface": true,
+      "hasAtmosphere": false,
+      "color": "#92d5c6"
+    }
+  ],
+  "nodes": [
+    { "id": "example:haven:surface", "bodyId": "example:haven", "kind": "surface", "label": "Haven surface" },
+    { "id": "example:haven:orbit", "bodyId": "example:haven", "kind": "orbit", "label": "Haven low orbit" },
+    { "id": "example:haven:encounter", "bodyId": "example:haven", "kind": "encounter", "label": "Haven encounter" },
+    { "id": "example:pebble:surface", "bodyId": "example:pebble", "kind": "surface", "label": "Pebble surface" },
+    { "id": "example:pebble:orbit", "bodyId": "example:pebble", "kind": "orbit", "label": "Pebble low orbit" },
+    { "id": "example:pebble:encounter", "bodyId": "example:pebble", "kind": "encounter", "label": "Pebble encounter" }
+  ],
+  "maneuvers": [
+    { "id": "example:haven-ascent", "from": "example:haven:surface", "to": "example:haven:orbit", "deltaV": 400, "kind": "ascent", "label": "Haven ascent", "sourceId": "example-guide", "assumptions": ["Invented teaching value."] },
+    { "id": "example:haven-descent", "from": "example:haven:orbit", "to": "example:haven:surface", "deltaV": 350, "kind": "descent", "label": "Haven powered landing", "sourceId": "example-guide", "assumptions": ["Invented teaching value."] },
+    { "id": "example:haven-escape", "from": "example:haven:orbit", "to": "example:haven:encounter", "deltaV": 100, "kind": "escape", "label": "Haven escape", "sourceId": "example-guide", "assumptions": ["Invented teaching value."] },
+    { "id": "example:haven-capture", "from": "example:haven:encounter", "to": "example:haven:orbit", "deltaV": 80, "kind": "capture", "label": "Haven capture", "sourceId": "example-guide", "assumptions": ["Invented teaching value."] },
+    { "id": "example:haven-to-pebble", "from": "example:haven:orbit", "to": "example:pebble:encounter", "deltaV": 90, "kind": "transfer", "label": "Haven to Pebble transfer", "sourceId": "example-guide", "assumptions": ["Invented teaching value."] },
+    { "id": "example:pebble-to-haven", "from": "example:pebble:encounter", "to": "example:haven:orbit", "deltaV": 95, "kind": "transfer", "label": "Pebble to Haven transfer", "sourceId": "example-guide", "assumptions": ["Invented teaching value."] },
+    { "id": "example:pebble-escape", "from": "example:pebble:orbit", "to": "example:pebble:encounter", "deltaV": 20, "kind": "escape", "label": "Pebble escape", "sourceId": "example-guide", "assumptions": ["Invented teaching value."] },
+    { "id": "example:pebble-capture", "from": "example:pebble:encounter", "to": "example:pebble:orbit", "deltaV": 20, "kind": "capture", "label": "Pebble capture", "sourceId": "example-guide", "assumptions": ["Invented teaching value."] },
+    { "id": "example:pebble-ascent", "from": "example:pebble:surface", "to": "example:pebble:orbit", "deltaV": 60, "kind": "ascent", "label": "Pebble ascent", "sourceId": "example-guide", "assumptions": ["Invented teaching value."] },
+    { "id": "example:pebble-descent", "from": "example:pebble:orbit", "to": "example:pebble:surface", "deltaV": 60, "kind": "descent", "label": "Pebble powered landing", "sourceId": "example-guide", "assumptions": ["Invented teaching value."] }
+  ]
+}

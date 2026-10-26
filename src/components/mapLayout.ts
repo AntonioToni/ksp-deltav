@@ -168,6 +168,11 @@ const rssLabels: Record<string, Point & { anchor?: BodyLabel['anchor'] }> = {
 }
 
 function canUsePreset(pack: PlanetPack, positions: Record<string, BodyStates>): boolean {
+  const activeBodyIds = new Set(pack.nodes.map(node => node.bodyId))
+  const activeBodies = pack.bodies.filter(body => activeBodyIds.has(body.id))
+  // Presets describe one nonstellar body per short ID. Custom packs may have
+  // selectable stars or reuse a familiar name in another namespace.
+  if (activeBodies.some(body => body.kind === 'star') || new Set(activeBodies.map(body => shortId(body.id))).size !== activeBodies.length) return false
   const used = new Set<string>()
   return pack.nodes.length > 0 && pack.nodes.every(node => {
     const key = `${shortId(node.bodyId)}:${node.kind}`
@@ -263,7 +268,7 @@ function createStockLayout(pack: PlanetPack, mode: MapMode): MapLayout {
   const nodePositions = new Map<string, Point>()
   const labels: BodyLabel[] = []
   const hubId = findHub(pack)
-  for (const [bodyIndex, body] of pack.bodies.filter(body => body.kind !== 'star').entries()) {
+  for (const [bodyIndex, body] of pack.bodies.filter(body => body.kind !== 'star' && pack.nodes.some(node => node.bodyId === body.id)).entries()) {
     const id = shortId(body.id)
     const nodes = pack.nodes.filter(node => node.bodyId === body.id)
     if (mode === 'portrait') {
