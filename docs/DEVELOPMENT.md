@@ -82,6 +82,8 @@ On Linux CI machines that also need browser system dependencies, use
 | Custom pack import, export, and selection | `src/components/PlanetPacksDialog.tsx` |
 | Per-body atmospheric options and landing inputs | `src/components/AtmosphereDialog.tsx` |
 | CommNet presets and body reference constants | `src/data/commnet.ts` |
+| Kcalbeloh relay physics and gravity/SOI derivation | `src/data/kcalbelohPhysics.ts` |
+| Automatic relay altitude within clearance and SOI bounds | `src/utils/relayDefaults.ts` |
 | Validated antenna loadouts and effective power | `src/utils/antennaArray.ts` |
 | Relay geometry, antenna ranges, and resonant deployment | `src/utils/relay.ts` |
 | Relay workspace and constellation diagram | `src/components/RelayPlannerDialog.tsx`, `src/components/RelayDiagram.tsx` |
@@ -248,6 +250,22 @@ parent context. This matters for Eeloo, whose parent and sphere of influence
 change in OPM. The editable Body data tab supports bodies without a recognized
 preset; missing physical inputs do not silently fall back to Kerbin. A missing
 sphere of influence leaves that orbital bound unchecked.
+
+The catalog includes all 25 Kcalbeloh planets/moons in either composition, for
+89 total contextual presets. `kcalbelohPhysics.ts` reuses pinned body facts and
+converts configured `geeASL`, mass, or gravitational parameter into SI gravity.
+Kopernicus uses `g0 = 9.80665` and `G = 6.67408e-11`. Explicit SOI overrides win;
+other Kcalbeloh SOIs use the floored Laplace relation
+`max(a × (mu / muParent)^(2/5), 2R, R + 40000)`. Parent primaries and the binary
+barycenter contribute gravity to this derivation but are not relay targets.
+The effective floors matter for Tot and Enots. Delta-V map coverage does not
+control whether a physical body has a relay preset.
+
+`suggestRelayAltitudeKm` retains the usual preferred altitude when it fits.
+If a known SOI clips the target and a valid clearance interval remains, it
+chooses an interior midpoint. Automatic inputs follow body data, the SOI, and
+the current clearance margin; manually entered altitude remains unchanged.
+Impossible bounds stay visible to validation without weakening the margin.
 
 The diagram displays the same geometry used by the calculations, including the
 chosen effective occlusion radius. Rotation changes the sample surface station's

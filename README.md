@@ -34,7 +34,8 @@ return-only budgets, and add a reserve for your mission.
   powered landing allowances you enter yourself. Routes recalculate before the
   mission reserve is added.
 - **CommNet relay planning** for circular, equally spaced constellations, with
-  equatorial coverage, antenna ranges, and resonant deployment estimates.
+  equatorial coverage, antenna ranges, resonant deployment estimates, and body
+  presets for Stock, OPM, RSS, and Kcalbeloh planets and moons.
 - **Mixed antenna arrays** with separate relay and surface-client loadouts,
   using stock antenna combining rules.
 - **A responsive map** with keyboard and touch selection, a deep-blue starfield,
@@ -91,9 +92,10 @@ draft. Source data and exported JSON keep the original unpriced links.
 Open **Relays** in the header (the satellite icon on phones) to plan a local
 CommNet constellation. Choose a body, orbit altitude, relay count, and antennas,
 then inspect **Network**, **Deployment**, and **Body data**. Closing the tool
-keeps your current Delta-V mission intact. The [relay guide](docs/RELAYS.md)
-explains the calculations and
-editable body inputs.
+keeps your current Delta-V mission intact. Kcalbeloh planets and moons load their
+body data automatically in either combined configuration. Inputs remain editable;
+**Restore preset** returns to the reference values. The [relay guide](docs/RELAYS.md)
+explains the calculations and supported data.
 
 Choose **Antenna array…** under **Relay antenna** or **Surface antenna** to mix
 stock parts and counts, then choose **Apply**. A relay loadout is fitted to each

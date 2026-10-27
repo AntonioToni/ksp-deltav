@@ -12,6 +12,7 @@ import {
 } from '../data/commnet'
 import { calculateAntennaArray, type AntennaArrayEntry, type AntennaArrayRole } from '../utils/antennaArray'
 import { calculateRelayPlan, type RelayNetworkInput } from '../utils/relay'
+import { suggestRelayAltitudeKm } from '../utils/relayDefaults'
 import AntennaArrayDialog from './AntennaArrayDialog'
 import RelayDiagram from './RelayDiagram'
 
@@ -46,11 +47,8 @@ function numeric(text: string): number {
   return text.trim() === '' ? NaN : Number(text)
 }
 
-function defaultAltitude(radiusKm: number, atmosphereKm: number, marginKm = 10): string {
-  if (!Number.isFinite(radiusKm) || radiusKm <= 0) return ''
-  const atmosphere = Number.isFinite(atmosphereKm) ? atmosphereKm : 0
-  const margin = Number.isFinite(marginKm) ? marginKm : 10
-  return String(Math.round(Math.max(radiusKm * 4 / 3, atmosphere + margin + 1) * 1000) / 1000)
+function automaticAltitude(draft: Pick<BodyDraft, 'radius' | 'atmosphere' | 'soi'>, marginKm: number): string {
+  return suggestRelayAltitudeKm(numeric(draft.radius), numeric(draft.atmosphere), marginKm, numeric(draft.soi))
 }
 
 function profile(body: CelestialBody | undefined, marginKm = 10): BodyDraft {
@@ -60,7 +58,8 @@ function profile(body: CelestialBody | undefined, marginKm = 10): BodyDraft {
     mu: preset ? String(preset.gravitationalParameter) : '',
     atmosphere: preset ? String(preset.atmosphereHeightM / 1000) : body?.hasAtmosphere ? '' : '0',
     soi: preset?.sphereOfInfluenceM !== undefined ? String(preset.sphereOfInfluenceM / 1000) : '',
-    altitude: preset ? defaultAltitude(preset.radiusM / 1000, preset.atmosphereHeightM / 1000, marginKm) : '',
+    altitude: preset ? suggestRelayAltitudeKm(preset.radiusM / 1000, preset.atmosphereHeightM / 1000, marginKm,
+      preset.sphereOfInfluenceM === undefined ? undefined : preset.sphereOfInfluenceM / 1000) : '',
     altitudeAutomatic: true,
     edited: false,
   }
@@ -144,14 +143,19 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     setEditingArray(null)
   }
 
-  function changeProfile(changes: Partial<BodyDraft>) {
-    setProfiles(previous => new Map(previous).set(bodyId, { ...current, ...changes }))
+  function changeProfile(changes: Partial<BodyDraft>, marginKm = numeric(safetyMargin)) {
+    const next = { ...current, ...changes }
+    if (next.altitudeAutomatic) next.altitude = automaticAltitude(next, marginKm)
+    setProfiles(previous => new Map(previous).set(bodyId, next))
   }
 
   function changeBody(id: string) {
     const nextBody = bodies.find(candidate => candidate.id === id)
     if (!nextBody) return
-    const next = profiles.get(id) ?? profile(nextBody, numeric(safetyMargin))
+    const cached = profiles.get(id)
+    const next = cached?.altitudeAutomatic
+      ? { ...cached, altitude: automaticAltitude(cached, numeric(safetyMargin)) }
+      : cached ?? profile(nextBody, numeric(safetyMargin))
     setProfiles(previous => new Map(previous).set(id, next))
     setBodyId(id)
     setPhase(0)
@@ -263,7 +267,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               <NumericField label="Orbit altitude" value={current.altitude} unit="km" onChange={value => changeProfile({ altitude: value, altitudeAutomatic: false })} />
               <NumericField label="Clearance margin" value={safetyMargin} unit="km" onChange={value => {
                 setSafetyMargin(value)
-                if (current.altitudeAutomatic) changeProfile({ altitude: defaultAltitude(numeric(current.radius), numeric(current.atmosphere), numeric(value)) })
+                if (current.altitudeAutomatic) changeProfile({}, numeric(value))
               }} />
             </Box>
             {success ? <>
@@ -287,9 +291,9 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               {preset && <Button size="small" onClick={() => setProfiles(previous => new Map(previous).set(bodyId, profile(body, numeric(safetyMargin))))} sx={{ minHeight: 28, fontSize: 10, minWidth: 0, whiteSpace: 'nowrap' }}>Restore preset</Button>}
             </Stack>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
-              <NumericField label="Body radius" value={current.radius} unit="km" min={Number.MIN_VALUE} onChange={value => changeProfile({ radius: value, edited: true, ...(current.altitudeAutomatic ? { altitude: defaultAltitude(numeric(value), numeric(current.atmosphere), numeric(safetyMargin)) } : {}) })} />
+              <NumericField label="Body radius" value={current.radius} unit="km" min={Number.MIN_VALUE} onChange={value => changeProfile({ radius: value, edited: true })} />
               <NumericField label="Gravitational parameter" value={current.mu} unit="m³/s²" min={Number.MIN_VALUE} onChange={value => changeProfile({ mu: value, edited: true })} />
-              <NumericField label="Atmosphere height" value={current.atmosphere} unit="km" onChange={value => changeProfile({ atmosphere: value, edited: true, ...(current.altitudeAutomatic ? { altitude: defaultAltitude(numeric(current.radius), numeric(value), numeric(safetyMargin)) } : {}) })} />
+              <NumericField label="Atmosphere height" value={current.atmosphere} unit="km" onChange={value => changeProfile({ atmosphere: value, edited: true })} />
               <NumericField label="Sphere of influence" value={current.soi} unit="km" optional onChange={value => changeProfile({ soi: value, edited: true })} />
               <TextField select fullWidth size="small" label="Occlusion" value={occlusion} onChange={event => setOcclusion(event.target.value as typeof occlusion)} sx={fieldStyles}>
                 <MenuItem value="full" sx={{ fontSize: 12 }}>Full radius</MenuItem><MenuItem value="normal" sx={{ fontSize: 12 }}>KSP normal</MenuItem>

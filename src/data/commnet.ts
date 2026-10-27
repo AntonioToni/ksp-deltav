@@ -1,5 +1,7 @@
 import type { CelestialBody, DataSource } from '../types/planner'
 import { opmReferences } from './opmReference'
+import { kcalbelohConfigSource } from './kcalbelohReference'
+import { kcalbelohGravitySource, kcalbelohPhysicalReferences, kcalbelohSoiSource } from './kcalbelohPhysics'
 
 export interface RelayBodyPreset {
   bodyId: string
@@ -29,6 +31,9 @@ export const commNetSources: readonly DataSource[] = [
   { id: 'commnet-stock-bodies', title: 'KSP Trajectory Optimization Tool stock body constants · pinned revision', url: 'https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini' },
   { id: 'commnet-opm-bodies', title: 'Official OPM body constants · pinned revision', url: 'https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs' },
   { id: 'commnet-rss-bodies', title: 'Official RSS body constants and equatorial-radius patches · pinned revision', url: 'https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus' },
+  { id: 'commnet-kcalbeloh-bodies', title: 'Official Kcalbeloh 1.1.8 body constants · default 1× configuration', url: kcalbelohConfigSource.url },
+  kcalbelohGravitySource,
+  kcalbelohSoiSource,
   { id: 'commnet-stock-antennas', title: 'Stock CommNet antenna and DSN powers · pinned community catalog', url: 'https://github.com/IgaguriMK/ksp-commnet-calculator-core/blob/2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80/resources/antennas.yaml' },
   { id: 'commnet-normal-settings', title: 'Stock Normal CommNet settings · LunaMultiplayer reference', url: 'https://github.com/LunaMultiplayer/LunaMultiplayer/blob/b3b9efce0cb6d18d5ae3723eb3aeb0b3f90eccbc/Server/Settings/Definition/GameplaySettingsDefinition.cs' },
   { id: 'commnet-antenna-combination', title: 'Stock CommNet antenna combination semantics · Kerbalism adapter', url: 'https://github.com/Kerbalism/Kerbalism4/blob/bc3d7ccbbe5f4b20455b3de7d25b6e9812f8672f/src/Kerbalism/Comms/CommHandlerEditorCommNet.cs' },
@@ -125,6 +130,15 @@ export const relayBodyPresets: readonly RelayBodyPreset[] = [
   ...stockRows.map(row => bodyPreset(row, 'commnet-stock-bodies')),
   ...opmRows.map(row => bodyPreset(row, 'commnet-opm-bodies')),
   ...rssRows.map(row => bodyPreset(row, 'commnet-rss-bodies')),
+  ...kcalbelohPhysicalReferences.map(reference => ({
+    bodyId: reference.bodyId,
+    parentBodyId: reference.parentBodyId,
+    radiusM: reference.radiusM,
+    gravitationalParameter: reference.gravitationalParameter,
+    atmosphereHeightM: reference.atmosphereHeightM,
+    sphereOfInfluenceM: reference.sphereOfInfluenceM,
+    sourceId: 'commnet-kcalbeloh-bodies',
+  })),
 ]
 
 /** Match known state identities and parent context; unknown bodies need manual physics. */

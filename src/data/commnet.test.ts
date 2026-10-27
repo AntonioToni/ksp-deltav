@@ -2,16 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { stockPack } from './stock'
 import { opmPack } from './opm'
 import { rssPack } from './rss'
+import { stockKcalbelohPack, opmKcalbelohPack } from './kcalbeloh'
 import {
   clientAntennas, commNetSources, dsnLevels, findRelayBodyPreset,
   relayAntennas, relayBodyPresets, vesselAntennas,
 } from './commnet'
 
 describe('CommNet reference catalog', () => {
-  it.each([stockPack, opmPack, rssPack])('covers every nonstellar $shortName body in its correct parent context', pack => {
+  it.each([stockPack, opmPack, rssPack, stockKcalbelohPack, opmKcalbelohPack])('covers every physical $shortName body in its correct parent context', pack => {
     for (const body of pack.bodies) {
       const preset = findRelayBodyPreset(body)
-      if (body.kind === 'star') expect(preset).toBeUndefined()
+      if (body.kind !== 'planet' && body.kind !== 'moon') expect(preset).toBeUndefined()
       else {
         expect(preset, body.id).toBeDefined()
         expect(preset?.parentBodyId).toBe(body.parentId)
@@ -20,7 +21,7 @@ describe('CommNet reference catalog', () => {
   })
 
   it('uses finite source-backed SI physics and a distinct body/parent context per row', () => {
-    expect(relayBodyPresets).toHaveLength(64)
+    expect(relayBodyPresets).toHaveLength(89)
     const contexts = relayBodyPresets.map(row => JSON.stringify([row.bodyId, row.parentBodyId]))
     expect(new Set(contexts).size).toBe(contexts.length)
     const sources = new Set(commNetSources.map(source => source.id))
@@ -97,6 +98,23 @@ describe('CommNet reference catalog', () => {
     expect(findRelayBodyPreset({ ...kerbin, id: 'custom:kerbin' })).toBeUndefined()
     expect(findRelayBodyPreset({ ...kerbin, parentId: 'custom:sun' })).toBeUndefined()
     expect(findRelayBodyPreset({ ...kerbin, name: 'Renamed compatible planet' })?.radiusM).toBe(600_000)
+    const noira = stockKcalbelohPack.bodies.find(body => body.id === 'kcalbeloh:noira')!
+    expect(findRelayBodyPreset({ ...noira, parentId: 'kcalbeloh:simetra' })).toBeUndefined()
+    expect(findRelayBodyPreset({ ...noira, id: 'custom:noira' })).toBeUndefined()
+  })
+
+  it('adds Kcalbeloh presets without changing retained base catalog values', () => {
+    const suluco = stockKcalbelohPack.bodies.find(body => body.id === 'kcalbeloh:suluco')!
+    const preset = findRelayBodyPreset(suluco)!
+    expect(preset.sourceId).toBe('commnet-kcalbeloh-bodies')
+    expect(preset).toMatchObject({ radiusM: 520_000, gravitationalParameter: 2_253_960_436_000, atmosphereHeightM: 65_000 })
+    expect(findRelayBodyPreset(opmKcalbelohPack.bodies.find(body => body.id === suluco.id)!)).toBe(preset)
+    for (const pack of [stockPack, opmPack]) {
+      const composed = pack.id === 'stock' ? stockKcalbelohPack : opmKcalbelohPack
+      for (const body of pack.bodies.filter(body => body.kind === 'planet' || body.kind === 'moon')) {
+        expect(findRelayBodyPreset(composed.bodies.find(candidate => candidate.id === body.id)!)).toBe(findRelayBodyPreset(body))
+      }
+    }
   })
 
   it('keeps single relay, client, and DSN antenna roles separate with the pinned powers', () => {

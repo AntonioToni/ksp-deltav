@@ -4,8 +4,8 @@ Open **Relays** in the planner's header (the satellite icon on phones) to design
 a circular, equally spaced relay constellation around a body in the active
 planet pack. The body selector includes physical planets and moons; stellar
 primaries, barycenters, and wormholes are excluded. This workspace is separate
-from the Delta-V route: opening it,
-editing a constellation, or closing it does not change your mission endpoints,
+from the Delta-V route: opening it, editing a constellation, or closing it does
+not change your mission endpoints,
 stops, atmospheric choices, or budget.
 
 Inputs remain available when the workspace is closed and reopened in the same
@@ -32,6 +32,13 @@ the relay inputs.
    inspect its apsides, release interval, circularization burn, and clearance
    checks. **Clearance margin** is an additional user-selected distance above the
    surface or atmosphere.
+
+The automatic starting altitude is the larger of `4R/3` and the atmosphere
+height plus the clearance margin plus 1 km. If that target orbit reaches the
+SOI boundary, the planner uses the midpoint of the remaining valid altitude interval. Changes
+to body data or clearance update an automatic target; entering an altitude
+manually keeps that choice. An impossible interval remains invalid rather than
+reducing your clearance margin.
 
 Only relay-capable stock antennas are offered for the forwarding satellites:
 **HG-5**, **RA-2**, **RA-15**, and **RA-100**. Direct antennas can be used for the
@@ -265,11 +272,18 @@ Known values remain editable; custom bodies without a matching preset require
 their own physical inputs. No radius or gravity is inferred from a maneuver
 budget or silently substituted from Kerbin.
 
-The catalog has **64 contextual presets**: 16 nonstellar Stock bodies, 16 OPM
-rows including Eeloo's changed parent, and 32 nonstellar RSS bodies. Kcalbeloh
-planets and moons currently require their own physical inputs under **Body data**;
-the maneuver map does not supply relay physics automatically. Cataloged Kcalbeloh
-bodies without priced Delta-V states can still be selected here.
+The catalog has **89 contextual presets**: 16 nonstellar Stock bodies, 16 OPM
+rows including Eeloo's changed parent, 32 nonstellar RSS bodies, and all 25
+Kcalbeloh planets and moons. Kcalbeloh presets work in both **Stock + Kcalbeloh**
+and **OPM + Kcalbeloh**. They include Noi and individual Simetra/Simeht body data,
+even though those bodies lack separate priced Delta-V map states. Stars, the
+black hole, the SimeSystem barycenter, and wormholes are not relay targets.
+
+Kcalbeloh inputs come from the pinned default-size **1.1.8** configs, separately
+from the Delta-V map. Radius, gravity, atmosphere, and SOI load automatically;
+all remain editable, and **Restore preset** restores the reference. These values
+cover the standard 1× installation with HomeSwitch and Principia disabled.
+Rescaling, alternate homeworlds, or other physics patches may require edits.
 
 - Stock body constants: [KSPTOT `bodies.ini`](https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini),
   pinned to `9972b57398742263af12374652799db210395499`. The source lists radius
@@ -292,9 +306,24 @@ bodies without priced Delta-V states can still be selected here.
   uses a sphere at that equatorial datum; terrain and oblateness are not
   simulated.
 - Explicit SOI overrides for OPM Hale/Ovok and RSS Phobos/Deimos/Mimas are
-  retained. Other SOIs use the relation above with the same pinned body and
-  parent constants. Optional SigmaBinary and other compatibility patches are
-  not modeled.
+  retained. Other SOIs in those catalogs use the relation above with the same
+  pinned body and parent constants. Optional SigmaBinary and other compatibility
+  patches are not modeled.
+- Kcalbeloh physical constants: [official v1.1.8 configs](https://github.com/jcyuan06/Kcalbeloh-System/tree/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem),
+  pinned to `1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9`. The physical table shares
+  radius, atmosphere height, semi-major axis, and hierarchy facts with the pack;
+  it reads each configured gravity property separately. Stellar and barycenter
+  masses are used only to derive their children's SOIs.
+- Kcalbeloh gravity conversions follow [Kopernicus `PropertiesLoader`](https://github.com/Kopernicus/Kopernicus/blob/c19a16e901ead27ff8f82ae2730a61c22980ed2d/src/Kopernicus/Configuration/PropertiesLoader.cs#L559):
+  `mu = 9.80665 × geeASL × R²`, or `mu = 6.67408e-11 × mass` when mass is supplied.
+  These are the game's conversion constants. Configured gravitational parameters
+  are already in m³/s².
+- Kcalbeloh's explicit SOIs for Onrefni, Rouqea, Iomena, Simetra, and Simeht take
+  priority. Other values follow the normal [Kopernicus SOI calculation](https://github.com/Kopernicus/Kopernicus/blob/c19a16e901ead27ff8f82ae2730a61c22980ed2d/src/Kopernicus/Configuration/OrbitLoader.cs#L392)
+  and [default minimums](https://github.com/Kopernicus/Kopernicus/blob/c19a16e901ead27ff8f82ae2730a61c22980ed2d/src/Kopernicus/Templates.cs#L59):
+  `max(a × (mu_body / mu_parent)^(2/5), 2R, R + 40,000 m)`.
+  This gives **43.25 km** for Tot and **58 km** for Enots, rather than their smaller
+  raw Laplace estimates. SOIs are radii measured from the body center.
 - Antenna powers, relay flags, and DSN levels: [Igaguri's CommNet calculator data](https://github.com/IgaguriMK/ksp-commnet-calculator-core/blob/2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80/resources/antennas.yaml),
   pinned to `2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80`. Its
   [`endpoint.rs`](https://github.com/IgaguriMK/ksp-commnet-calculator-core/blob/2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80/src/endpoint.rs)
@@ -307,6 +336,13 @@ bodies without priced Delta-V states can still be selected here.
   implements the formula independently; it does not simulate Kerbalism's other
   communication systems.
 - Normal game occlusion settings: [LunaMultiplayer gameplay settings](https://github.com/LunaMultiplayer/LunaMultiplayer/blob/b3b9efce0cb6d18d5ae3723eb3aeb0b3f90eccbc/Server/Settings/Definition/GameplaySettingsDefinition.cs#L234).
+
+For example, Suluco's preset is radius **520 km**, `mu = 2.253960436e12 m³/s²`,
+atmosphere height **65 km**, and SOI radius approximately **31,359.322 km**.
+A **700 km** circular orbit has an ideal period of about **5,639.576 s**
+(**1 h 34 min 0 s** when displayed). The model treats binary-system bodies as
+individual spheres; other bodies' occlusion, perturbations, and changing
+interplanetary signal paths are not calculated.
 
 Preset values are reference facts for the pinned versions. Relay coverage and
 deployment calculations remain separate from the OPM analytic maneuver model
