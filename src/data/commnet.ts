@@ -11,11 +11,17 @@ export interface RelayBodyPreset {
   sourceId: string
 }
 
-export interface CommNetAntenna {
+export interface CommNetPowerPreset {
   id: string
   name: string
-  /** Stock CommNet power in meters; these are single-antenna presets. */
+  /** Stock CommNet power in meters. */
   power: number
+}
+
+export interface CommNetAntenna extends CommNetPowerPreset {
+  combinable: boolean
+  combinabilityExponent: number
+  relay: boolean
 }
 
 export const commNetSources: readonly DataSource[] = [
@@ -24,6 +30,7 @@ export const commNetSources: readonly DataSource[] = [
   { id: 'commnet-rss-bodies', title: 'Official RSS body constants and equatorial-radius patches · pinned revision', url: 'https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus' },
   { id: 'commnet-stock-antennas', title: 'Stock CommNet antenna and DSN powers · pinned community catalog', url: 'https://github.com/IgaguriMK/ksp-commnet-calculator-core/blob/2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80/resources/antennas.yaml' },
   { id: 'commnet-normal-settings', title: 'Stock Normal CommNet settings · LunaMultiplayer reference', url: 'https://github.com/LunaMultiplayer/LunaMultiplayer/blob/b3b9efce0cb6d18d5ae3723eb3aeb0b3f90eccbc/Server/Settings/Definition/GameplaySettingsDefinition.cs' },
+  { id: 'commnet-antenna-combination', title: 'Stock CommNet antenna combination semantics · Kerbalism adapter', url: 'https://github.com/Kerbalism/Kerbalism4/blob/bc3d7ccbbe5f4b20455b3de7d25b6e9812f8672f/src/Kerbalism/Comms/CommHandlerEditorCommNet.cs' },
 ]
 
 // Numbers are reorganized reference facts, not copied config code or artwork.
@@ -144,22 +151,25 @@ export function findRelayBodyPreset(body: CelestialBody): RelayBodyPreset | unde
  * Numerical antenna/DSN facts are reorganized here without source implementation.
  */
 export const relayAntennas: readonly CommNetAntenna[] = [
-  { id: 'hg-5', name: 'HG-5', power: 5_000_000 },
-  { id: 'ra-2', name: 'RA-2', power: 2_000_000_000 },
-  { id: 'ra-15', name: 'RA-15', power: 15_000_000_000 },
-  { id: 'ra-100', name: 'RA-100', power: 100_000_000_000 },
+  { id: 'hg-5', name: 'HG-5', power: 5_000_000, combinable: true, combinabilityExponent: .75, relay: true },
+  { id: 'ra-2', name: 'RA-2', power: 2_000_000_000, combinable: true, combinabilityExponent: .75, relay: true },
+  { id: 'ra-15', name: 'RA-15', power: 15_000_000_000, combinable: true, combinabilityExponent: .75, relay: true },
+  { id: 'ra-100', name: 'RA-100', power: 100_000_000_000, combinable: true, combinabilityExponent: .75, relay: true },
 ]
 
 export const clientAntennas: readonly CommNetAntenna[] = [
-  { id: 'internal', name: 'Internal antenna', power: 5_000 },
-  { id: 'communotron-16', name: 'Communotron 16', power: 500_000 },
-  { id: 'communotron-16-s', name: 'Communotron 16-S', power: 500_000 },
-  { id: 'dts-m1', name: 'Communotron DTS-M1', power: 2_000_000_000 },
-  { id: 'hg-55', name: 'Communotron HG-55', power: 15_000_000_000 },
-  { id: 'communotron-88-88', name: 'Communotron 88-88', power: 100_000_000_000 },
+  { id: 'internal', name: 'Internal antenna', power: 5_000, combinable: false, combinabilityExponent: 0, relay: false },
+  { id: 'communotron-16', name: 'Communotron 16', power: 500_000, combinable: true, combinabilityExponent: 1, relay: false },
+  { id: 'communotron-16-s', name: 'Communotron 16-S', power: 500_000, combinable: false, combinabilityExponent: 0, relay: false },
+  { id: 'dts-m1', name: 'Communotron DTS-M1', power: 2_000_000_000, combinable: true, combinabilityExponent: .75, relay: false },
+  { id: 'hg-55', name: 'Communotron HG-55', power: 15_000_000_000, combinable: true, combinabilityExponent: .75, relay: false },
+  { id: 'communotron-88-88', name: 'Communotron 88-88', power: 100_000_000_000, combinable: true, combinabilityExponent: .75, relay: false },
 ]
 
-export const dsnLevels: readonly CommNetAntenna[] = [
+/** A receiving vessel may use either direct or relay-capable antennas. */
+export const vesselAntennas: readonly CommNetAntenna[] = [...clientAntennas, ...relayAntennas]
+
+export const dsnLevels: readonly CommNetPowerPreset[] = [
   { id: 'dsn1', name: 'DSN level 1', power: 2_000_000_000 },
   { id: 'dsn2', name: 'DSN level 2', power: 50_000_000_000 },
   { id: 'dsn3', name: 'DSN level 3', power: 250_000_000_000 },

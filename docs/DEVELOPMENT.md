@@ -78,8 +78,10 @@ On Linux CI machines that also need browser system dependencies, use
 | Custom pack import, export, and selection | `src/components/PlanetPacksDialog.tsx` |
 | Per-body atmospheric options and landing inputs | `src/components/AtmosphereDialog.tsx` |
 | CommNet presets and body reference constants | `src/data/commnet.ts` |
+| Validated antenna loadouts and effective power | `src/utils/antennaArray.ts` |
 | Relay geometry, antenna ranges, and resonant deployment | `src/utils/relay.ts` |
 | Relay workspace and constellation diagram | `src/components/RelayPlannerDialog.tsx`, `src/components/RelayDiagram.tsx` |
+| Staged relay and surface antenna loadout editor | `src/components/AntennaArrayDialog.tsx` |
 | Theme and decorative background | `src/main.tsx`, `src/components/SpaceBackground.tsx` |
 | Browser workflows | `e2e/` |
 
@@ -146,10 +148,27 @@ planet pack resets the workspace. It does not add deployment burns to the route
 graph or persist settings across page reloads.
 
 `calculateRelayPlan` takes explicit SI-unit inputs and returns validated network
-geometry and deployment results. Antenna presets represent one stock CommNet
-antenna per craft. Equatorial visibility, neighboring relay links, and maximum
+geometry and deployment results. Single antenna presets and applied arrays
+supply effective stock CommNet powers for the relay and surface endpoints.
+Equatorial visibility, neighboring relay links, and maximum
 DSN range are separate results. A local constellation is not a complete DSN
 connection.
+
+`calculateAntennaArray` validates the role, selected model IDs, unique rows, and
+integer counts, with at most 100 antennas on one craft. Relay loadouts accept
+only relay-capable models; surface-client loadouts accept direct and relay
+antennas. Only combinable parts contribute to the power-weighted combination;
+the result is compared with the strongest single part. Metadata records the
+Communotron 16 exponent of 1.0, the usual 0.75 exponent, and noncombinable
+internal/16-S antennas. DSN powers remain station presets, and a custom power
+input is an already-aggregated endpoint power.
+
+The array dialog stages edits. Apply stores the selected array and enters array
+mode; Cancel or Escape keeps the previous selection and live calculation.
+Preset/custom-power selection leaves array mode. Applied loadouts remain in the
+relay workspace session and are reset with a pack change or page reload.
+Their effective powers feed the existing relay geometry calculation, so changes
+in antenna power cannot alter physical orbit limits or deployment burns.
 
 Body presets are separate from maneuver budgets and are matched by body ID and
 parent context. This matters for Eeloo, whose parent and sphere of influence

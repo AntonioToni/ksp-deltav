@@ -30,6 +30,8 @@ one-way, round-trip, and return-only budgets, and add a reserve for your mission
   mission reserve is added.
 - **CommNet relay planning** for circular, equally spaced constellations, with
   equatorial coverage, antenna ranges, and resonant deployment estimates.
+- **Mixed antenna arrays** with separate relay and surface-client loadouts,
+  using stock antenna combining rules.
 - **A responsive map** with keyboard and touch selection, a deep-blue starfield,
   and no page or map scrolling.
 
@@ -70,11 +72,15 @@ start editing a new pack. See the [custom pack guide](docs/CUSTOM_PACKS.md) for
 the format and a small working example.
 
 Open **Relays** in the header (the satellite icon on phones) to plan a local
-CommNet constellation. Choose a
-body, orbit altitude, relay count, and antennas, then inspect **Network**,
-**Deployment**, and **Body data**. Closing the tool keeps your current Delta-V
-mission intact. The [relay guide](docs/RELAYS.md) explains the calculations and
+CommNet constellation. Choose a body, orbit altitude, relay count, and antennas,
+then inspect **Network**, **Deployment**, and **Body data**. Closing the tool
+keeps your current Delta-V mission intact. The [relay guide](docs/RELAYS.md)
+explains the calculations and
 editable body inputs.
+
+Choose **Antenna array…** under **Relay antenna** or **Surface antenna** to mix
+stock parts and counts, then choose **Apply**. A relay loadout is fitted to each
+satellite separately; antennas on different satellites do not combine.
 
 ## About the estimates
 
@@ -135,8 +141,9 @@ the [developer guide](docs/DEVELOPMENT.md).
 - Kcalbeloh configurations alongside Stock or OPM, plus other mod packs.
 - Atmospheric entry feasibility and vehicle-specific landing estimates.
 - Additional direct interplanetary transfers in the supplied packs.
-- Advanced relay planning: inclined constellations, multiple antennas, and
-  complete DSN paths.
+- Interplanetary signal planning: antenna pairs, changing planet-to-planet
+  distances, best/worst-case signal strength, and occlusion checks.
+- Advanced relay planning: inclined constellations and complete DSN paths.
 
 Suggestions, bug reports, and contributions are welcome through
 [GitHub issues](https://github.com/AntonioToni/ksp-deltav/issues) and pull requests.

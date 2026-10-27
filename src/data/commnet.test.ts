@@ -4,7 +4,7 @@ import { opmPack } from './opm'
 import { rssPack } from './rss'
 import {
   clientAntennas, commNetSources, dsnLevels, findRelayBodyPreset,
-  relayAntennas, relayBodyPresets,
+  relayAntennas, relayBodyPresets, vesselAntennas,
 } from './commnet'
 
 describe('CommNet reference catalog', () => {
@@ -112,5 +112,20 @@ describe('CommNet reference catalog', () => {
     ])
     expect(Math.sqrt(relayAntennas[0]!.power * clientAntennas[1]!.power)).toBeCloseTo(1_581_138.83008419, 6)
     expect(Math.sqrt(relayAntennas[0]!.power * dsnLevels[0]!.power)).toBe(100_000_000)
+  })
+
+  it('keeps stock combinability exceptions and relay capabilities explicit', () => {
+    expect(new Set(vesselAntennas.map(antenna => antenna.id)).size).toBe(10)
+    expect(vesselAntennas).toEqual([...clientAntennas, ...relayAntennas])
+    expect(vesselAntennas.filter(antenna => !antenna.combinable).map(antenna => antenna.id))
+      .toEqual(['internal', 'communotron-16-s'])
+    expect(vesselAntennas.find(antenna => antenna.id === 'communotron-16')?.combinabilityExponent).toBe(1)
+    for (const antenna of vesselAntennas) {
+      expect(antenna.relay).toBe(relayAntennas.some(relay => relay.id === antenna.id))
+      if (antenna.combinable && antenna.id !== 'communotron-16') expect(antenna.combinabilityExponent).toBe(.75)
+      if (!antenna.combinable) expect(antenna.combinabilityExponent).toBe(0)
+    }
+    expect(dsnLevels.every(station => !vesselAntennas.some(antenna => antenna.id === station.id))).toBe(true)
+    expect(commNetSources.some(source => source.id === 'commnet-antenna-combination')).toBe(true)
   })
 })

@@ -8,8 +8,11 @@ import CloseRounded from '@mui/icons-material/CloseRounded'
 import type { CelestialBody, PlanetPack } from '../types/planner'
 import {
   clientAntennas, commNetSources, dsnLevels, findRelayBodyPreset, relayAntennas,
+  vesselAntennas,
 } from '../data/commnet'
+import { calculateAntennaArray, type AntennaArrayEntry, type AntennaArrayRole } from '../utils/antennaArray'
 import { calculateRelayPlan, type RelayNetworkInput } from '../utils/relay'
+import AntennaArrayDialog from './AntennaArrayDialog'
 import RelayDiagram from './RelayDiagram'
 
 interface RelayPlannerDialogProps {
@@ -110,11 +113,36 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const [relayCustomPower, setRelayCustomPower] = useState('')
   const [clientCustomPower, setClientCustomPower] = useState('')
   const [dsnCustomPower, setDsnCustomPower] = useState('')
+  const [relayArray, setRelayArray] = useState<AntennaArrayEntry[] | null>(null)
+  const [clientArray, setClientArray] = useState<AntennaArrayEntry[] | null>(null)
+  const [editingArray, setEditingArray] = useState<{ role: AntennaArrayRole; entries: AntennaArrayEntry[] } | null>(null)
   const [occlusion, setOcclusion] = useState<'full' | 'normal'>('full')
   const [rangeMultiplier, setRangeMultiplier] = useState('1')
   const [safetyMargin, setSafetyMargin] = useState('10')
   const [deploymentMode, setDeploymentMode] = useState<'lower' | 'higher'>('lower')
   const [phase, setPhase] = useState(0)
+  const relayArrayResult = relayArray ? calculateAntennaArray(relayArray, 'relay') : null
+  const clientArrayResult = clientArray ? calculateAntennaArray(clientArray, 'client') : null
+
+  function openArray(role: AntennaArrayRole) {
+    const saved = role === 'relay' ? relayArray : clientArray
+    const selectedId = role === 'relay' ? relayId : clientId
+    const options = role === 'relay' ? relayAntennas : vesselAntennas
+    const antenna = options.find(option => option.id === selectedId)
+      ?? options.find(option => option.id === (role === 'relay' ? 'hg-5' : 'communotron-16')) ?? options[0]!
+    setEditingArray({ role, entries: saved ?? [{ antennaId: antenna.id, count: 1 }] })
+  }
+
+  function applyArray(entries: AntennaArrayEntry[]) {
+    if (editingArray?.role === 'relay') {
+      setRelayArray(entries)
+      setRelayId('array')
+    } else if (editingArray?.role === 'client') {
+      setClientArray(entries)
+      setClientId('array')
+    }
+    setEditingArray(null)
+  }
 
   function changeProfile(changes: Partial<BodyDraft>) {
     setProfiles(previous => new Map(previous).set(bodyId, { ...current, ...changes }))
@@ -140,8 +168,10 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     hasSurface: body?.hasSurface ?? false,
     satelliteCount,
     altitudeM: numeric(current.altitude) * 1000,
-    relayPower: relayId === 'custom' ? numeric(relayCustomPower) : relayAntennas.find(antenna => antenna.id === relayId)?.power ?? NaN,
-    clientPower: clientId === 'custom' ? numeric(clientCustomPower) : clientAntennas.find(antenna => antenna.id === clientId)?.power ?? NaN,
+    relayPower: relayId === 'array' ? relayArrayResult?.status === 'success' ? relayArrayResult.effectivePower : NaN
+      : relayId === 'custom' ? numeric(relayCustomPower) : relayAntennas.find(antenna => antenna.id === relayId)?.power ?? NaN,
+    clientPower: clientId === 'array' ? clientArrayResult?.status === 'success' ? clientArrayResult.effectivePower : NaN
+      : clientId === 'custom' ? numeric(clientCustomPower) : clientAntennas.find(antenna => antenna.id === clientId)?.power ?? NaN,
     dsnPower: dsnId === 'custom' ? numeric(dsnCustomPower) : dsnLevels.find(level => level.id === dsnId)?.power ?? NaN,
     rangeMultiplier: numeric(rangeMultiplier),
     occlusionFactor: occlusion === 'full' ? 1 : numeric(current.atmosphere) > 0 ? .75 : .9,
@@ -156,11 +186,17 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const statusColor = success?.ringLinkStatus === 'available' ? '#92d5c6' : success?.ringLinkStatus === 'marginal' ? 'secondary.main' : '#ee987d'
   const coverage = success?.equatorialCoverageFraction === null ? 'No surface' : success ? `${number.format(success.equatorialCoverageFraction! < 1 ? Math.min(99.9, success.equatorialCoverageFraction! * 100) : 100)}%` : '—'
 
-  function antennaField(label: string, value: string, setValue: (value: string) => void, options: readonly { id: string; name: string; power: number }[]) {
-    const selectedName = value === 'custom' ? 'Custom power' : options.find(option => option.id === value)?.name ?? ''
-    const compactName = selectedName.replace(/^Communotron\s*/i, '').replace(/^DSN level\s*/i, 'Level ').replace('Custom power', 'Custom')
-    return <TextField select fullWidth size="small" label={label} value={value} onChange={event => setValue(event.target.value)} slotProps={{ select: { renderValue: () => <Box component="span" title={selectedName}>{compactName}</Box> } }} sx={fieldStyles}>
+  function antennaField(label: string, value: string, setValue: (value: string) => void, options: readonly { id: string; name: string; power: number }[], role?: AntennaArrayRole) {
+    const array = role === 'relay' ? relayArray : clientArray
+    const arrayResult = role === 'relay' ? relayArrayResult : clientArrayResult
+    const summary = array?.map(entry => `${entry.count} × ${vesselAntennas.find(antenna => antenna.id === entry.antennaId)?.name ?? entry.antennaId}`).join(', ')
+    const selectedName = value === 'array' ? `${summary} · Effective power ${range(arrayResult?.status === 'success' ? arrayResult.effectivePower : 0)}`
+      : value === 'custom' ? 'Custom power' : options.find(option => option.id === value)?.name ?? ''
+    const compactName = value === 'array' ? `Array (${arrayResult?.status === 'success' ? arrayResult.totalCount : '—'})`
+      : selectedName.replace(/^Communotron\s*/i, '').replace(/^DSN level\s*/i, 'Level ').replace('Custom power', 'Custom')
+    return <TextField select fullWidth size="small" label={label} value={value} onChange={event => { if (event.target.value !== 'array') setValue(event.target.value) }} slotProps={{ select: { renderValue: () => <Box component="span" title={selectedName}>{compactName}</Box> } }} sx={fieldStyles}>
       {options.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 12 }}>{option.name}</MenuItem>)}
+      {role && <MenuItem value="array" onClick={() => openArray(role)} sx={{ fontSize: 12 }}>Antenna array…</MenuItem>}
       <MenuItem value="custom" sx={{ fontSize: 12 }}>Custom power</MenuItem>
     </TextField>
   }
@@ -198,8 +234,8 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               </TextField>
             </Box>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: .5 }}>
-              {antennaField('Relay antenna', relayId, setRelayId, relayAntennas)}
-              {antennaField('Surface antenna', clientId, setClientId, clientAntennas)}
+              {antennaField('Relay antenna', relayId, setRelayId, relayAntennas, 'relay')}
+              {antennaField('Surface antenna', clientId, setClientId, clientAntennas, 'client')}
               {antennaField('DSN level', dsnId, setDsnId, dsnLevels)}
             </Box>
             {(relayId === 'custom' || clientId === 'custom' || dsnId === 'custom') && <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: .75 }}>
@@ -216,7 +252,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
                 <Metric label="Maximum DSN range" value={range(success.dsnRangeM)} testId="relay-dsn-range" />
               </Box>
             </> : <Alert severity="info" sx={{ py: .25, fontSize: 11, '& .MuiAlert-message': { minWidth: 0 } }}>{result.status === 'invalid' ? result.errors[0] : 'Enter the body and orbit data to calculate a network.'}</Alert>}
-            <Typography sx={{ fontSize: 10, lineHeight: 1.35, color: 'text.secondary' }}>Equatorial coverage only · DSN range is not a home link.</Typography>
+            <Typography sx={{ fontSize: 10, lineHeight: 1.35, color: 'text.secondary' }}>Same loadout on each relay · Equatorial coverage only · DSN range is not a home link.</Typography>
           </Stack>}
 
           {tab === 'deployment' && <Stack spacing={1}>
@@ -261,7 +297,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               <NumericField label="Range multiplier" value={rangeMultiplier} min={Number.MIN_VALUE} onChange={setRangeMultiplier} />
             </Box>
             <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Occlusion uses {occlusion === 'full' ? 'the full body radius' : `${numeric(current.atmosphere) > 0 ? '0.75' : '0.90'} × the body radius (KSP normal)`}. Ground receivers remain at the physical radius. A missing SOI leaves the orbit limit unchecked.</Typography>
-            <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Body data is editable for your installation. The radio model stays stock CommNet; RealAntennas, RemoteTech, antenna stacking, terrain, and perturbations are not modeled.</Typography>
+            <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Body data is editable for your installation. The radio model stays stock CommNet; RealAntennas, RemoteTech, terrain, and perturbations are not modeled.</Typography>
             {source && <Link href={source.url} target="_blank" rel="noreferrer" sx={{ fontSize: 11 }}>{source.title}</Link>}
           </Stack>}
         </Box>
@@ -278,6 +314,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
       <Link href="https://github.com/AntonioToni/ksp-deltav/blob/main/docs/RELAYS.md" target="_blank" rel="noreferrer" sx={{ fontSize: 11 }}>Relay guide</Link>
       <Button size="small" variant="contained" onClick={onClose} sx={{ minHeight: 34, px: 2, fontSize: 12 }}>Close</Button>
     </DialogActions>
+    {editingArray && <AntennaArrayDialog open role={editingArray.role} entries={editingArray.entries} onApply={applyArray} onClose={() => setEditingArray(null)} />}
   </>
 }
 

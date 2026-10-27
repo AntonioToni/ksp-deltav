@@ -1,10 +1,10 @@
 # CommNet relay planning
 
 Open **Relays** in the planner's header (the satellite icon on phones) to design
-a circular, equally spaced
-relay constellation around a body in the active planet pack. This workspace is
-separate from the Delta-V route: opening it, editing a constellation, or closing
-it does not change your mission endpoints, stops, atmospheric choices, or budget.
+a circular, equally spaced relay constellation around a body in the active
+planet pack. This workspace is separate from the Delta-V route: opening it,
+editing a constellation, or closing it does not change your mission endpoints,
+stops, atmospheric choices, or budget.
 
 Inputs remain available when the workspace is closed and reopened in the same
 session. Changing planet packs resets the workspace; reloading the page resets
@@ -17,8 +17,8 @@ the relay inputs.
    body, enter its radius, gravitational parameter, and atmosphere height before
    planning an orbit. Supply its sphere of influence when known.
 2. Under **Network**, choose the **Orbit altitude** above the body's physical
-   radius and a **Relay count** from 2 to 12. Choose one relay antenna per
-   satellite, a surface-client antenna, and a DSN level.
+   radius and a **Relay count** from 2 to 12. Choose a relay antenna or array,
+   a surface-client antenna or array, and a DSN level.
 3. Inspect the equatorial coverage, neighboring links, orbital period, and maximum
    DSN range. **Rotate relays** changes the constellation's phase so you can
    inspect the sample surface station's links.
@@ -33,12 +33,69 @@ the relay inputs.
 
 Only relay-capable stock antennas are offered for the forwarding satellites:
 **HG-5**, **RA-2**, **RA-15**, and **RA-100**. Direct antennas can be used for the
-surface client. There is one antenna per craft in this model; mixed antennas and
-antenna combinability are not calculated.
+surface client. Its array editor also accepts relay-capable antennas, which can
+serve as ordinary receiving endpoints.
 
 Each antenna or DSN list also offers **Custom power**. Enter the single
-endpoint's CommNet power in meters, not watts. This uses the same stock range
-formula with your value; it does not switch to a different radio model.
+endpoint's **effective** CommNet power in meters, not watts. For a craft with
+multiple antennas, this value is already the combined craft power; the planner
+does not apply another count or assume a combinability exponent for custom
+parts. This uses the same stock range formula with your value; it does not
+switch to a different radio model.
+
+## Antenna arrays
+
+Choose **Antenna array…** in the **Relay antenna** or **Surface antenna** list to
+open the matching array editor. Add stock antenna models, set their counts, and
+inspect the effective power before choosing **Apply**. **Cancel** or Escape
+discards the draft. Reopen the same array option to edit it, or choose a single
+antenna preset or **Custom power** to use that mode instead.
+
+An array contains **1–100 antennas per craft**, with one count per selected
+model. Relay arrays can use the four relay-capable models; surface-client arrays
+can mix all ten stock vessel models. The same relay loadout is fitted to **each
+satellite** in the ring. Antennas on separate satellites never combine. The DSN
+remains a single station power, with no array count.
+
+Applied arrays remain in the relay workspace during the same session, including
+when the tool is closed and reopened. Changing planet packs or reloading the
+page resets the workspace. The resulting powers recalculate neighbor and
+surface ranges, coverage, and maximum DSN range. Orbital geometry and deployment
+burn estimates still depend on the orbit and physical body inputs.
+
+Only antennas marked **combinable** contribute to the combined group. If each
+selected model has power `Pi`, count `ni`, and combinability exponent `ei`, use:
+
+```text
+sumCombining = sum(ni × Pi) over combinable models
+weightedExponent = sum(ni × Pi × ei) / sumCombining
+combinedPower = strongestCombinable ×
+                (sumCombining / strongestCombinable)^weightedExponent
+effectivePower = max(strongestSingleAntenna, combinedPower)
+```
+
+`strongestCombinable` is the largest individual power rating among combinable
+parts. If there are no combinable antennas, `combinedPower` is zero. The strongest
+single antenna is considered across all selected models, including antennas
+that do not combine. Noncombinable antennas do not enter either weighted sum.
+
+**Communotron 16** has exponent **1.0**, so identical copies add linearly. Other
+stock combinable models use **0.75**. The **internal antenna** and
+**Communotron 16-S** do not combine: extra copies do not increase their power.
+
+For example, four HG-5 antennas on **each relay**, with one Communotron 16 on
+the surface client, give these estimates at range multiplier 1:
+
+| Result | Estimate |
+| --- | ---: |
+| Effective power of each relay array | 14.142136 Mm |
+| Identical relay-array neighbor range | 14.142136 Mm |
+| Relay array ↔ single Communotron 16 range | 2.659148 Mm |
+| Relay array ↔ DSN level 3 range | 1.880302 Gm |
+
+Four Communotron 16 antennas instead have effective power **2 Mm**, while four
+Communotron 16-S antennas remain at **0.5 Mm**. These are stock CommNet power
+ratings and derived ranges, not signal-strength percentages.
 
 ## What the results mean
 
@@ -53,7 +110,7 @@ distance equal to the maximum antenna range is marginal, not a robust working
 link. Two opposite relays cannot see each other through the body, regardless of
 how high their circular orbit is.
 
-**DSN range** is the maximum distance allowed by the selected relay antenna and
+**DSN range** is the maximum distance allowed by the selected relay loadout and
 DSN power. It does not check where the homeworld is, other bodies or the Sun
 blocking the path, or whether any relay currently has a usable DSN connection.
 A working local ring and a visible surface receiver do not by themselves
@@ -83,11 +140,13 @@ limb clearance    = r cos(pi / N) - q
 orbital period    = 2pi sqrt(r³ / mu)
 ```
 
-For two antennas with powers `P1` and `P2`, the range model is:
+For two endpoints with effective powers `P1` and `P2`, the range model is:
 
 ```text
 maximum range = sqrt(P1 P2) × range multiplier
 ```
+
+The workspace's range multiplier scales the calculated distances directly.
 
 The receiver stays on the physical radius `R`, even when the effective occluder
 is smaller. Its line-of-sight half-angle is therefore:
@@ -232,7 +291,14 @@ rows including Eeloo's changed parent, and 32 nonstellar RSS bodies.
 - Antenna powers, relay flags, and DSN levels: [Igaguri's CommNet calculator data](https://github.com/IgaguriMK/ksp-commnet-calculator-core/blob/2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80/resources/antennas.yaml),
   pinned to `2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80`. Its
   [`endpoint.rs`](https://github.com/IgaguriMK/ksp-commnet-calculator-core/blob/2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80/src/endpoint.rs)
-  corroborates the single-antenna range formula.
+  corroborates the endpoint range formula. The antenna metadata supplies the
+  combinability flags and Communotron 16 exponent exception.
+- Antenna combination semantics: [Kerbalism's stock CommNet adapter](https://github.com/Kerbalism/Kerbalism4/blob/bc3d7ccbbe5f4b20455b3de7d25b6e9812f8672f/src/Kerbalism/Comms/CommHandlerEditorCommNet.cs),
+  pinned to `bc3d7ccbbe5f4b20455b3de7d25b6e9812f8672f`. This corroborates
+  combining only eligible antennas with a power-weighted exponent, then
+  comparing the result with the strongest standalone antenna. The planner
+  implements the formula independently; it does not simulate Kerbalism's other
+  communication systems.
 - Normal game occlusion settings: [LunaMultiplayer gameplay settings](https://github.com/LunaMultiplayer/LunaMultiplayer/blob/b3b9efce0cb6d18d5ae3723eb3aeb0b3f90eccbc/Server/Settings/Definition/GameplaySettingsDefinition.cs#L234).
 
 Preset values are reference facts for the pinned versions. They do not calibrate
