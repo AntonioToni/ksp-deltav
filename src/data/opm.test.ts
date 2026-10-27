@@ -5,6 +5,7 @@ import { validatePlanetPack } from '../utils/validatePlanetPack'
 import { opmPack } from './opm'
 import { planetPacks } from './planetPacks'
 import { stockPack } from './stock'
+import { opmCentralMu, opmHomeReference, opmReferences } from './opmReference'
 
 describe('the reviewed OPM planning pack', () => {
   it('registers packs by metadata without changing shared stock IDs', () => {
@@ -61,23 +62,23 @@ describe('the reviewed OPM planning pack', () => {
   })
 
   it.each([
-    ['opm:sarnus:orbit', 8980],
-    ['opm:hale:surface', 10010],
-    ['opm:ovok:surface', 10100],
-    ['stock:eeloo:surface', 11130],
-    ['opm:slate:surface', 13480],
-    ['opm:tekto:surface', 13470],
-    ['opm:urlum:orbit', 8380],
-    ['opm:polta:surface', 10080],
-    ['opm:priax:surface', 9720],
-    ['opm:wal:surface', 11290],
-    ['opm:tal:surface', 10720],
-    ['opm:neidon:orbit', 8430],
-    ['opm:thatmo:surface', 10760],
-    ['opm:nissee:surface', 10640],
-    ['opm:plock:surface', 8640],
-    ['opm:karen:surface', 8697],
-  ])('sums audited source and declared derived segments to %s as %i m/s', (destination, expected) => {
+    ['opm:sarnus:orbit', 7470],
+    ['opm:hale:surface', 8395],
+    ['opm:ovok:surface', 8580],
+    ['stock:eeloo:surface', 9429],
+    ['opm:slate:surface', 11510],
+    ['opm:tekto:surface', 11927],
+    ['opm:urlum:orbit', 7117],
+    ['opm:polta:surface', 8742],
+    ['opm:priax:surface', 8297],
+    ['opm:wal:surface', 9661],
+    ['opm:tal:surface', 9103],
+    ['opm:neidon:orbit', 7206],
+    ['opm:thatmo:surface', 9677],
+    ['opm:nissee:surface', 8441],
+    ['opm:plock:surface', 7404],
+    ['opm:karen:surface', 7403],
+  ])('sums audited nominal orbital and declared atmospheric segments to %s as %i m/s', (destination, expected) => {
     const route = findLowestCostPath(buildGraph(opmPack), 'stock:kerbin:surface', destination)
     expect(route.status).toBe('success')
     if (route.status !== 'success') throw new Error(route.message)
@@ -87,25 +88,105 @@ describe('the reviewed OPM planning pack', () => {
 
   it('keeps OPM moon transfers attached to their low-orbit parent references', () => {
     expect(opmPack.maneuvers.find(edge => edge.to === 'stock:eeloo:encounter' && edge.kind === 'transfer'))
-      .toMatchObject({ from: 'opm:sarnus:orbit', deltaV: 1120, sourceId: 'kowgan-opm-1.8.1' })
+      .toMatchObject({ from: 'opm:sarnus:orbit', deltaV: 881, sourceId: 'opm-analytic-2.2.12' })
     expect(opmPack.maneuvers.find(edge => edge.to === 'opm:tal:encounter' && edge.kind === 'transfer'))
-      .toMatchObject({ from: 'opm:wal:orbit', deltaV: 380 })
-    expect(opmPack.maneuvers.find(edge => edge.from === 'stock:eeloo:orbit' && edge.to === 'stock:eeloo:surface')?.deltaV).toBe(540)
+      .toMatchObject({ from: 'opm:wal:orbit', deltaV: 366 })
+    expect(opmPack.maneuvers.find(edge => edge.from === 'stock:eeloo:orbit' && edge.to === 'stock:eeloo:surface')?.deltaV).toBe(609)
   })
 
-  it('labels historical and analytic limitations and avoids invalid modern parking-altitude claims', () => {
-    for (const body of ['sarnus', 'urlum', 'neidon', 'thatmo']) {
-      expect(opmPack.nodes.find(node => node.id === `opm:${body}:orbit`)?.altitudeKm).toBeUndefined()
+  it('sources all recalculated OPM maneuvers while retaining only the declared atmospheric allowances', () => {
+    const analytic = opmPack.maneuvers.filter(edge => edge.sourceId === 'opm-analytic-2.2.12')
+    expect(analytic).toHaveLength(94)
+    expect(analytic.every(edge => edge.assumptions.join(' ').includes('Analytic OPM 2.2.12'))).toBe(true)
+    const historical = opmPack.maneuvers.filter(edge => edge.sourceId === 'kowgan-opm-1.8.1')
+    expect(historical.map(({ from, to, deltaV }) => ({ from, to, deltaV }))).toEqual([
+      { from: 'opm:tekto:surface', to: 'opm:tekto:orbit', deltaV: 2600 },
+      { from: 'opm:tekto:orbit', to: 'opm:tekto:surface', deltaV: 2600 },
+      { from: 'opm:thatmo:surface', to: 'opm:thatmo:orbit', deltaV: 950 },
+      { from: 'opm:thatmo:orbit', to: 'opm:thatmo:surface', deltaV: 950 },
+    ])
+    for (const edge of historical) {
+      expect(edge.assumptions.join(' ')).toContain('not calibrated')
+      expect(edge.assumptions.join(' ')).toContain('nor an upper bound')
     }
-    const plockTransfer = opmPack.maneuvers.find(edge => edge.from === 'stock:kerbin:encounter' && edge.to === 'opm:plock:encounter')
-    expect(plockTransfer?.deltaV).toBe(2700)
-    expect(plockTransfer?.assumptions.join(' ')).toContain('1900–2700')
-    const analytic = opmPack.maneuvers.filter(edge => edge.sourceId === 'opm-analytic-karen')
-    expect(analytic).toHaveLength(6)
-    expect(analytic.every(edge => edge.assumptions.join(' ').includes('Analytic estimate'))).toBe(true)
-    expect(analytic.map(edge => edge.deltaV)).toEqual([184, 184, 105, 105, 248, 248])
-    expect(opmPack.description).toContain('historical')
-    expect(opmPack.assumptions.join(' ')).toContain('not calibrated')
+    expect(opmPack.dataNotice).toBe('Analytic estimates')
+    expect(opmPack.version).toBe('2.2.12-analytic.1')
+    expect(opmPack.description).toContain('historical atmospheric surface allowances')
+    expect(opmPack.assumptions.join(' ')).toContain('Parking-orbit orientation is unconstrained')
+    expect(opmPack.assumptions.join(' ')).toContain('Eccentricity and changing orbital distances are not propagated')
+    expect(opmPack.assumptions.join(' ')).toContain('SigmaBinary')
+  })
+
+  it('charges the Kerbin parking-orbit departure once, rather than adding its escape segment twice', () => {
+    const escape = stockPack.maneuvers.find(edge => edge.from === 'stock:kerbin:orbit' && edge.to === 'stock:kerbin:encounter')!
+    expect(escape.deltaV).toBe(950)
+    for (const [bodyId, incrementalBudget] of [['opm:sarnus', 1305], ['opm:urlum', 1535], ['opm:neidon', 1628], ['opm:plock', 1665]] as const) {
+      const reference = opmReferences.find(row => row.bodyId === bodyId)!
+      // Independent vis-viva calculation, without the orbital-budget utility.
+      const r1 = opmHomeReference.semiMajorAxisM
+      const r2 = reference.semiMajorAxisM
+      const a = (r1 + r2) / 2
+      const vInfinity = Math.sqrt(opmCentralMu * (2 / r1 - 1 / a)) - Math.sqrt(opmCentralMu / r1)
+      const rParking = opmHomeReference.radiusM + opmHomeReference.parkingAltitudeM
+      const muHome = opmHomeReference.gravitationalParameter
+      const fullBurn = Math.sqrt(vInfinity ** 2 + 2 * muHome / rParking) - Math.sqrt(muHome / rParking)
+      const outward = opmPack.maneuvers.find(edge => edge.from === 'stock:kerbin:encounter' && edge.to === `${bodyId}:encounter`)!
+      const inward = opmPack.maneuvers.find(edge => edge.to === 'stock:kerbin:encounter' && edge.from === `${bodyId}:encounter`)!
+      expect(outward.deltaV).toBe(incrementalBudget)
+      expect(inward.deltaV).toBe(incrementalBudget)
+      expect(escape.deltaV + outward.deltaV).toBe(Math.ceil(fullBurn))
+    }
+  })
+
+  it('uses reproducible bound ellipses whose raw capture and circularization sum to the direct parking burn', () => {
+    for (const bodyId of ['opm:sarnus', 'opm:urlum', 'opm:neidon', 'opm:plock']) {
+      const reference = opmReferences.find(row => row.bodyId === bodyId)!
+      const parkingRadius = reference.radiusM + reference.parkingAltitudeM
+      const apoapsisRadius = reference.sphereOfInfluenceM / 2
+      expect(apoapsisRadius).toBeGreaterThan(parkingRadius)
+      expect(apoapsisRadius).toBeLessThan(reference.sphereOfInfluenceM)
+      const solarTransferA = (opmHomeReference.semiMajorAxisM + reference.semiMajorAxisM) / 2
+      const vBody = Math.sqrt(opmCentralMu / reference.semiMajorAxisM)
+      const vTransfer = Math.sqrt(opmCentralMu * (2 / reference.semiMajorAxisM - 1 / solarTransferA))
+      const vInfinity = Math.sqrt(vBody ** 2 + vTransfer ** 2 - 2 * vBody * vTransfer * Math.cos(reference.inclinationDeg * Math.PI / 180))
+      const ellipseA = (parkingRadius + apoapsisRadius) / 2
+      const circularSpeed = Math.sqrt(reference.gravitationalParameter / parkingRadius)
+      const ellipseSpeed = Math.sqrt(reference.gravitationalParameter * (2 / parkingRadius - 1 / ellipseA))
+      const hyperbolicSpeed = Math.sqrt(vInfinity ** 2 + 2 * reference.gravitationalParameter / parkingRadius)
+      const capture = hyperbolicSpeed - ellipseSpeed
+      const circularization = ellipseSpeed - circularSpeed
+      expect(capture + circularization).toBeCloseTo(hyperbolicSpeed - circularSpeed, 9)
+      const captureEdge = opmPack.maneuvers.find(edge => edge.from === `${bodyId}:encounter` && edge.to === `${bodyId}:elliptical`)!
+      const circularizationEdge = opmPack.maneuvers.find(edge => edge.from === `${bodyId}:elliptical` && edge.to === `${bodyId}:orbit`)!
+      expect(captureEdge.deltaV).toBe(Math.ceil(capture))
+      expect(circularizationEdge.deltaV).toBe(Math.ceil(circularization))
+      expect(captureEdge.deltaV + circularizationEdge.deltaV).toBeGreaterThanOrEqual(Math.ceil(hyperbolicSpeed - circularSpeed))
+      expect(captureEdge.deltaV + circularizationEdge.deltaV).toBeLessThanOrEqual(Math.ceil(hyperbolicSpeed - circularSpeed) + 1)
+      expect(captureEdge.assumptions.join(' ')).toContain('0.5 × nominal SOI')
+    }
+  })
+
+  it('includes the actual retrograde Thatmo inclination in encounter speed instead of using a prograde surrogate', () => {
+    // Independent source constants: Neidon R=2145km, geeASL=.314;
+    // Thatmo a=32300.895km, i=161.1°, R=286km, geeASL=.232.
+    const parentMu = 9.80665 * .314 * 2_145_000 ** 2
+    const departureRadius = 2_145_000 + 280_000
+    const arrivalRadius = 32_300_895
+    const transferA = (departureRadius + arrivalRadius) / 2
+    const vBody = Math.sqrt(parentMu / arrivalRadius)
+    const vTransfer = Math.sqrt(parentMu * (2 / arrivalRadius - 1 / transferA))
+    const vInfinity = Math.sqrt(vBody ** 2 + vTransfer ** 2 - 2 * vBody * vTransfer * Math.cos(161.1 * Math.PI / 180))
+    expect(vInfinity).toBeCloseTo(900.0270197114486, 7)
+    const mu = 9.80665 * .232 * 286_000 ** 2
+    const parkingRadius = 336_000
+    const burn = Math.sqrt(vInfinity ** 2 + 2 * mu / parkingRadius) - Math.sqrt(mu / parkingRadius)
+    const progradeBurn = Math.sqrt((vBody - vTransfer) ** 2 + 2 * mu / parkingRadius) - Math.sqrt(mu / parkingRadius)
+    expect(burn).toBeCloseTo(640.6176206613915, 7)
+    expect(progradeBurn).toBeCloseTo(387.0475711756827, 7)
+    const edge = opmPack.maneuvers.find(edge => edge.from === 'opm:thatmo:encounter' && edge.to === 'opm:thatmo:orbit')!
+    expect(edge.deltaV).toBe(641)
+    expect(edge.deltaV).toBe(Math.ceil(burn))
+    expect(edge.assumptions.join(' ')).toContain('source inclination 161.1°')
   })
 
   it('provides finite outbound and return routes for every supported state', () => {
@@ -117,5 +198,16 @@ describe('the reviewed OPM planning pack', () => {
         if (route.status === 'success') expect(Number.isFinite(route.totalDeltaV)).toBe(true)
       }
     }
+  })
+
+  it('retains the homeworld parking reset between distinct planetary encounter references', () => {
+    const route = findLowestCostPath(buildGraph(opmPack), 'opm:sarnus:encounter', 'opm:urlum:encounter')
+    expect(route.status).toBe('success')
+    if (route.status !== 'success') throw new Error(route.message)
+    expect(route.nodeIds).toEqual([
+      'opm:sarnus:encounter', 'stock:kerbin:encounter', 'stock:kerbin:orbit',
+      'stock:kerbin:encounter', 'opm:urlum:encounter',
+    ])
+    expect(route.totalDeltaV).toBe(1305 + 950 + 950 + 1535)
   })
 })

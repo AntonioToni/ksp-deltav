@@ -12,7 +12,7 @@ const packButton = (page: Page, name: string) => page.getByRole('button', { name
 
 const missions = [
   { pack: 'Stock', home: 'stock:kerbin:surface', target: 'stock:mun:surface', homeName: 'Kerbin surface', targetName: 'Mun surface', base: '5,120', reserve: '1,024', total: '6,144' },
-  { pack: 'OPM', home: 'stock:kerbin:surface', target: 'opm:tekto:surface', homeName: 'Kerbin surface', targetName: 'Tekto surface', base: '13,470', reserve: '2,694', total: '16,164' },
+  { pack: 'OPM', home: 'stock:kerbin:surface', target: 'opm:tekto:surface', homeName: 'Kerbin surface', targetName: 'Tekto surface', base: '11,927', reserve: '2,386', total: '14,313' },
   { pack: 'RSS', home: 'rss:earth:surface', target: 'rss:moon:surface', homeName: 'Earth surface', targetName: 'Moon surface', base: '14,660', reserve: '2,932', total: '17,592' },
 ] as const
 

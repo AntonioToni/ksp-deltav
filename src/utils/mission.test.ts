@@ -234,7 +234,7 @@ describe('return-only missions', () => {
 
   it.each([
     { pack: stockPack, home: 'stock:kerbin:surface', target: 'stock:mun:surface', expected: 5120 },
-    { pack: opmPack, home: 'stock:kerbin:surface', target: 'opm:tekto:surface', expected: 13470 },
+    { pack: opmPack, home: 'stock:kerbin:surface', target: 'opm:tekto:surface', expected: 11927 },
     { pack: rssPack, home: 'rss:earth:surface', target: 'rss:moon:surface', expected: 14660 },
   ])('supports $pack.id reference routes and applies reserve once to the return', ({ pack, home, target, expected }) => {
     const graph = buildGraph(pack)
@@ -246,7 +246,7 @@ describe('return-only missions', () => {
     expect(mission.nodeIds.at(-1)).toBe(home)
     expect(mission.legs.at(-1)?.cumulativeDeltaV).toBe(expected)
     expect(calculateBudget(mission.totalDeltaV, 20)).toMatchObject({
-      extraDeltaV: expected * .2, totalDeltaV: expected * 1.2,
+      extraDeltaV: Math.ceil(expected * 1.2) - expected, totalDeltaV: Math.ceil(expected * 1.2),
     })
     expect(graph).toEqual(before)
   })

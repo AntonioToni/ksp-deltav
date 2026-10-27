@@ -12,6 +12,8 @@ one-way, round-trip, and return-only budgets, and add a reserve for your mission
 
 - **Stock, OPM, and RSS maps** with selectable surface, low-orbit, encounter, and high
   elliptical-orbit states. OPM includes Eeloo under Sarnus and Tal under Wal.
+- **Config-based OPM estimates** using official 2.2.12 constants, explicit parking
+  orbits, and analytic transfer, capture, and vacuum surface budgets.
 - **Custom planet packs** imported from JSON, stored in your browser, and usable
   with the same route planner. Export any pack as a starting point for your own.
 - **One-way, round-trip, and return-only planning** with highlighted routes, editable
@@ -89,7 +91,8 @@ rather than simulated trajectories. The supplied interplanetary branches are
 centered on each built-in pack's homeworld: Kerbin for Stock/OPM or Earth for RSS.
 Routes between other planetary systems in these packs include a parking-orbit
 layover at that homeworld. Custom pack estimates depend on their supplied data.
-Flight dates, plane changes, gravity assists, and vehicle performance are not modeled.
+Flight dates, plane-change optimization, gravity assists, and vehicle performance
+are not modeled.
 
 **Atmospheric choices are estimates, not entry simulations.** Ideal capture
 uses a zero-powered-burn lower bound for separate capture and circularization
@@ -101,10 +104,12 @@ assistance. With options disabled, atmospheric landings retain their original
 ascent-sized planning allowance. See the [data guide](docs/DATA.md) for a worked
 example and the exact scope of the adjustments.
 
-**OPM uses legacy estimates.** Its historical community-map budgets are not
-calibrated for current OPM atmospheres and orbits. Karen's budgets are analytical
-estimates from official mod constants. The planner's information dialog and
-[data guide](docs/DATA.md) document the sources and limitations.
+**OPM uses analytic reference estimates.** Orbital and airless-body budgets use
+pinned official 2.2.12 constants and parking orbits above current atmospheres.
+The model circularizes orbital distances and uses inclination at a nominal
+encounter; it does not simulate a dated trajectory. Tekto and Thatmo retain
+historical atmospheric ascent/landing allowances pending vehicle modeling.
+See the [data guide](docs/DATA.md) for the calculations and limitations.
 
 **RSS uses a community Solar System reference** covering 33 base-mod bodies.
 Some reference orbit altitudes differ from modern RSS; incompatible altitude
@@ -137,7 +142,6 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 ## Planned additions
 
-- Modern OPM budget calibration.
 - Kcalbeloh configurations alongside Stock or OPM, plus other mod packs.
 - Atmospheric entry feasibility and vehicle-specific landing estimates.
 - Additional direct interplanetary transfers in the supplied packs.

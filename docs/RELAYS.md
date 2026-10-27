@@ -277,7 +277,9 @@ rows including Eeloo's changed parent, and 32 nonstellar RSS bodies.
 - OPM physical constants: [official Kopernicus configs](https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs).
   Radius, `geeASL`, and atmosphere `altitude` are taken from the pinned version.
   The catalog derives `mu = 9.80665 × geeASL × R²` in SI units. Eeloo retains
-  Stock radius and gravity but uses its OPM parent and orbital radius.
+  Stock radius and gravity but uses its OPM parent and orbital radius. The
+  constants are shared with the OPM maneuver estimates in `opmReference.ts`;
+  editing relay inputs does not change those maneuver budgets.
 - RSS physical constants: [official RSS configs](https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus).
   Direct atmosphere `maxAltitude` and the last direct `gravParameter`
   assignment are used, including Titan's repeated assignment. Unconditional
@@ -301,9 +303,10 @@ rows including Eeloo's changed parent, and 32 nonstellar RSS bodies.
   communication systems.
 - Normal game occlusion settings: [LunaMultiplayer gameplay settings](https://github.com/LunaMultiplayer/LunaMultiplayer/blob/b3b9efce0cb6d18d5ae3723eb3aeb0b3f90eccbc/Server/Settings/Definition/GameplaySettingsDefinition.cs#L234).
 
-Preset values are reference facts for the pinned versions. They do not calibrate
-historical OPM maneuver budgets or guarantee compatibility with a different mod
-release or radio overhaul.
+Preset values are reference facts for the pinned versions. Relay coverage and
+deployment calculations remain separate from the OPM analytic maneuver model
+described in the [data guide](DATA.md). These presets do not guarantee
+compatibility with a different mod release or radio overhaul.
 
 ### Retained MIT notice for the antenna reference
 

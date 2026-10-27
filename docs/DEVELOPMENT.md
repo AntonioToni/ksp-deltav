@@ -65,6 +65,8 @@ On Linux CI machines that also need browser system dependencies, use
 | Body hierarchy, states, maneuvers, and pack types | `src/types/planner.ts` |
 | Stock reference data | `src/data/stock.ts` |
 | OPM and RSS packs, and pack registry | `src/data/opm.ts`, `src/data/rss.ts`, `src/data/planetPacks.ts` |
+| Pinned OPM physical/orbital reference data | `src/data/opmReference.ts` |
+| Analytic orbital and vacuum surface estimates | `src/utils/orbitalBudgets.ts` |
 | Pack and topology validation | `src/utils/validatePlanetPack.ts` |
 | Custom JSON imports and browser storage | `src/utils/customPacks.ts` |
 | Graph construction and ordered contextual route search | `src/utils/buildGraph.ts`, `src/utils/findRoute.ts` |
@@ -139,6 +141,30 @@ sources, assumptions, and display metadata, then register it in
 moon systems; optional presets can refine presentation. Add data, topology,
 routing, and layout checks for the new pack. See the [data guide](DATA.md) before
 changing reference figures.
+
+## OPM reference estimates
+
+`opmReference.ts` is the shared source of pinned OPM 2.2.12 physical and orbital
+constants for both maneuver estimates and relay body presets. Parking altitudes
+are explicit planner choices. The OPM pack derives orbital transfers, captures,
+and vacuum surface budgets with the pure functions in `orbitalBudgets.ts`, then
+rounds each directed segment upward to whole m/s. This does not change Stock or
+RSS costs.
+
+The nominal transfer departs in the parent's reference plane and meets a
+circularized target orbit at a node. Arrival relative speed includes the source
+inclination, so Thatmo's retrograde orbit is not treated as a prograde encounter.
+This is a local velocity estimate, not a general plane-change or flight-date
+solver. High ellipses share the low-orbit periapsis and place apoapsis at half the
+body's sphere-of-influence radius. The Kerbin interplanetary increment subtracts
+the existing 950 m/s escape segment from the required 80 km parking-orbit burn,
+avoiding double charging.
+
+Tekto and Thatmo surface edges retain historical atmospheric allowances under a
+separate source tag. Orbital calculations cannot supply their vehicle-dependent
+launch or landing losses. Changes to OPM reference constants should update the
+independent numerical landmarks, route sums, and source documentation described
+in the [data guide](DATA.md).
 
 ## Relay planning
 

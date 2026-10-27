@@ -225,7 +225,7 @@ describe('ordered mission modes and stages', () => {
 
   it.each([
     { pack: stockPack, start: 'stock:kerbin:surface', goal: 'stock:mun:surface', stop: 'stock:kerbin:orbit', base: 5120 },
-    { pack: opmPack, start: 'stock:kerbin:surface', goal: 'opm:tekto:surface', stop: 'opm:sarnus:orbit', base: 13470 },
+    { pack: opmPack, start: 'stock:kerbin:surface', goal: 'opm:tekto:surface', stop: 'opm:sarnus:orbit', base: 11927 },
     { pack: rssPack, start: 'rss:earth:surface', goal: 'rss:moon:surface', stop: 'rss:earth:orbit', base: 14660 },
   ])('retains sourced $pack.shortName budgets through required reference-orbit stops', ({ pack, start, goal, stop, base }) => {
     const graph = buildGraph(pack)

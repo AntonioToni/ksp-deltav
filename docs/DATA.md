@@ -9,8 +9,9 @@ No source artwork or layout is bundled. This planner uses a new schematic layout
 reference figures have been reorganized into named, directed maneuver records.
 
 The separate [CommNet relay guide](RELAYS.md) documents relay body constants,
-antenna presets, coverage geometry, and deployment estimates. Those calculations
-do not replace or recalibrate the maneuver-map figures below.
+antenna presets, coverage geometry, and deployment estimates. Relay calculations
+remain separate from maneuver budgets. OPM shares its pinned physical constants
+with the analytic maneuver model documented below.
 
 ## Coverage and units
 
@@ -170,9 +171,9 @@ gives **5,496 m/s**. With only these Duna choices enabled, the round trip is
 whose Duna ascent still costs 1,450 m/s.
 
 These controls do not simulate atmospheric entry heating, guidance, parachute
-performance, lift, or vehicle-specific feasibility. They also do not recalibrate
-historical OPM/RSS references or prove that an advertised reference orbit is
-safe in a current mod version.
+performance, lift, or vehicle-specific feasibility. They do not validate the
+retained OPM atmospheric allowances or historical RSS references, or prove that
+a reference orbit clears terrain in a particular installation.
 
 ## Auditing changes
 
@@ -204,90 +205,186 @@ source uses 280 m/s).
 
 ## Outer Planets Mod pack
 
-`src/data/opm.ts` adds a separately selectable **OPM** pack. It includes 32 bodies,
-96 selectable states, and 190 directed maneuvers. Stock IDs are retained for
-shared bodies and states. New bodies use `opm:` IDs. Eeloo is cloned as a Sarnus
-moon; switching packs never changes the stock dataset. Tal orbits Wal, and Karen
-orbits Plock. Jool, Sarnus, Urlum, and Neidon have no surface states.
+`src/data/opm.ts` provides the selectable **OPM** pack: 32 bodies, 96 selectable
+states, and 190 directed maneuvers. Shared Stock IDs are retained, Eeloo becomes
+a Sarnus moon, Tal orbits Wal, and Karen orbits Plock. Jool, Sarnus, Urlum, and
+Neidon have no surface states. Stock and RSS costs are unchanged.
 
-### References and compatibility
+The pack uses **config-based analytic reference estimates** for the OPM orbital
+and vacuum segments. They replace the historical OPM 1.8.1 map's corresponding
+figures. **Tekto and Thatmo atmospheric ascent/landing allowances remain
+historical**, with their own source and limitations. The visible **Analytic
+estimates** notice opens the assumptions and sources.
 
-- Numerical OPM map segments: [Kowgan community OPM 1.8.1 map, page 2](https://github.com/Kowgan/ksp_cheat_sheets/blob/ca2d4910dd98e5fd14277b04ec686e61cd6967ce/delta_v_map_outer_planets/DvMap_OP_2_A4.svg),
-  pinned to `ca2d4910dd98e5fd14277b04ec686e61cd6967ce`. Its attribution and
-  CC BY-NC-SA 4.0 terms are the same as the stock reference above; no artwork is
-  bundled. Individual numerical segments are transcribed into the new data model.
-- Body hierarchy, atmosphere presence, and Karen physical constants:
-  [official OPM Kopernicus configs](https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs),
+Pack version `2.2.12-analytic.1` identifies this model revision. Derived OPM
+maneuvers use source tag `opm-analytic-2.2.12`; only the four retained atmospheric
+surface edges use `kowgan-opm-1.8.1`.
+
+### Sources and physical inputs
+
+- Modern physical and orbital constants: [official OPM 2.2.12 Kopernicus configs](https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs),
   pinned to `ffedf02e23d2d620e1018d1467f5e485f7950fa0`.
+  `src/data/opmReference.ts` reorganizes radius, surface gravity, atmosphere
+  height, semi-major axis, eccentricity, inclination, and parent identity into
+  numerical reference records. No mod config code or artwork is bundled.
+- Stock Kerbol/Kerbin constants, including Eeloo's inherited physical constants:
+  the pinned [KSPTOT body reference](https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini)
+  documented in the [relay guide](RELAYS.md). Kerbin's reference orbit is 80 km,
+  its orbital semi-major axis is 13,599,840,256 m, and its gravitational parameter
+  is 3.5316 × 10¹² m³/s². Kerbol's gravitational parameter is
+  1.1723327948324905 × 10¹⁸ m³/s².
+- Retained atmospheric surface allowances: [Kowgan community OPM 1.8.1 map,
+  page 2](https://github.com/Kowgan/ksp_cheat_sheets/blob/ca2d4910dd98e5fd14277b04ec686e61cd6967ce/delta_v_map_outer_planets/DvMap_OP_2_A4.svg),
+  pinned to `ca2d4910dd98e5fd14277b04ec686e61cd6967ce`. The numerical
+  reference retains its attribution and [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+  terms; no artwork or source layout is bundled.
 
-**The OPM map is historical. Its budgets are not calibrated for current OPM
-atmospheres or orbital parameters.** In particular, the old printed low-orbit
-altitudes for Sarnus (314 km), Urlum (134 km), Neidon (120 km), and Thatmo (30 km)
-lie inside the atmosphere depths in the pinned modern configs (580, 325, 260,
-and 35 km respectively). The planner intentionally omits those four altitude
-claims; it does not silently substitute a modern altitude while presenting the
-old cost as a recalculated physical result. These states and costs represent
-the historical map's schematic budget references. Verify contemporary mission
-budgets in game or with a trajectory tool.
+Use `g₀ = 9.80665 m/s²` and `mu = g₀ × geeASL × R²` for OPM configs that specify
+surface gravity. Eeloo's OPM patch inherits its Stock radius and gravitational
+parameter. SOI radii use `a × (mu_body / mu_parent)^(2/5)`, except the explicit
+Hale **41 km** and Ovok **94 km** overrides from their configs.
 
-The pack retains the newer stock reference for unaffected stock bodies rather
-than replacing it with the historical OPM map's first page. Eeloo changes both
-parent and routing context: its OPM segments are Sarnus low orbit → Eeloo
-encounter **1120 m/s**, Eeloo encounter → low orbit **490 m/s**, and surface
-budget **540 m/s**. The corresponding stock Eeloo transfer, capture, and surface
-segments are removed only from the OPM clone.
+### Explicit reference orbits
 
-All new OPM moon branches leave their parent's **low orbit** in the reference
-map, including Tal's branch from Wal. Sarnus, Urlum, Neidon, and Plock retain
-separate high elliptical states on their interplanetary arrival branches.
-The shared Polta/Priax intercept in the original diagram becomes two separate
-encounter nodes with identical **620 m/s** parent-transfer budgets; their local
-capture and surface costs remain separate. Plane-change figures printed
-beside branches are excluded, consistently with the stock pack.
+The following circular parking altitudes are **planner choices**, measured above
+the physical radius. They are not orbit recommendations supplied by the mod.
+Every reference clears the configured atmosphere and lies inside the body's
+SOI; terrain, oblateness, and optional compatibility patches remain unmodeled.
 
-Plock's original transfer is a **1900–2700 m/s range**. The planner chooses the
-upper endpoint, **2700 m/s**, as a conservative map-budget selection. It does
-not invent a midpoint or simulate the launch epoch. The original powered-descent
-budgets for Tekto and Thatmo use the same explicitly labeled placeholder policy
-as atmospheric stock bodies: the ascent budget is reused. Optional atmospheric
-choices adjust the effective route without recalibrating those source figures.
-
-### Karen analytic estimate
-
-Karen is absent from the historical map. Its six directed maneuvers therefore
-use a different source tag, `opm-analytic-karen`, and disclose that the values are
-analytic estimates rather than map transcriptions or flight-tested budgets.
-
-Inputs are from the pinned [Plock.cfg](https://github.com/Poodmund/Outer-Planets-Mod/blob/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs/OuterPlanets/Plock.cfg)
-and [Karen.cfg](https://github.com/Poodmund/Outer-Planets-Mod/blob/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs/PlockMoons/Karen.cfg):
-
-| Input | Plock | Karen |
+| Body | Atmosphere height (km) | Parking altitude (km) |
 | --- | ---: | ---: |
-| Radius (m) | 189,000 | 85,050 |
-| Surface gravity (`geeASL`) | 0.148 | 0.066 |
-| Parking altitude chosen for this estimate (m) | 10,000 | 10,000 |
-| Karen orbit semi-major axis about Plock (m) | — | 2,457,800 |
-| Karen eccentricity | — | 0 |
+| Sarnus | 580 | 600 |
+| Hale | 0 | 8 |
+| Ovok | 0 | 10 |
+| Eeloo under Sarnus | 0 | 10 |
+| Slate | 0 | 25 |
+| Tekto | 95 | 120 |
+| Urlum | 325 | 350 |
+| Polta | 0 | 15 |
+| Priax | 0 | 45 |
+| Wal | 0 | 35 |
+| Tal | 0 | 20 |
+| Neidon | 260 | 280 |
+| Thatmo | 35 | 50 |
+| Nissee | 0 | 10 |
+| Plock | 0 | 10 |
+| Karen | 0 | 10 |
 
-Use `g₀ = 9.80665 m/s²` and `μ = g₀ × geeASL × R²`. Let `r₁` be Plock's
-parking radius, `r₂` Karen's orbital radius, and `rK` Karen's parking radius.
-The ideal coplanar Hohmann departure and arrival excess-speed estimates are:
+This replaces the old Sarnus 314 km, Urlum 134 km, Neidon 120 km, and Thatmo
+30 km references, which would lie inside the current atmospheres. The costs are
+recalculated for the new parking radii rather than attaching new labels to the
+old figures.
+
+Sarnus, Urlum, Neidon, and Plock retain separate high-ellipse states. Their
+**periapsis radius equals the low parking radius**, and **apoapsis radius is
+0.5 × the SOI radius**, measured from the body's center. These explicit choices
+keep the reference ellipse inside the SOI. They differ from the Stock map's
+SOI-boundary ellipse convention.
+
+### Nominal transfers and capture
+
+The orbital functions in `src/utils/orbitalBudgets.ts` use SI units and return
+unrounded values. Each stored maneuver is rounded **upward to a whole m/s**.
+That rounding is not a mission margin or a conservative bound on real flight
+costs.
+
+The model circularizes each target's orbit at its configured semi-major axis.
+A prograde Hohmann transfer departs in the parent's reference plane and meets
+the target at an orbital node. With parent parameter `muP`, departure radius
+`r1`, target radius `r2`, and configured target inclination `i`:
 
 ```text
-departure = sqrt(μP / r₁) × (sqrt(2r₂ / (r₁ + r₂)) − 1)
-v∞        = sqrt(μP / r₂) × (1 − sqrt(2r₁ / (r₁ + r₂)))
-capture   = sqrt(v∞² + 2μK / rK) − sqrt(μK / rK)
+v1       = sqrt(muP / r1)
+v2       = sqrt(muP / r2)
+v1t      = v1 × sqrt(2r2 / (r1 + r2))
+v2t      = v2 × sqrt(2r1 / (r1 + r2))
+departure = abs(v1t - v1)
+vInfinity = sqrt(v2² + v2t² - 2v2v2t cos(i))
 ```
 
-The ideal surface-to-parking estimate starts from a nonrotating surface using
-two instantaneous impulses. With `a = (RK + rK) / 2`:
+The inclination enters the **relative arrival velocity at the assumed node**.
+It is not an additional generic plane-change allowance. In particular, Thatmo's
+**161.1° retrograde inclination** is included instead of incorrectly subtracting
+two prograde speeds. Nissee's 29.56° inclination and Plock's 6.15° inclination
+also enter this nominal arrival calculation.
+
+For a target with parameter `muB` and parking radius `rp`, the circular capture
+burn, or the corresponding ideal escape estimate, is:
 
 ```text
-surface = sqrt(μK × (2/RK − 1/a))
-        + sqrt(μK / rK) − sqrt(μK × (2/rK − 1/a))
+capture = sqrt(vInfinity² + 2muB / rp) - sqrt(muB / rp)
 ```
 
-Round each derived budget **upward** to a whole m/s:
+Moon branches depart their parent's **low orbit**, including Tal from Wal and
+Karen from Plock. Their local capture uses the relative arrival speed calculated
+for that same parent-to-moon transfer. Polta and Priax have separate encounters;
+their equal semi-major axes give equal parent departure burns, while their
+physical properties and inclinations determine their separate captures.
+
+For the four outer planets, `r1` is Kerbin's solar semi-major axis and `r2` the
+target's solar semi-major axis. The departure excess speed is converted to a
+burn from Kerbin's 80 km parking orbit. The existing Stock graph already charges
+**950 m/s** to reach Kerbin encounter, so the interplanetary edge stores only:
+
+```text
+requiredKerbinBurn = sqrt(departure² + 2muKerbin / rpKerbin)
+                    - sqrt(muKerbin / rpKerbin)
+transferIncrement = ceil(requiredKerbinBurn) - 950
+```
+
+This avoids charging Kerbin escape twice. The target's local capture uses its
+own solar-transfer arrival speed. For high-ellipse states, let `ra` be their
+apoapsis radius and `ae = (rp + ra) / 2`:
+
+```text
+vHyperbolic = sqrt(vInfinity² + 2muB / rp)
+vEllipse    = sqrt(muB × (2/rp - 1/ae))
+vCircular   = sqrt(muB / rp)
+encounter → ellipse = vHyperbolic - vEllipse
+ellipse → low orbit = vEllipse - vCircular
+```
+
+These two unrounded costs sum to the full circular capture. Rounding each
+segment upward may add one extra m/s compared with rounding the sum once.
+Reverse directed edges reuse the corresponding nominal reversed estimates;
+actual departure epochs and changing encounter geometry are not simulated.
+
+### Surface estimates and atmospheric allowances
+
+Airless-body surface costs use two ideal instantaneous impulses from a
+**nonrotating surface** to the reference parking orbit. With body radius `R`,
+parking radius `rp`, and transfer semi-major axis `as = (R + rp) / 2`:
+
+```text
+surface = sqrt(muB × (2/R - 1/as))
+        + sqrt(muB / rp) - sqrt(muB × (2/rp - 1/as))
+```
+
+Powered vacuum descent reuses the ideal reversed estimate. These costs exclude
+finite-thrust and gravity losses, terrain clearance, rotation, and vehicle
+performance; they are not typical ascent budgets measured in game.
+
+The four atmospheric surface edges retain separate historical allowances:
+
+| Body | Ascent allowance (m/s) | Default powered-descent allowance (m/s) |
+| --- | ---: | ---: |
+| Tekto | 2,600 | 2,600 |
+| Thatmo | 950 | 950 |
+
+**These allowances are not calibrated modern atmospheric flight estimates.**
+The descent figure remains an ascent-sized placeholder, without crediting
+parachutes or atmospheric braking. Radius and gravity alone cannot determine
+vehicle-dependent launch or landing losses. Optional atmospheric choices can
+replace eligible descent costs with the user's allowance, or apply ideal
+capture, as documented above.
+
+### Worked Karen example
+
+Karen is absent from the historical map. It now uses the same analytic model as
+other airless OPM bodies. The pinned Plock/Karen configs provide radii of
+189,000 / 85,050 m, `geeASL` 0.148 / 0.066, a Karen semi-major axis of
+2,457,800 m, zero eccentricity/inclination, and the planner chooses 10 km parking
+altitudes for both bodies.
 
 | Segment | Unrounded (m/s) | Stored budget (m/s) |
 | --- | ---: | ---: |
@@ -295,34 +392,44 @@ Round each derived budget **upward** to a whole m/s:
 | Karen encounter → Karen parking orbit | 104.311 | 105 |
 | Karen surface → Karen parking orbit | 247.298 | 248 |
 
-Reverse directed edges reuse these idealized estimates. This model omits
-finite-thrust and gravity losses, terrain, body rotation, orbital perturbations,
-and optional SigmaBinary behavior. Rounding upward does **not** supply a mission
-margin or make the idealized estimate a conservative real-flight bound.
+### Scope and regression totals
 
-### OPM regression totals
+These are reproducible **schematic reference estimates**, not dated trajectories
+or flight-tested budgets. Eccentric orbits are circularized, including Plock's
+`e = 0.26` and Nissee's `e = 0.72`. The model omits actual node/phase coincidence,
+longitude of ascending node, argument of periapsis, B-plane targeting, parking
+orbit plane constraints, plane-change optimization, gravity assists, terrain,
+and finite-thrust effects. Chained graph states do not track orbital planes.
+It does not simulate optional SigmaBinary behavior or other compatibility
+patches. A mission reserve cannot supply those missing dynamics.
 
-Tests verify independent reference sums from Kerbin surface, omitting plane
-changes and using the stated Plock range policy:
+Interplanetary branches remain centered on Kerbin. Arrivals from another
+planetary system still require a low-parking-orbit reset before another supplied
+interplanetary departure; an encounter or high ellipse cannot erase arrival
+conditions. This calibration does not add direct planet-to-planet transfers.
+
+Tests audit the following Kerbin-surface one-way sums before reserves and with
+atmospheric assistance disabled. Tekto and Thatmo totals include their retained
+surface allowances:
 
 | Destination | Budget (m/s) |
 | --- | ---: |
-| Sarnus low orbit | 8,980 |
-| Hale surface | 10,010 |
-| Ovok surface | 10,100 |
-| Eeloo surface | 11,130 |
-| Slate surface | 13,480 |
-| Tekto surface | 13,470 |
-| Urlum low orbit | 8,380 |
-| Polta surface | 10,080 |
-| Priax surface | 9,720 |
-| Wal surface | 11,290 |
-| Tal surface | 10,720 |
-| Neidon low orbit | 8,430 |
-| Thatmo surface | 10,760 |
-| Nissee surface | 10,640 |
-| Plock surface | 8,640 |
-| Karen surface (includes analytic estimate) | 8,697 |
+| Sarnus low orbit | 7,470 |
+| Hale surface | 8,395 |
+| Ovok surface | 8,580 |
+| Eeloo surface | 9,429 |
+| Slate surface | 11,510 |
+| Tekto surface | 11,927 |
+| Urlum low orbit | 7,117 |
+| Polta surface | 8,742 |
+| Priax surface | 8,297 |
+| Wal surface | 9,661 |
+| Tal surface | 9,103 |
+| Neidon low orbit | 7,206 |
+| Thatmo surface | 9,677 |
+| Nissee surface | 8,441 |
+| Plock surface | 7,404 |
+| Karen surface | 7,403 |
 
 The registry in `src/data/planetPacks.ts` is the single list of selectable packs.
 Adding a pack means adding its reviewed dataset and registry entry. The selector,
@@ -333,7 +440,7 @@ routing engine, and map consume the pack's metadata and supported states.
 `src/data/rss.ts` adds the **RSS** pack with independent `rss:` IDs and Earth as
 its interplanetary transfer hub. It contains **33 bodies, 102 selectable states,
 and 202 directed maneuvers**. No stock KSP costs are scaled or copied into RSS.
-The Stock and OPM datasets remain separate and unchanged.
+The RSS dataset does not change the Stock or OPM packs.
 
 ### Sources and scope
 

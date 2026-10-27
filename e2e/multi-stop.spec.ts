@@ -127,7 +127,7 @@ test('visits the Mun before Minmus and budgets each stage and the complete round
 })
 
 for (const mission of [
-  { pack: 'OPM', start: 'stock:kerbin:surface', end: 'opm:tekto:surface', home: 'Kerbin surface', stop: 'Kerbin low orbit', target: 'Tekto surface', base: '13,470', first: '3,400', second: '10,070', reserved: '16,164' },
+  { pack: 'OPM', start: 'stock:kerbin:surface', end: 'opm:tekto:surface', home: 'Kerbin surface', stop: 'Kerbin low orbit', target: 'Tekto surface', base: '11,927', first: '3,400', second: '8,527', reserved: '14,313' },
   { pack: 'RSS', start: 'rss:earth:surface', end: 'rss:moon:surface', home: 'Earth surface', stop: 'Earth low orbit', target: 'Moon surface', base: '14,660', first: '9,000', second: '5,660', reserved: '17,592' },
 ]) {
   test(`splits the sourced ${mission.pack} budget at a stop and reverses its stage order`, async ({ page }) => {
@@ -300,7 +300,8 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     await finishEditing(page)
     await missionModeButton(page, 'round-trip').click()
     await reserve(page, 100)
-    await expect(page.getByTestId('route-total')).toHaveText('40,960 m/s')
+    // Nominal round trip: 17,246 m/s, doubled by the 100% reserve.
+    await expect(page.getByTestId('route-total')).toHaveText('34,492 m/s')
     await details(page).check()
     await page.getByRole('tab', { name: 'Return', exact: true }).click()
     await expectStage(page, '1 / 2', 'Gilly surface', 'Tal surface')

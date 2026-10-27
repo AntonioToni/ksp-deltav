@@ -300,9 +300,9 @@ for (const viewport of [
     if (viewport.width === 320) {
       await packButton(page, 'OPM').click()
       await assertSettingsVisible(page)
-      const legacyNotice = page.getByRole('button', { name: 'Legacy estimates', exact: true })
-      await expect(legacyNotice).toBeInViewport({ ratio: 1 })
-      const noticeBounds = await legacyNotice.boundingBox()
+      const analyticNotice = page.getByRole('button', { name: 'Analytic estimates', exact: true })
+      await expect(analyticNotice).toBeInViewport({ ratio: 1 })
+      const noticeBounds = await analyticNotice.boundingBox()
       const packBounds = await page.getByRole('group', { name: 'Planet pack', exact: true }).boundingBox()
       expect(noticeBounds).not.toBeNull()
       expect(packBounds).not.toBeNull()

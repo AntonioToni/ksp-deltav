@@ -1,4 +1,5 @@
 import type { CelestialBody, DataSource } from '../types/planner'
+import { opmReferences } from './opmReference'
 
 export interface RelayBodyPreset {
   bodyId: string
@@ -35,8 +36,6 @@ export const commNetSources: readonly DataSource[] = [
 
 // Numbers are reorganized reference facts, not copied config code or artwork.
 // Every length is meters and every gravitational parameter is m³/s².
-// For OPM, μ = g₀ × geeASL × R², with standard gravity g₀ = 9.80665 m/s².
-const surfaceGravityMu = (geeASL: number, radiusM: number) => 9.80665 * geeASL * radiusM ** 2
 
 type PhysicalRow = readonly [bodyId: string, parentBodyId: string, radiusM: number,
   gravitationalParameter: number, atmosphereHeightM: number, semiMajorAxisM: number,
@@ -61,24 +60,12 @@ const stockRows: readonly PhysicalRow[] = [
   ['stock:eeloo', 'stock:kerbol', 210000, 74410814527, 0, 90118820000],
 ]
 
-const opmRows: readonly PhysicalRow[] = [
-  ['stock:eeloo', 'opm:sarnus', 210000, 74410814527, 0, 19105978],
-  ['opm:hale', 'opm:sarnus', 6000, surfaceGravityMu(0.0023, 6000), 0, 10488231, 41000],
-  ['opm:karen', 'opm:plock', 85050, surfaceGravityMu(0.066, 85050), 0, 2457800],
-  ['opm:neidon', 'stock:kerbol', 2145000, surfaceGravityMu(0.314, 2145000), 260000, 409355191706],
-  ['opm:nissee', 'opm:neidon', 30000, surfaceGravityMu(0.045, 30000), 0, 487743514],
-  ['opm:ovok', 'opm:sarnus', 26000, surfaceGravityMu(0.002, 26000), 0, 12169413, 94000],
-  ['opm:plock', 'stock:kerbol', 189000, surfaceGravityMu(0.148, 189000), 0, 535833706086],
-  ['opm:polta', 'opm:urlum', 220000, surfaceGravityMu(0.19, 220000), 0, 11727895],
-  ['opm:priax', 'opm:urlum', 74000, surfaceGravityMu(0.063, 74000), 0, 11727895],
-  ['opm:sarnus', 'stock:kerbol', 5300000, surfaceGravityMu(0.298, 5300000), 580000, 125798522368],
-  ['opm:slate', 'opm:sarnus', 540000, surfaceGravityMu(0.692, 540000), 0, 42592946],
-  ['opm:tal', 'opm:wal', 22000, surfaceGravityMu(0.045, 22000), 0, 3109163],
-  ['opm:tekto', 'opm:sarnus', 280000, surfaceGravityMu(0.2503, 280000), 95000, 97355304],
-  ['opm:thatmo', 'opm:neidon', 286000, surfaceGravityMu(0.232, 286000), 35000, 32300895],
-  ['opm:urlum', 'stock:kerbol', 2177000, surfaceGravityMu(0.257, 2177000), 325000, 254317012787],
-  ['opm:wal', 'opm:urlum', 370000, surfaceGravityMu(0.37, 370000), 0, 67553668],
-]
+// Share the pinned OPM physical constants with the orbital budget model.
+const opmRows: readonly PhysicalRow[] = opmReferences.map(reference => [
+  reference.bodyId, reference.parentBodyId, reference.radiusM,
+  reference.gravitationalParameter, reference.atmosphereHeightM,
+  reference.semiMajorAxisM, reference.sphereOfInfluenceM,
+])
 
 const rssRows: readonly PhysicalRow[] = [
   ['rss:ariel', 'rss:uranus', 578900, 83463444317.70477, 0, 190944364.477622],
