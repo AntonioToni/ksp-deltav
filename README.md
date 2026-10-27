@@ -1,8 +1,9 @@
 # KSP DeltaV Planner
 
 Plan **Kerbal Space Program** missions on an interactive Delta-V map. Explore
-the stock Kerbol system, **Outer Planets Mod**, or **Real Solar System**, calculate
-one-way, round-trip, and return-only budgets, and add a reserve for your mission.
+the stock Kerbol system, **Outer Planets Mod**, **Real Solar System**, or
+**Kcalbeloh alongside Stock or OPM**. Calculate one-way, round-trip, and
+return-only budgets, and add a reserve for your mission.
 
 **[Open the planner](https://antoniotoni.github.io/ksp-deltav/)** ·
 [Data and assumptions](docs/DATA.md) · [Relay guide](docs/RELAYS.md) ·
@@ -14,6 +15,8 @@ one-way, round-trip, and return-only budgets, and add a reserve for your mission
   elliptical-orbit states. OPM includes Eeloo under Sarnus and Tal under Wal.
 - **Config-based OPM estimates** using official 2.2.12 constants, explicit parking
   orbits, and analytic transfer, capture, and vacuum surface budgets.
+- **Stock + Kcalbeloh and OPM + Kcalbeloh configurations**, with official map
+  budgets, regional views, and explicit allowances for unpriced links.
 - **Custom planet packs** imported from JSON, stored in your browser, and usable
   with the same route planner. Export any pack as a starting point for your own.
 - **One-way, round-trip, and return-only planning** with highlighted routes, editable
@@ -40,7 +43,8 @@ one-way, round-trip, and return-only budgets, and add a reserve for your mission
 ## How to use it
 
 1. Choose **Stock**, **OPM**, or **RSS**, or open **Custom planet packs** using the
-   puzzle button beside them to import and select your own pack.
+   puzzle button beside them. Its **Add-ons** tab offers **Stock + Kcalbeloh**
+   and **OPM + Kcalbeloh**; **Custom packs** imports your own JSON.
 2. Select an origin, then a destination on the map. Use the Origin and
    Destination controls to edit either endpoint.
 3. Choose a mission mode: **One way** for origin → destination, **Round trip**
@@ -64,14 +68,25 @@ flight or its arrival conditions. The reserve applies once to the full budget.
 
 **Swap** reverses both the endpoints and the stop order. Changing systems keeps
 states available in the new pack and removes unsupported stops; **Clear** also
-removes all stops and atmospheric choices. Atmospheric choices follow body IDs,
-so swapping or changing mission modes keeps them, and changing systems retains
-compatible choices.
+removes all stops, atmospheric choices, and link allowances. Atmospheric choices
+follow body IDs, so swapping or changing mission modes keeps them, and changing
+systems retains compatible choices.
 
 The **Custom planet packs** manager accepts up to five JSON packs and keeps them
 on this browser; files are not uploaded. Use **Export current pack** to save a copy or
 start editing a new pack. See the [custom pack guide](docs/CUSTOM_PACKS.md) for
 the format and a small working example.
+
+With Kcalbeloh enabled, **Map view** switches between Kerbol, Kcalbeloh, Maelg,
+Sunorc, Aralc, or **All systems**. Routes still use the complete pack. Switching
+between Stock and OPM retains Kcalbeloh; choosing RSS disables it. Use
+**Disable Kcalbeloh** in the manager to return to the base pack.
+
+Some Kcalbeloh connections have no published fuel budget. Open **Link allowances**
+from the Add-ons tab, or from the route status when a link is missing. Enter the
+complete outward and return costs separately: blank leaves a direction
+unavailable, and zero is an explicit user assumption. Choose **Apply** to use the
+draft. Source data and exported JSON keep the original unpriced links.
 
 Open **Relays** in the header (the satellite icon on phones) to plan a local
 CommNet constellation. Choose a body, orbit altitude, relay count, and antennas,
@@ -88,9 +103,10 @@ satellite separately; antennas on different satellites do not combine.
 
 These are schematic planning estimates within the supplied maneuver graph,
 rather than simulated trajectories. The supplied interplanetary branches are
-centered on each built-in pack's homeworld: Kerbin for Stock/OPM or Earth for RSS.
-Routes between other planetary systems in these packs include a parking-orbit
-layover at that homeworld. Custom pack estimates depend on their supplied data.
+centered on the base pack's homeworld: Kerbin for Stock/OPM or Earth for RSS.
+Routes between other planetary systems in those base packs include a parking-orbit
+layover at that homeworld. Kcalbeloh adds complete reference-pair transfers;
+custom pack estimates depend on their supplied data.
 Flight dates, plane-change optimization, gravity assists, and vehicle performance
 are not modeled.
 
@@ -110,6 +126,12 @@ The model circularizes orbital distances and uses inclination at a nominal
 encounter; it does not simulate a dated trajectory. Tekto and Thatmo retain
 historical atmospheric ascent/landing allowances pending vehicle modeling.
 See the [data guide](docs/DATA.md) for the calculations and limitations.
+
+**Kcalbeloh uses its official 1.1.8 reference map.** Missing wormhole, stellar
+connector, and binary-system costs require user allowances. These are not
+calculated interstellar trajectories. Noi and individual Simetra/Simeht low
+orbits lack priced map states; see the [data guide](docs/DATA.md#kcalbeloh-configurations)
+for exact coverage and supported installation settings.
 
 **RSS uses a community Solar System reference** covering 33 base-mod bodies.
 Some reference orbit altitudes differ from modern RSS; incompatible altitude
@@ -142,7 +164,7 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 ## Planned additions
 
-- Kcalbeloh configurations alongside Stock or OPM, plus other mod packs.
+- Additional mod packs and installation configurations.
 - Atmospheric entry feasibility and vehicle-specific landing estimates.
 - Additional direct interplanetary transfers in the supplied packs.
 - Interplanetary signal planning: antenna pairs, changing planet-to-planet

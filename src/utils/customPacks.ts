@@ -4,8 +4,9 @@ import { validatePlanetPack } from './validatePlanetPack'
 export const MAX_CUSTOM_PACKS = 5
 export const MAX_PACK_BYTES = 1024 * 1024
 export const CUSTOM_PACK_STORAGE_KEY = 'ksp-deltav:custom-packs:v1'
-const reservedIds = new Set(['stock', 'opm', 'rss'])
-const collectionLimits = { bodies: 40, nodes: 160, maneuvers: 1000, sources: 20 } as const
+const reservedIds = new Set(['stock', 'opm', 'rss', 'stock-kcalbeloh', 'opm-kcalbeloh'])
+const collectionLimits = { bodies: 100, nodes: 400, maneuvers: 1000, sources: 20, unpricedConnections: 100, mapRegions: 20 } as const
+const optionalCollections = new Set(['unpricedConnections', 'mapRegions'])
 const idPattern = /^[A-Za-z0-9][A-Za-z0-9:._/>-]*$/
 const colorPattern = /^#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$/i
 const encoder = new TextEncoder()
@@ -58,6 +59,7 @@ function validateImportLimits(raw: Entry): string[] {
 
   // Return before scanning an oversized collection or following its hierarchy.
   for (const [key, limit] of Object.entries(collectionLimits)) {
+    if (optionalCollections.has(key) && raw[key] === undefined) continue
     if (!Array.isArray(raw[key]) || raw[key].length > limit) {
       errors.push(`${key} must be an array of at most ${limit} entries.`)
     }
@@ -65,6 +67,7 @@ function validateImportLimits(raw: Entry): string[] {
   if (errors.length) return errors
 
   for (const [key] of Object.entries(collectionLimits)) {
+    if (optionalCollections.has(key) && raw[key] === undefined) continue
     for (const [index, item] of (raw[key] as unknown[]).entries()) {
       const label = `${key}[${index}]`
       if (!isEntry(item)) {
@@ -90,13 +93,17 @@ function validateImportLimits(raw: Entry): string[] {
         } catch {
           errors.push(`${label} must have an HTTPS URL without embedded credentials.`)
         }
+      } else if (key === 'mapRegions') {
+        text(item.label, `${label} label`, 120)
+        if (!Array.isArray(item.bodyIds) || item.bodyIds.length > 100) errors.push(`${label} bodyIds must be an array of at most 100 IDs.`)
+        else for (const bodyId of item.bodyIds) id(bodyId, `${label} body ID`)
       } else {
         id(item.from, `${label} from`)
         id(item.to, `${label} to`)
         id(item.sourceId, `${label} sourceId`)
         text(item.label, `${label} label`, 160)
         assumptions(item.assumptions, `${label} assumptions`)
-        if (typeof item.deltaV !== 'number' || !Number.isFinite(item.deltaV) || item.deltaV < 0 || item.deltaV > 1_000_000) {
+        if (key === 'maneuvers' && (typeof item.deltaV !== 'number' || !Number.isFinite(item.deltaV) || item.deltaV < 0 || item.deltaV > 1_000_000)) {
           errors.push(`${label} Delta-V must be between 0 and 1,000,000 m/s.`)
         }
       }
@@ -121,6 +128,10 @@ function canonicalPack(pack: PlanetPack): PlanetPack {
     nodes: pack.nodes.map(({ id, bodyId, kind, label, altitudeKm }) => ({
       id, bodyId, kind, label, ...(altitudeKm !== undefined ? { altitudeKm } : {}),
     })),
+    ...(pack.unpricedConnections !== undefined ? { unpricedConnections: pack.unpricedConnections.map(({ id, label, from, to, forwardKind, reverseKind, sourceId, assumptions }) => ({
+      id, label, from, to, forwardKind, reverseKind, sourceId, assumptions: [...assumptions],
+    })) } : {}),
+    ...(pack.mapRegions !== undefined ? { mapRegions: pack.mapRegions.map(({ id, label, bodyIds }) => ({ id, label, bodyIds: [...bodyIds] })) } : {}),
     maneuvers: pack.maneuvers.map(({ id, from, to, deltaV, kind, label, sourceId, assumptions }) => ({
       id, from, to, deltaV, kind, label, sourceId, assumptions: [...assumptions],
     })),

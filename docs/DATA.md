@@ -435,6 +435,160 @@ The registry in `src/data/planetPacks.ts` is the single list of selectable packs
 Adding a pack means adding its reviewed dataset and registry entry. The selector,
 routing engine, and map consume the pack's metadata and supported states.
 
+## Kcalbeloh configurations
+
+The reviewed **Stock + Kcalbeloh** and **OPM + Kcalbeloh** configurations retain
+the selected base dataset and add the same Kcalbeloh reference data. Open the
+puzzle button beside the system selectors, choose **Add-ons**, and select the
+configuration matching your installation. Stock/OPM switches retain the add-on;
+RSS and **Disable Kcalbeloh** return to an unextended base pack.
+
+| Configuration | Cataloged bodies/contexts | Selectable states | Priced directed maneuvers |
+| --- | ---: | ---: | ---: |
+| Stock + Kcalbeloh | 50 | 97 | 204 |
+| OPM + Kcalbeloh | 65 | 143 | 296 |
+
+Each adds **33 contexts**: the 30 physical mod bodies, the invisible SimeSystem
+barycenter, and two wormholes. It adds **47 states**, **106 priced directed
+maneuvers**, and **10 unpriced connection descriptors**. Shared base IDs and
+costs are preserved; the composer clones records instead of changing Stock or
+OPM. Both configurations use pack version `1.1.8-map.1`.
+
+### Sources, attribution, and supported settings
+
+The reference is Jason Kerman's official **Kcalbeloh System v1.1.8**, pinned to
+Git commit `1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9`:
+
+- [Official Delta-V and transfer-window map](https://github.com/jcyuan06/Kcalbeloh-System/blob/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/Kcalbeloh%20dv%20and%20Transfer%20Windows%20Map.png),
+  source ID `kcalbeloh-map-1.1.8`. The map carries
+  [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+  attribution and licensing. Numerical budgets are reorganized into explicit
+  named pairs; source artwork and layout are not bundled.
+- [Official body configs and compatibility settings](https://github.com/jcyuan06/Kcalbeloh-System/tree/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem),
+  source ID `kcalbeloh-config-1.1.8`. The mod's
+  [license](https://github.com/jcyuan06/Kcalbeloh-System/blob/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem/License.md)
+  is generally [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/),
+  with the exceptions documented there. The planner reorganizes numerical and
+  hierarchy facts; no config code, textures, plugin code, or mod assets are
+  included.
+
+The supported installation is the default **1× size**, **HomeSwitch disabled**,
+and **Wormholes enabled**. RSS/KSRSS rescaling, Principia, alternative homeworlds,
+and other compatibility configurations are outside this reference. The pinned
+facts include the default stellar-size settings, but no stellar burn is inferred
+from a photosphere radius.
+
+Kcalbeloh orbits Kerbol; Maelg, Sunorc, and Aralc-A orbit the black hole, and
+Aralc-B orbits Aralc-A. Mehtna and Meiuqer are siblings around Maelg. The
+Simetra–Simeht pair and Noira/Norihc/Noyreg use the invisible SimeSystem
+barycenter. Stars, the black hole, barycenters, gas giants, and portals have no
+landable surface states. Technical stellar atmospheres do not create braking
+or landing options.
+
+### Pair-specific budgets and reference states
+
+The published map gives **two burns for each complete transfer pair**. The
+planner stores their sum once as a directed parking/reference-to-parking/reference
+maneuver, with both printed components in its assumptions. An explicit reverse
+edge reuses the same nominal sum. These components are not universal per-body
+encounter costs that can be freely chained.
+
+For example, Suluco low orbit → Tot low orbit is **676 + 312 = 988 m/s**.
+The source surface allowances are 2,920 m/s at Suluco and 23 m/s at Tot, so the
+surface-to-surface estimate is **3,931 m/s** before reserve. A 20% reserve gives
+**4,718 m/s**; the reversed nominal source route has the same base cost. A
+shortest path may use several complete pairs, but each intermediate parking
+state and both burns of every pair are charged.
+
+The map's stellar/circumbinary reference states are distinct from local planet
+parking orbits:
+
+| Reference | Printed distance |
+| --- | ---: |
+| Kcalbeloh | 28.46 Gm |
+| Maelg | 513 Mm |
+| Sunorc | 5.22 Gm |
+| Aralc system | 69.52 Gm |
+| Simetra–Simeht combined system | 60 Mm |
+
+They use `reference` nodes, shown as **Ref**, with the source distance in the
+label. These distances are not asserted altitudes above a photosphere or solid
+surface. The 60 Mm Simetra–Simeht state is a combined circumbinary reference,
+not either gas giant's individual low orbit. Similar displayed distances do not
+create free reference-to-planet captures.
+
+Noi, individual Simetra/Simeht low orbits, and Aralc-B stellar parking have no
+priced source states and remain catalog metadata. Arorua's published surface
+allowance is available locally, while its three transfer pairs marked **N.A.**
+remain unpriced. Source parking altitude claims are displayed only when they
+clear the configured atmosphere; retaining a map budget does not establish a
+modern physical calibration or terrain clearance.
+
+### Unpriced links and wormhole allowances
+
+Missing source budgets are descriptors, **not zero-cost graph edges**. The ten
+unpriced links cover:
+
+- Four stellar-reference ↔ local-planet connectors: Kcalbeloh/Rouqea,
+  Maelg/Mehtna, Sunorc/Suluco, and Aralc/Anehta.
+- The Simetra–Simeht reference ↔ Noira and Anehta ↔ Efil family connectors.
+- The three source N.A. Arorua transfer pairs, with Anneheg, Ahtpan, and Anehta.
+- One complete wormhole connection between the base-system parent parking orbit
+  and Sera low orbit.
+
+**WH-3141 A orbits Jool with Stock, or Sarnus with OPM. WH-3141 B orbits Sera.**
+The configs describe a crossing altitude between 10 m and 30 km, but neither the
+map nor those settings specifies a complete Delta-V budget. The composite
+connection allowance must include approach, crossing, exit-velocity matching,
+and arrival into the endpoint parking orbit. A plugin jump alone does not prove
+fuel-free exit matching or an arbitrary compatible return trajectory.
+
+Open **Link allowances** in the manager's **Add-ons** tab, or through the route
+status when a route is unavailable in a pack with unpriced links. Enter independent **Outbound**
+and **Return** values following the endpoint arrows under each field. Each value
+may be **0–1,000,000 m/s**. Blank leaves that direction unavailable; an explicit
+zero records the user's planning assumption. Arorua allowances cover the whole
+pair, including any printed known component, rather than only its N.A. side.
+
+**Apply** commits the staged draft; **Cancel** or Escape discards it. Clearing
+allowances clears the draft until applied. Entered costs apply before mission
+search and reserve calculations. They are session settings, do not modify source
+pack export, and reset on page reload or mission Clear. Compatible ID/endpoint/
+maneuver-kind matches survive a pack switch. Switching Stock ↔ OPM changes the
+wormhole parent, so its old composite allowance is cleared even though common
+Kcalbeloh links can retain theirs.
+
+Regional **Map view** choices show Kerbol, Kcalbeloh, Maelg, Sunorc, Aralc, or
+**All systems** without changing the graph used for the mission. Dashed links
+remain unpriced; supplied directions become priced paths. The route-region
+summary helps locate portions outside the visible view. Long built-in stages
+page their maneuver breakdown instead of adding page scrolling.
+
+### Atmospheric scope and numerical landmarks
+
+Atmospheric surface descent reuses the map's ascent allowance as a clearly
+labeled placeholder. An optional landing choice can replace the standalone
+descent cost with the user's powered allowance. Bundled complete-transfer pairs
+retain both printed burns: the source does not isolate an atmospheric capture
+saving, so an ideal-capture option does not zero the whole pair.
+
+The figures remain rough planning estimates. Flight dates, binary dynamics,
+orientation changes, entry heating, and vehicle performance are not solved.
+Reserves do not calculate omitted dynamics or price a missing link.
+
+| Priced journey | Budget before reserve (m/s) |
+| --- | ---: |
+| Suluco surface → Tot surface | 3,931 |
+| Sera surface → Dipuc surface | 5,505 |
+| Efil surface → Eulb surface | 4,507 |
+| Noira surface → Noyreg surface | 8,196 |
+| Rouqea low orbit → Iomena low orbit | 26,200 |
+| Sunorc reference → Aralc reference | 7,100 |
+
+The tests also verify that unpriced links stay unreachable without explicit
+allowances, composed packs leave their bases untouched, regional views retain
+all supported states, and source export does not include session-entered costs.
+
 ## Real Solar System pack
 
 `src/data/rss.ts` adds the **RSS** pack with independent `rss:` IDs and Earth as

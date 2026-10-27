@@ -97,7 +97,7 @@ function NumericField({ label, value, onChange, unit, min = 0, optional = false 
 }
 
 function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogProps, 'open'>) {
-  const bodies = pack.bodies.filter(body => body.kind !== 'star')
+  const bodies = pack.bodies.filter(body => body.kind === 'planet' || body.kind === 'moon')
   const first = bodies.find(body => body.id === initialBodyId) ?? bodies.find(body => body.id === pack.transferHubBodyId) ?? bodies[0]
   const [bodyId, setBodyId] = useState(first?.id ?? '')
   const [profiles, setProfiles] = useState(() => new Map(first ? [[first.id, profile(first)]] : []))

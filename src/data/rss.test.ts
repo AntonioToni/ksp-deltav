@@ -9,7 +9,7 @@ import { stockPack } from './stock'
 
 describe('the reference-based RSS pack', () => {
   it('registers RSS without changing or sharing stock and OPM data', () => {
-    expect(planetPacks.map(pack => pack.id)).toEqual(['stock', 'opm', 'rss'])
+    expect(planetPacks.map(pack => pack.id)).toEqual(['stock', 'opm', 'rss', 'stock-kcalbeloh', 'opm-kcalbeloh'])
     expect(planetPacks[0]).toBe(stockPack)
     expect(planetPacks[1]).toBe(opmPack)
     expect(planetPacks[2]).toBe(rssPack)

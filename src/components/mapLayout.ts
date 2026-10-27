@@ -22,6 +22,23 @@ export interface MapLayout {
   bodyRails?: Map<string, number>
 }
 
+/** A map view never changes the source pack or the graph used for missions. */
+export function packForMapRegion(pack: PlanetPack, regionId: string): PlanetPack {
+  const region = pack.mapRegions?.find(candidate => candidate.id === regionId)
+  if (!region || regionId === 'all') return pack
+  const bodyIds = new Set(region.bodyIds)
+  const nodes = pack.nodes.filter(node => bodyIds.has(node.bodyId))
+  const nodeIds = new Set(nodes.map(node => node.id))
+  return {
+    ...pack,
+    bodies: pack.bodies.filter(body => bodyIds.has(body.id)),
+    nodes,
+    maneuvers: pack.maneuvers.filter(edge => nodeIds.has(edge.from) && nodeIds.has(edge.to)),
+    ...(pack.unpricedConnections ? { unpricedConnections: pack.unpricedConnections.filter(edge => nodeIds.has(edge.from) && nodeIds.has(edge.to)) } : {}),
+    mapRegions: undefined,
+  }
+}
+
 type BodyStates = Partial<Record<NodeKind, Point>>
 const p = (x: number, y: number): Point => ({ x, y })
 
@@ -172,7 +189,7 @@ function canUsePreset(pack: PlanetPack, positions: Record<string, BodyStates>): 
   const activeBodies = pack.bodies.filter(body => activeBodyIds.has(body.id))
   // Presets describe one nonstellar body per short ID. Custom packs may have
   // selectable stars or reuse a familiar name in another namespace.
-  if (activeBodies.some(body => body.kind === 'star') || new Set(activeBodies.map(body => shortId(body.id))).size !== activeBodies.length) return false
+  if (activeBodies.some(body => body.kind !== 'planet' && body.kind !== 'moon') || new Set(activeBodies.map(body => shortId(body.id))).size !== activeBodies.length) return false
   const used = new Set<string>()
   return pack.nodes.length > 0 && pack.nodes.every(node => {
     const key = `${shortId(node.bodyId)}:${node.kind}`
@@ -277,8 +294,8 @@ function createStockLayout(pack: PlanetPack, mode: MapMode): MapLayout {
       const row = portraitColumns[column]?.indexOf(id) ?? -1
       const y = 80 + (row < 0 ? Math.floor(bodyIndex / 2) : row) * 90
       const xByKind: Record<NodeKind, number> = column === 0
-        ? { surface: 56, orbit: 124, elliptical: 192, encounter: 260 }
-        : { surface: 624, orbit: 556, elliptical: 488, encounter: 420 }
+        ? { surface: 56, orbit: 124, reference: 124, elliptical: 192, encounter: 260 }
+        : { surface: 624, orbit: 556, reference: 556, elliptical: 488, encounter: 420 }
       for (const node of nodes) nodePositions.set(node.id, p(xByKind[node.kind], y))
       labels.push({ body, x: column === 0 ? 56 : 624, y: y - 38, anchor: column === 0 ? 'start' : 'end' })
       continue
@@ -315,7 +332,7 @@ function createStockLayout(pack: PlanetPack, mode: MapMode): MapLayout {
   }
 }
 
-const kindOrder: Record<NodeKind, number> = { surface: 0, orbit: 1, elliptical: 2, encounter: 3 }
+const kindOrder: Record<NodeKind, number> = { surface: 0, orbit: 1, reference: 1, elliptical: 2, encounter: 3 }
 
 /** Group hierarchy branches without assuming a home planet, namespace or depth. */
 function bodyGroups(pack: PlanetPack): CelestialBody[][] {

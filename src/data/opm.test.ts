@@ -9,7 +9,7 @@ import { opmCentralMu, opmHomeReference, opmReferences } from './opmReference'
 
 describe('the reviewed OPM planning pack', () => {
   it('registers packs by metadata without changing shared stock IDs', () => {
-    expect(planetPacks.map(pack => pack.id)).toEqual(['stock', 'opm', 'rss'])
+    expect(planetPacks.map(pack => pack.id)).toEqual(['stock', 'opm', 'rss', 'stock-kcalbeloh', 'opm-kcalbeloh'])
     expect(planetPacks.find(pack => pack.id === 'opm')).toBe(opmPack)
     expect(opmPack.nodes.filter(node => node.id.startsWith('stock:')).map(node => node.id))
       .toEqual(stockPack.nodes.map(node => node.id))

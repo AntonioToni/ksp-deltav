@@ -3,7 +3,7 @@ import { opmPack } from '../data/opm'
 import { rssPack } from '../data/rss'
 import { stockPack } from '../data/stock'
 import type { ManeuverEdge, PlanetPack, RouteNode } from '../types/planner'
-import { arrowPosition, connectionPoints, createMapLayout, type MapMode, type Point } from './mapLayout'
+import { arrowPosition, connectionPoints, createMapLayout, packForMapRegion, type MapMode, type Point } from './mapLayout'
 
 // No familiar names or IDs: includes a selectable star, duplicate orbit kinds,
 // a moon of a moon, a long body name and a link between two non-home planets.
@@ -177,6 +177,90 @@ function distanceToSegment(point: Point, start: Point, end: Point): number {
   const fraction = squaredLength ? Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / squaredLength)) : 0
   return Math.hypot(point.x - start.x - fraction * dx, point.y - start.y - fraction * dy)
 }
+
+function regionalFixture(): PlanetPack {
+  const body = (id: string, name: string, kind: PlanetPack['bodies'][number]['kind'], parentId: string | null, hasSurface = false) => ({ id, name, kind, parentId, hasSurface, hasAtmosphere: false, color: '#aabbcc' })
+  return {
+    id: 'regional-fixture', name: 'Multiple stellar systems', version: '1', description: 'Presentation fixture', sources: [{ id: 'fixture', title: 'Fixture reference', url: 'https://example.org' }], assumptions: [], transferHubBodyId: 'fixture:home',
+    bodies: [
+      body('fixture:sun', 'Home star', 'star', null),
+      body('fixture:home', 'Home', 'planet', 'fixture:sun', true),
+      body('fixture:blackhole', 'Distant black hole', 'black-hole', 'fixture:sun'),
+      body('fixture:star', 'Distant star', 'star', 'fixture:blackhole'),
+      body('fixture:world', 'Distant world', 'planet', 'fixture:star', true),
+      body('fixture:binary', 'Binary reference', 'barycenter', 'fixture:star'),
+      body('fixture:giant', 'Catalog-only giant', 'planet', 'fixture:binary'),
+    ],
+    nodes: [
+      { id: 'fixture:home:surface', bodyId: 'fixture:home', kind: 'surface', label: 'Home surface' },
+      { id: 'fixture:home:orbit', bodyId: 'fixture:home', kind: 'orbit', label: 'Home low orbit' },
+      { id: 'fixture:home:encounter', bodyId: 'fixture:home', kind: 'encounter', label: 'Home encounter' },
+      { id: 'fixture:blackhole:reference', bodyId: 'fixture:blackhole', kind: 'reference', label: 'Black-hole map reference' },
+      { id: 'fixture:star:reference', bodyId: 'fixture:star', kind: 'reference', label: 'Stellar map reference' },
+      { id: 'fixture:binary:reference', bodyId: 'fixture:binary', kind: 'reference', label: 'Circumbinary map reference' },
+      { id: 'fixture:world:surface', bodyId: 'fixture:world', kind: 'surface', label: 'Distant world surface' },
+      { id: 'fixture:world:orbit', bodyId: 'fixture:world', kind: 'orbit', label: 'Distant world low orbit' },
+    ],
+    maneuvers: [
+      { id: 'fixture:home:ascent', from: 'fixture:home:surface', to: 'fixture:home:orbit', deltaV: 500, kind: 'ascent', label: 'Home ascent', sourceId: 'fixture', assumptions: [] },
+      { id: 'fixture:stellar-transfer', from: 'fixture:blackhole:reference', to: 'fixture:star:reference', deltaV: 10000, kind: 'transfer', label: 'Published stellar transfer', sourceId: 'fixture', assumptions: [] },
+      { id: 'fixture:distant-ascent', from: 'fixture:world:surface', to: 'fixture:world:orbit', deltaV: 1000, kind: 'ascent', label: 'Distant ascent', sourceId: 'fixture', assumptions: [] },
+    ],
+    unpricedConnections: [
+      { id: 'fixture:portal', from: 'fixture:home:orbit', to: 'fixture:world:orbit', forwardKind: 'wormhole', reverseKind: 'wormhole', label: 'Missing portal allowance', sourceId: 'fixture', assumptions: [] },
+      { id: 'fixture:stellar-link', from: 'fixture:star:reference', to: 'fixture:world:orbit', forwardKind: 'transfer', reverseKind: 'transfer', label: 'Missing local connector', sourceId: 'fixture', assumptions: [] },
+    ],
+    mapRegions: [
+      { id: 'home', label: 'Home system', bodyIds: ['fixture:sun', 'fixture:home'] },
+      { id: 'distant', label: 'Distant systems', bodyIds: ['fixture:blackhole', 'fixture:star', 'fixture:world', 'fixture:binary', 'fixture:giant'] },
+    ],
+  }
+}
+
+describe('regional presentation of a global maneuver pack', () => {
+  it('filters only the visible bodies, states and complete connections without mutating source data', () => {
+    const pack = regionalFixture()
+    const before = structuredClone(pack)
+    const home = packForMapRegion(pack, 'home')
+    const distant = packForMapRegion(pack, 'distant')
+    expect(home.nodes.map(node => node.id)).toEqual(['fixture:home:surface', 'fixture:home:orbit', 'fixture:home:encounter'])
+    expect(home.maneuvers.map(edge => edge.id)).toEqual(['fixture:home:ascent'])
+    expect(home.unpricedConnections).toEqual([])
+    expect(distant.unpricedConnections?.map(connection => connection.id)).toEqual(['fixture:stellar-link'])
+    expect(distant.maneuvers.map(edge => edge.id)).toEqual(['fixture:stellar-transfer', 'fixture:distant-ascent'])
+    expect(new Set([...home.nodes, ...distant.nodes].map(node => node.id))).toEqual(new Set(pack.nodes.map(node => node.id)))
+    expect(pack).toEqual(before)
+    expect(packForMapRegion(pack, 'all')).toBe(pack)
+    expect(packForMapRegion(pack, 'unknown')).toBe(pack)
+  })
+
+  it.each<MapMode>(['wide', 'portrait', 'short'])('keeps every regional state and reference inside a finite %s schematic', mode => {
+    const pack = regionalFixture()
+    for (const regionId of ['all', ...pack.mapRegions!.map(region => region.id)]) {
+      const visible = packForMapRegion(pack, regionId)
+      const layout = createMapLayout(visible, mode)
+      expect(layout.nodePositions.size).toBe(visible.nodes.length)
+      for (const node of visible.nodes) {
+        const point = layout.nodePositions.get(node.id)!
+        expect(Number.isFinite(point.x) && Number.isFinite(point.y)).toBe(true)
+        expect(point.x - layout.radius).toBeGreaterThanOrEqual(0)
+        expect(point.y - layout.radius).toBeGreaterThanOrEqual(0)
+        expect(point.x + layout.radius).toBeLessThanOrEqual(layout.width)
+        expect(point.y + layout.radius).toBeLessThanOrEqual(layout.height)
+      }
+      expect(layout.labels.some(label => label.body.id === 'fixture:giant')).toBe(false)
+      for (const edge of [...visible.maneuvers, ...(visible.unpricedConnections ?? [])]) {
+        const from = visible.nodes.find(node => node.id === edge.from)!
+        const to = visible.nodes.find(node => node.id === edge.to)!
+        const points = connectionPoints(from, to, layout, visible)
+        expect(points.at(0)).toEqual(layout.nodePositions.get(from.id))
+        expect(points.at(-1)).toEqual(layout.nodePositions.get(to.id))
+        expect(connectionPoints(to, from, layout, visible)).toEqual([...points].reverse())
+        expect(points.every(point => Number.isFinite(point.x) && Number.isFinite(point.y))).toBe(true)
+      }
+    }
+  })
+})
 
 describe.each([opmPack, rssPack])('$shortName branch clearance', (pack) => {
   it.each<MapMode>(['wide', 'short'])('keeps %s interplanetary bands clear of unrelated state circles', (mode) => {

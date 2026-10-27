@@ -136,6 +136,12 @@ describe('planet pack validation', () => {
     expect(validatePlanetPack(pack)).toEqual([])
   })
 
+  it('accepts an explicitly costed complete transfer between different parking orbits', () => {
+    const pack = makePack()
+    pack.maneuvers.push(extraEdge({ from: 'kerbin:orbit', to: 'mun:orbit', deltaV: 1170 }))
+    expect(validatePlanetPack(pack)).toEqual([])
+  })
+
   it('rejects the old moon-orbit to parent-encounter shortcut', () => {
     const pack = makePack()
     pack.maneuvers.push(extraEdge({ from: 'mun:orbit', to: 'kerbin:encounter' }))
@@ -144,7 +150,6 @@ describe('planet pack validation', () => {
 
   it.each([
     { from: 'kerbin:surface', to: 'kerbin:encounter', kind: 'escape' as const },
-    { from: 'kerbin:orbit', to: 'mun:orbit', kind: 'transfer' as const },
     { from: 'kerbin:surface', to: 'kerbin:orbit', kind: 'descent' as const },
     { from: 'kerbin:encounter', to: 'mun:encounter', kind: 'transfer' as const },
   ])('rejects invalid state pairing $from → $to ($kind)', changes => {

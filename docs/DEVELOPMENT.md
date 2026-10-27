@@ -65,6 +65,8 @@ On Linux CI machines that also need browser system dependencies, use
 | Body hierarchy, states, maneuvers, and pack types | `src/types/planner.ts` |
 | Stock reference data | `src/data/stock.ts` |
 | OPM and RSS packs, and pack registry | `src/data/opm.ts`, `src/data/rss.ts`, `src/data/planetPacks.ts` |
+| Composed Kcalbeloh packs and pinned hierarchy facts | `src/data/kcalbeloh.ts`, `src/data/kcalbelohReference.ts` |
+| Directional budgets for documented unpriced links | `src/utils/connectionAllowances.ts`, `src/components/ConnectionAllowancesDialog.tsx` |
 | Pinned OPM physical/orbital reference data | `src/data/opmReference.ts` |
 | Analytic orbital and vacuum surface estimates | `src/utils/orbitalBudgets.ts` |
 | Pack and topology validation | `src/utils/validatePlanetPack.ts` |
@@ -123,8 +125,9 @@ The Stops editor stores visits in outbound order. Pack changes filter out
 unsupported stops, swapping reverses their order, and reset empties the list.
 The map shows numbered stop badges, and the optional breakdown pages through
 stages to keep long missions compact.
-Custom pack stages also page through maneuvers in groups of eight, keeping
-arbitrary imported paths within the available map area without page scrolling.
+Custom pack stages and built-in stages longer than 17 maneuvers page through
+rows in groups of eight, keeping the breakdown within the available map area
+without page scrolling.
 
 To try a pack without rebuilding the app, open **Custom planet packs** using the
 puzzle button beside the system selectors and import its JSON.
@@ -165,6 +168,50 @@ separate source tag. Orbital calculations cannot supply their vehicle-dependent
 launch or landing losses. Changes to OPM reference constants should update the
 independent numerical landmarks, route sums, and source documentation described
 in the [data guide](DATA.md).
+
+## Kcalbeloh compositions and unpriced links
+
+`planetPacks.ts` keeps the three primary base buttons separate from reviewed
+add-on configurations. The registry includes immutable Stock + Kcalbeloh and
+OPM + Kcalbeloh packs. `changeBaseConfiguration` retains an add-on set when the
+next base supports it; choosing RSS falls back to RSS alone. Composers clone the
+base records and preserve shared state IDs, so existing selections can survive
+compatible switches without mutating Stock or OPM.
+
+Kcalbeloh uses complete, pair-specific parking/reference transfers from its
+published map. Summing each printed pair once avoids inventing universal
+encounter energies. `reference` nodes belong to stellar primaries or barycenters;
+black holes, nested stars, barycenters, and nonlandable wormholes have explicit
+hierarchy kinds. Existing encounter-to-encounter arrivals still require their
+actual low-parking-orbit reset before another interplanetary transfer.
+
+`unpricedConnections` is source metadata, not zero-cost edges. A descriptor names
+the endpoints, direction-specific maneuver kinds, source, and assumptions.
+`applyConnectionAllowances` validates the session plan and adds only entered
+forward/reverse costs to a copied graph. Values are finite 0–1,000,000 m/s;
+`null` leaves a direction unavailable. Generated edge IDs start with
+`allowance:` and their assumptions identify the user-supplied cost. The whole
+wormhole connector covers approach, crossing, exit matching, and parking capture.
+No fuel-free matching state or hidden default cost is inferred.
+
+The app applies link allowances before atmospheric assistance and mission search.
+Atmospheric comparison therefore includes the same user links in both graphs;
+reserves apply afterward. Apply commits the dialog draft, Cancel/Escape discards
+it, and Clear removes the session plan. A pack switch retains allowances only
+when descriptor ID, endpoints, and maneuver kinds match. The Stock-to-OPM
+wormhole parent change consequently clears that connection's old allowance.
+Source pack export does not include entered costs, and reloading resets them.
+
+`mapRegions` is presentation metadata. `packForMapRegion` filters visible nodes
+and connections while the planner searches the complete graph. The map view
+selector includes an overview, and explicit endpoint/stop choices can reveal
+their region. Unpriced links are dashed; applied allowances become ordinary
+priced route segments. Technical stellar atmospheres are excluded from braking,
+and the relay workspace lists physical planets/moons only.
+
+See the [data guide](DATA.md#kcalbeloh-configurations) for the pinned reference,
+coverage gaps, assumptions, and numerical landmarks. The [custom pack guide](CUSTOM_PACKS.md)
+documents the same optional JSON fields and bounded import rules.
 
 ## Relay planning
 

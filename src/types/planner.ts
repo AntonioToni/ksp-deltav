@@ -1,6 +1,6 @@
-export type BodyKind = 'star' | 'planet' | 'moon'
-export type NodeKind = 'surface' | 'orbit' | 'elliptical' | 'encounter'
-export type ManeuverKind = 'ascent' | 'descent' | 'escape' | 'capture' | 'transfer'
+export type BodyKind = 'star' | 'black-hole' | 'barycenter' | 'wormhole' | 'planet' | 'moon'
+export type NodeKind = 'surface' | 'orbit' | 'reference' | 'elliptical' | 'encounter'
+export type ManeuverKind = 'ascent' | 'descent' | 'escape' | 'capture' | 'transfer' | 'wormhole'
 
 export interface CelestialBody {
   id: string
@@ -39,6 +39,25 @@ export interface ManeuverEdge {
   assumptions: string[]
 }
 
+/** A documented link whose fuel budget must be supplied explicitly by the user. */
+export interface UnpricedConnection {
+  id: string
+  label: string
+  from: string
+  to: string
+  forwardKind: ManeuverKind
+  reverseKind: ManeuverKind
+  sourceId: string
+  assumptions: string[]
+}
+
+/** Presentation-only group; all mission searches still use the complete pack. */
+export interface MapRegion {
+  id: string
+  label: string
+  bodyIds: string[]
+}
+
 export interface PlanetPack {
   id: string
   name: string
@@ -55,6 +74,8 @@ export interface PlanetPack {
   bodies: CelestialBody[]
   nodes: RouteNode[]
   maneuvers: ManeuverEdge[]
+  unpricedConnections?: UnpricedConnection[]
+  mapRegions?: MapRegion[]
 }
 
 export interface PlannerGraph {

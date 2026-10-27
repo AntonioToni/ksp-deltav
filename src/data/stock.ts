@@ -68,7 +68,7 @@ const nodes: RouteNode[] = bodies.flatMap((body) => {
     'encounter',
   ]
   const labels: Record<NodeKind, string> = {
-    surface: 'surface', orbit: 'low orbit', elliptical: 'elliptical orbit', encounter: 'encounter',
+    surface: 'surface', orbit: 'low orbit', elliptical: 'elliptical orbit', encounter: 'encounter', reference: 'reference orbit',
   }
   return kinds.map((kind) => ({
     id: id(shortId, kind),

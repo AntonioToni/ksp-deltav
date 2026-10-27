@@ -48,6 +48,44 @@ describe('custom planet pack JSON', () => {
     expect(parse(renamed)).toEqual({ status: 'success', pack: renamed })
   })
 
+  it('round-trips stellar hierarchy, published references, unpriced connections, and overlapping map regions without adding prices', () => {
+    const custom = pack()
+    custom.bodies.push(
+      { id: 'custom:hole', name: 'Black hole', parentId: 'stock:kerbol', kind: 'black-hole', hasSurface: false, hasAtmosphere: false, color: '#777' },
+      { id: 'custom:star', name: 'Companion star', parentId: 'custom:hole', kind: 'star', hasSurface: false, hasAtmosphere: true, supportsAtmosphericBraking: false, color: '#ffa' },
+      { id: 'custom:center', name: 'Binary center', parentId: 'custom:star', kind: 'barycenter', hasSurface: false, hasAtmosphere: false, color: '#aaa' },
+      { id: 'custom:portal', name: 'Portal', parentId: 'stock:jool', kind: 'wormhole', hasSurface: false, hasAtmosphere: false, color: '#aaf' },
+    )
+    custom.nodes.push(
+      { id: 'custom:reference', bodyId: 'custom:star', kind: 'reference', label: 'Published stellar reference' },
+      { id: 'custom:center-reference', bodyId: 'custom:center', kind: 'reference', label: 'Circumbinary reference' },
+    )
+    custom.unpricedConnections = [{ id: 'missing', label: 'Unpriced stellar journey', from: 'custom:reference', to: 'custom:center-reference', forwardKind: 'transfer', reverseKind: 'transfer', sourceId: custom.sources[0]!.id, assumptions: ['No source budget.'] }]
+    custom.mapRegions = [{ id: 'one', label: 'First region', bodyIds: ['custom:star', 'custom:center'] }, { id: 'two', label: 'Shared reference', bodyIds: ['custom:star'] }]
+    const result = parse({ ...custom, unpricedConnections: custom.unpricedConnections.map(row => ({ ...row, deltaV: 0, executable: true })), mapRegions: custom.mapRegions.map(row => ({ ...row, component: 'unsafe' })) })
+    expect(result).toEqual({ status: 'success', pack: custom })
+    if (result.status !== 'success') throw new Error('Expected canonical extended pack')
+    expect(result.pack.unpricedConnections).not.toBe(custom.unpricedConnections)
+    expect(result.pack.mapRegions![0]!.bodyIds).not.toBe(custom.mapRegions[0]!.bodyIds)
+    expect(buildGraph(result.pack).adjacency.get('custom:reference')).toEqual([])
+  })
+
+  it.each([
+    { unpricedConnections: Array(101).fill({}) }, { mapRegions: Array(21).fill({}) },
+    { unpricedConnections: null }, { mapRegions: 'bad' },
+    { mapRegions: [{ id: 'large', label: 'Large', bodyIds: Array(101).fill('stock:kerbin') }] },
+  ])('bounds optional connection and region collections before topology validation: %j', changes => {
+    expect(errors({ ...pack(), ...changes }).join(' ')).toContain('at most')
+  })
+
+  it('reserves the overview region ID so imported views cannot shadow All systems', () => {
+    const custom = pack()
+    custom.mapRegions = [{ id: 'all', label: 'Conflicting view', bodyIds: ['stock:kerbin'] }]
+    expect(errors(custom).join(' ')).toContain('reserved for the complete map overview')
+    custom.mapRegions[0]!.id = 'home-system'
+    expect(parse(custom)).toEqual({ status: 'success', pack: custom })
+  })
+
   it('accepts a UTF-8 BOM and strips unknown application/configuration fields', () => {
     const custom = pack()
     const raw = JSON.stringify({ ...custom, __proto__: { poisoned: true }, executableScript: 'alert(1)', nodes: custom.nodes.map(node => ({ ...node, url: 'https://example.org' })) })
@@ -66,12 +104,12 @@ describe('custom planet pack JSON', () => {
     expect(parsePlanetPackJson(text)).toMatchObject({ status: 'error', errors: [expect.stringContaining('1 MiB')] })
   })
 
-  it.each(['stock', 'opm', 'rss'])('protects built-in pack ID %s', id => {
+  it.each(['stock', 'opm', 'rss', 'stock-kcalbeloh', 'opm-kcalbeloh'])('protects built-in pack ID %s', id => {
     expect(errors(pack(id)).join(' ')).toContain('reserved')
   })
 
   it.each([
-    ['bodies', 41], ['nodes', 161], ['maneuvers', 1001], ['sources', 21],
+    ['bodies', 101], ['nodes', 401], ['maneuvers', 1001], ['sources', 21],
   ] as const)('bounds %s before topology traversal', (key, count) => {
     const custom = pack()
     expect(errors({ ...custom, [key]: Array.from({ length: count }, () => custom[key][0]) }).join(' ')).toContain(`${key} must be an array of at most`)

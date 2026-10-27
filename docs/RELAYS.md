@@ -2,7 +2,9 @@
 
 Open **Relays** in the planner's header (the satellite icon on phones) to design
 a circular, equally spaced relay constellation around a body in the active
-planet pack. This workspace is separate from the Delta-V route: opening it,
+planet pack. The body selector includes physical planets and moons; stellar
+primaries, barycenters, and wormholes are excluded. This workspace is separate
+from the Delta-V route: opening it,
 editing a constellation, or closing it does not change your mission endpoints,
 stops, atmospheric choices, or budget.
 
@@ -264,7 +266,10 @@ their own physical inputs. No radius or gravity is inferred from a maneuver
 budget or silently substituted from Kerbin.
 
 The catalog has **64 contextual presets**: 16 nonstellar Stock bodies, 16 OPM
-rows including Eeloo's changed parent, and 32 nonstellar RSS bodies.
+rows including Eeloo's changed parent, and 32 nonstellar RSS bodies. Kcalbeloh
+planets and moons currently require their own physical inputs under **Body data**;
+the maneuver map does not supply relay physics automatically. Cataloged Kcalbeloh
+bodies without priced Delta-V states can still be selected here.
 
 - Stock body constants: [KSPTOT `bodies.ini`](https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini),
   pinned to `9972b57398742263af12374652799db210395499`. The source lists radius

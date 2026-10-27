@@ -17,7 +17,7 @@ import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 import AirRounded from '@mui/icons-material/AirRounded'
 import SatelliteAltRounded from '@mui/icons-material/SatelliteAltRounded'
 import { stockPack } from './data/stock'
-import { planetPacks } from './data/planetPacks'
+import { builtInConfigurations, changeBaseConfiguration, getBasePackId, planetPacks, primaryPlanetPacks } from './data/planetPacks'
 import type { PlanetPack } from './types/planner'
 import DeltaVMap from './components/DeltaVMap'
 import SpaceBackground from './components/SpaceBackground'
@@ -25,11 +25,13 @@ import StopsDialog from './components/StopsDialog'
 import PlanetPacksDialog from './components/PlanetPacksDialog'
 import AtmosphereDialog from './components/AtmosphereDialog'
 import RelayPlannerDialog from './components/RelayPlannerDialog'
+import ConnectionAllowancesDialog from './components/ConnectionAllowancesDialog'
 import { buildGraph } from './utils/buildGraph'
 import { findMissionRoute, type MissionMode } from './utils/mission'
 import { calculateBudget } from './utils/budget'
 import { readCustomPacks, saveCustomPacks, validateCustomPackAddition } from './utils/customPacks'
 import { applyAtmosphericAssistance, getAtmosphericCapabilities, type AtmosphericPlan } from './utils/atmosphericAssistance'
+import { applyConnectionAllowances, type ConnectionPlan } from './utils/connectionAllowances'
 
 const format = new Intl.NumberFormat('en-US')
 const compactBreakdown = '@media (max-height: 500px), (max-width: 699px) and (max-height: 650px)'
@@ -54,13 +56,19 @@ export default function App() {
   const [packId, setPackId] = useState('stock')
   const pack = availablePacks.find(candidate => candidate.id === packId) ?? stockPack
   const isCustomPack = customPacks.some(candidate => candidate.id === pack.id)
+  const activeAddons = builtInConfigurations.find(configuration => configuration.pack.id === pack.id)?.addons ?? []
   const [showPacks, setShowPacks] = useState(false)
   const [showAtmosphere, setShowAtmosphere] = useState(false)
   const [showRelays, setShowRelays] = useState(false)
+  const [showAllowances, setShowAllowances] = useState(false)
+  const [connectionPlan, setConnectionPlan] = useState<ConnectionPlan>([])
+  const [mapFocusNodeId, setMapFocusNodeId] = useState<string | null>(null)
   const [atmosphericPlan, setAtmosphericPlan] = useState<AtmosphericPlan>([])
   const hasAtmosphericOptions = atmosphericPlan.some(option => option.capture || option.landing)
   const referenceGraph = useMemo(() => buildGraph(pack), [pack])
-  const { graph, adjustments } = useMemo(() => applyAtmosphericAssistance(referenceGraph, pack, atmosphericPlan), [referenceGraph, pack, atmosphericPlan])
+  const { graph: allowanceGraph, edges: allowanceEdges } = useMemo(() => applyConnectionAllowances(referenceGraph, pack, connectionPlan), [referenceGraph, pack, connectionPlan])
+  const displayPack = useMemo(() => allowanceEdges.length ? { ...pack, maneuvers: [...pack.maneuvers, ...allowanceEdges] } : pack, [pack, allowanceEdges])
+  const { graph, adjustments } = useMemo(() => applyAtmosphericAssistance(allowanceGraph, pack, atmosphericPlan), [allowanceGraph, pack, atmosphericPlan])
   const nodesById = useMemo(() => new Map(pack.nodes.map(node => [node.id, node])), [pack])
   const bodiesById = useMemo(() => new Map(pack.bodies.map(body => [body.id, body])), [pack])
   const [startId, setStartId] = useState<string | null>(null)
@@ -85,8 +93,8 @@ export default function App() {
     [graph, startId, endId, missionMode, waypointIds],
   )
   const referenceRoute = useMemo(
-    () => hasAtmosphericOptions && startId !== null && endId !== null ? findMissionRoute(referenceGraph, startId, endId, missionMode, waypointIds) : null,
-    [referenceGraph, hasAtmosphericOptions, startId, endId, missionMode, waypointIds],
+    () => hasAtmosphericOptions && startId !== null && endId !== null ? findMissionRoute(allowanceGraph, startId, endId, missionMode, waypointIds) : null,
+    [allowanceGraph, hasAtmosphericOptions, startId, endId, missionMode, waypointIds],
   )
   const atmosphericDifference = route?.status === 'success' && referenceRoute?.status === 'success'
     ? route.totalDeltaV - referenceRoute.totalDeltaV : null
@@ -99,7 +107,7 @@ export default function App() {
   const stages = route?.status === 'success' ? showingReturn ? route.returnStages : route.outboundStages : []
   const stageIndex = Math.min(breakdownStage, Math.max(0, stages.length - 1))
   const activeLeg = stages[stageIndex] ?? activeJourney
-  const pageSize = isCustomPack ? 8 : activeLeg?.legs.length || 1
+  const pageSize = isCustomPack || (activeLeg?.legs.length ?? 0) > 17 ? 8 : activeLeg?.legs.length || 1
   const pageCount = Math.ceil((activeLeg?.legs.length ?? 0) / pageSize)
   const pageIndex = Math.min(breakdownPage, Math.max(0, pageCount - 1))
   const pageStart = pageIndex * pageSize
@@ -119,7 +127,10 @@ export default function App() {
   const hasLayover = route?.status === 'success' && [...route.outboundStages, ...route.returnStages].some(leg => leg.legs.filter(({ edge }) =>
     edge.kind === 'transfer' && nodesById.get(edge.from)?.kind === 'encounter' && nodesById.get(edge.to)?.kind === 'encounter',
   ).length > 1)
-  const layoverNotice = isCustomPack ? 'Includes intermediate parking orbits.' : `Includes a ${hubName} parking-orbit layover.`
+  const layoverNotice = isCustomPack || pack.mapRegions ? 'Includes intermediate parking orbits.' : `Includes a ${hubName} parking-orbit layover.`
+  const hasUnpricedLinks = (pack.unpricedConnections?.length ?? 0) > 0
+  const needsLinkAllowances = hasUnpricedLinks && route?.status === 'unreachable'
+  const usesLinkAllowances = route?.status === 'success' && route.legs.some(({ edge }) => edge.id.startsWith('allowance:'))
 
   useEffect(() => {
     if (!showBreakdown && selection !== 'stop') return
@@ -145,6 +156,7 @@ export default function App() {
   }
 
   function changeStops(ids: string[]) {
+    if (ids.length > waypointIds.length) setMapFocusNodeId(ids.at(-1) ?? null)
     setWaypointIds(ids)
     resetDetails()
   }
@@ -158,6 +170,7 @@ export default function App() {
   }
 
   function selectNode(id: string) {
+    setMapFocusNodeId(id)
     resetDetails()
     if (selection === 'stop') {
       setWaypointIds(ids => ids.length < 4 ? [...ids, id] : ids)
@@ -178,9 +191,17 @@ export default function App() {
     const nextStart = startId !== null && available.has(startId) ? startId : null
     const nextEnd = endId !== null && available.has(endId) ? endId : null
     setPackId(id)
+    setMapFocusNodeId(nextEnd ?? nextStart)
     setStartId(nextStart)
     setEndId(nextEnd)
     setWaypointIds(ids => ids.filter(nodeId => available.has(nodeId)))
+    const currentConnections = new Map((pack.unpricedConnections ?? []).map(connection => [connection.id, connection]))
+    const compatibleConnections = new Set((nextPack.unpricedConnections ?? []).filter(connection => {
+      const previous = currentConnections.get(connection.id)
+      return previous?.from === connection.from && previous.to === connection.to
+        && previous.forwardKind === connection.forwardKind && previous.reverseKind === connection.reverseKind
+    }).map(connection => connection.id))
+    setConnectionPlan(options => options.filter(option => compatibleConnections.has(option.connectionId)))
     const capabilities = new Map(getAtmosphericCapabilities(nextPack).map(capability => [capability.body.id, capability]))
     setAtmosphericPlan(options => options.flatMap(option => {
       const capability = capabilities.get(option.bodyId)
@@ -194,6 +215,7 @@ export default function App() {
     setShowBreakdown(false)
     setShowAtmosphere(false)
     setShowRelays(false)
+    setShowAllowances(false)
     resetDetails()
   }
 
@@ -218,12 +240,15 @@ export default function App() {
 
   function reset() {
     setStartId(null)
+    setMapFocusNodeId(null)
     setEndId(null)
     setSelection('start')
     setWaypointIds([])
     setShowStops(false)
     setRedundancy(0)
     setAtmosphericPlan([])
+    setConnectionPlan([])
+    setShowAllowances(false)
     setShowAtmosphere(false)
     setShowRelays(false)
     setMissionMode('one-way')
@@ -231,11 +256,12 @@ export default function App() {
     setShowBreakdown(false)
   }
 
-  const routeStatus = route?.status === 'invalid' || route?.status === 'unreachable' ? route.message
+  const routeStatus = needsLinkAllowances ? 'Some route links are unpriced. Open Link allowances to enter your estimates.'
+    : route?.status === 'invalid' || route?.status === 'unreachable' ? route.message
     : route?.status === 'success' && route.legs.length === 0 ? 'No maneuvers required.'
       : hasAtmosphericLanding ? `Atmospheric landing uses a planning allowance.${hasLayover ? ` ${layoverNotice}` : ''}`
         : hasLayover ? layoverNotice
-          : route?.status === 'success' ? `${route.legs.length} maneuvers · Select a state to update your ${selection === 'start' ? 'origin' : 'destination'}.`
+          : route?.status === 'success' ? usesLinkAllowances ? `${route.legs.length} maneuvers · Includes user link allowances.` : `${route.legs.length} maneuvers · Select a state to update your ${selection === 'start' ? 'origin' : 'destination'}.`
             : `Select ${selection === 'start' ? 'an origin' : 'a destination'} on the map.`
   const status = selection === 'stop' ? `Select stop ${waypointIds.length + 1} on the map. Escape cancels.`
     : returnOnly && route?.status === 'success'
@@ -289,7 +315,7 @@ export default function App() {
 
       <Box component="main" aria-label="Interactive Delta-V map" sx={{ minHeight: 0, minWidth: 0, overflow: 'hidden', position: 'relative' }}>
         <SpaceBackground />
-        <DeltaVMap pack={pack} startId={startId} endId={endId} waypointIds={waypointIds} route={route} adjustments={adjustments} onSelect={selectNode} />
+        <DeltaVMap key={pack.id} pack={displayPack} startId={startId} endId={endId} waypointIds={waypointIds} focusNodeId={mapFocusNodeId} route={route} adjustments={adjustments} onSelect={selectNode} />
       </Box>
 
       <Box ref={setBreakdownAnchor} component="footer" sx={{ bgcolor: 'background.paper', backgroundImage: 'linear-gradient(180deg, #16243b, #101b2f)', borderTop: '2px solid', borderColor: 'primary.dark', minWidth: 0, boxShadow: '0 -8px 24px #00000018, inset 0 1px 0 #ffffff03' }}>
@@ -304,9 +330,9 @@ export default function App() {
         }}>
           <Box sx={{ gridArea: 'selectors', display: 'grid', gridTemplateColumns: 'minmax(0, .78fr) minmax(0, 1fr)', gap: { xs: .75, sm: 1.5 }, width: '100%', maxWidth: 560, minWidth: 0 }}>
             <Box sx={{ minWidth: 0 }}>
-              <Typography title={isCustomPack ? pack.name : undefined} sx={{ mb: .25, fontSize: 10, lineHeight: 1.1, color: 'text.secondary', letterSpacing: '.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', '@media (max-height: 500px)': { display: 'none' } }}>{isCustomPack ? `System · ${pack.shortName ?? pack.name}` : 'System'}</Typography>
-              <ToggleButtonGroup exclusive aria-label="Planet pack" value={isCustomPack ? 'custom' : pack.id} onChange={(_, value: string | null) => { if (value !== null && value !== 'custom') changePack(value) }} sx={selectorGroupStyles}>
-                {planetPacks.map(candidate => <ToggleButton key={candidate.id} value={candidate.id} title={candidate.name}>{candidate.shortName ?? candidate.name}</ToggleButton>)}
+              <Typography title={pack.name} sx={{ mb: .25, fontSize: 10, lineHeight: 1.1, color: 'text.secondary', letterSpacing: '.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', '@media (max-height: 500px)': { display: 'none' } }}>{isCustomPack ? `System · ${pack.shortName ?? pack.name}` : activeAddons.length ? `System · + ${activeAddons.join(', ')}` : 'System'}</Typography>
+              <ToggleButtonGroup exclusive aria-label="Planet pack" value={isCustomPack ? 'custom' : getBasePackId(pack.id)} onChange={(_, value: string | null) => { if (value !== null && value !== 'custom') changePack(changeBaseConfiguration(pack.id, value)) }} sx={selectorGroupStyles}>
+                {primaryPlanetPacks.map(candidate => <ToggleButton key={candidate.id} value={candidate.id} title={candidate.name}>{candidate.shortName ?? candidate.name}</ToggleButton>)}
                 <ToggleButton value="custom" aria-label="Custom planet packs" aria-haspopup="dialog" aria-expanded={showPacks} title="Custom planet packs" onClick={() => {
                   if (selection === 'stop') setSelection(previousSelection.current)
                   setShowStops(false)
@@ -381,7 +407,8 @@ export default function App() {
           <Typography role={selection !== 'stop' && (hasAtmosphericLanding || route?.status === 'invalid') ? 'alert' : 'status'} title={atmosphericComparison && selection !== 'stop' ? `${atmosphericComparison} ${status}` : status} sx={{ flex: 1, minWidth: 0, fontSize: 10, color: selection === 'stop' ? '#92d5c6' : hasAtmosphericOptions ? '#92d5c6' : hasAtmosphericLanding ? 'secondary.main' : 'text.secondary', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{atmosphericDifference !== null && referenceRoute?.status === 'success' && selection !== 'stop' ? <>
             <Box component="output" data-testid="atmospheric-change">{atmosphericDifference > 0 ? '+' : ''}{format.format(atmosphericDifference)} m/s</Box> atmosphere · <Box component="output" data-testid="atmospheric-reference">{format.format(referenceRoute.totalDeltaV)} m/s</Box> base ref
           </> : status}</Typography>
-          {pack.dataNotice && <Button size="small" color="secondary" onClick={() => setShowInfo(true)} title={pack.dataNotice} sx={{ minHeight: 15, minWidth: 0, maxWidth: isCustomPack ? '40%' : undefined, flexShrink: 0, p: 0, fontSize: 10, lineHeight: 1.5 }}><Box component="span" sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.dataNotice}</Box></Button>}
+          {needsLinkAllowances ? <Button size="small" color="secondary" onClick={() => setShowAllowances(true)} sx={{ minHeight: 20, minWidth: 0, px: .25, py: 0, fontSize: 11, whiteSpace: 'nowrap' }}>Link allowances</Button>
+            : pack.dataNotice && <Button size="small" color="secondary" onClick={() => setShowInfo(true)} title={pack.dataNotice} sx={{ minHeight: 15, minWidth: 0, maxWidth: isCustomPack ? '40%' : pack.mapRegions ? '45%' : undefined, flexShrink: 0, p: 0, fontSize: 10, lineHeight: 1.5 }}><Box component="span" sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.dataNotice}</Box></Button>}
           <Typography sx={{ display: { xs: 'none', md: 'block' }, fontSize: 10, color: 'text.secondary', whiteSpace: 'nowrap' }}>Estimates in m/s · {redundancy}% reserve · Schematic, not to scale</Typography>
         </Box>
       </Box>
@@ -435,7 +462,9 @@ export default function App() {
 
       <StopsDialog open={showStops} pack={pack} waypointIds={waypointIds} startId={startId} endId={endId} onChange={changeStops} onClose={() => setShowStops(false)} onSelectOnMap={selectStopOnMap} />
 
-      <PlanetPacksDialog open={showPacks} currentPack={pack} customPacks={customPacks} storageWarning={customPackState.warning} onImport={importPack} onSelect={id => { changePack(id); setShowPacks(false) }} onRemove={removePack} onClose={() => setShowPacks(false)} />
+      <PlanetPacksDialog open={showPacks} currentPack={pack} customPacks={customPacks} storageWarning={customPackState.warning} onImport={importPack} onSelect={id => { changePack(id); setShowPacks(false) }} onRemove={removePack} onEditAllowances={() => { setShowPacks(false); setShowAllowances(true) }} onClose={() => setShowPacks(false)} />
+
+      <ConnectionAllowancesDialog open={showAllowances} pack={pack} plan={connectionPlan} onApply={options => { setConnectionPlan(options); setShowAllowances(false); resetDetails() }} onClose={() => setShowAllowances(false)} />
 
       <AtmosphereDialog open={showAtmosphere} pack={pack} plan={atmosphericPlan} onApply={options => { setAtmosphericPlan(options); setShowAtmosphere(false); resetDetails() }} onClose={() => setShowAtmosphere(false)} />
 

@@ -21,7 +21,7 @@ export type OrderedRouteResult =
     stageLegIndices: number[]
   })
 
-const nodeKinds = new Set(['surface', 'orbit', 'elliptical', 'encounter'])
+const nodeKinds = new Set(['surface', 'orbit', 'elliptical', 'encounter', 'reference'])
 const stateKey = ({ nodeId, pendingParkingBodyId, nextStopIndex }: SearchState) => JSON.stringify([nodeId, pendingParkingBodyId, nextStopIndex])
 
 /**

@@ -1,6 +1,7 @@
-const bodyKinds = new Set(['star', 'planet', 'moon'])
-const nodeKinds = new Set(['surface', 'orbit', 'elliptical', 'encounter'])
-const maneuverKinds = new Set(['ascent', 'descent', 'escape', 'capture', 'transfer'])
+const bodyKinds = new Set(['star', 'black-hole', 'barycenter', 'wormhole', 'planet', 'moon'])
+const primaryKinds = new Set(['star', 'black-hole', 'barycenter'])
+const nodeKinds = new Set(['surface', 'orbit', 'reference', 'elliptical', 'encounter'])
+const maneuverKinds = new Set(['ascent', 'descent', 'escape', 'capture', 'transfer', 'wormhole'])
 type Entry = Record<string, unknown>
 
 function isEntry(value: unknown): value is Entry {
@@ -64,10 +65,14 @@ export function validatePlanetPack(pack: unknown): string[] {
   const nodes = entries(raw.nodes, 'Nodes')
   const sources = entries(raw.sources, 'Sources')
   const maneuvers = entries(raw.maneuvers, 'Maneuvers')
+  const connections = raw.unpricedConnections === undefined ? [] : entries(raw.unpricedConnections, 'Unpriced connections')
+  const regions = raw.mapRegions === undefined ? [] : entries(raw.mapRegions, 'Map regions')
   const bodyById = index(bodies, 'body')
   const nodeById = index(nodes, 'node')
   const sourceById = index(sources, 'source')
   index(maneuvers, 'maneuver')
+  index(connections, 'unpriced connection')
+  index(regions, 'map region')
   if (bodies.length === 0) errors.push('A planet pack must contain at least one body.')
   if (nodes.length === 0) errors.push('A planet pack must contain at least one routing node.')
   if (isText(raw.transferHubBodyId)) {
@@ -89,10 +94,14 @@ export function validatePlanetPack(pack: unknown): string[] {
     if (body.parentId !== null && !isText(body.parentId)) errors.push(`${label} must declare a parent ID or null.`)
     const parent = typeof body.parentId === 'string' ? bodyById.get(body.parentId) : undefined
     if (typeof body.parentId === 'string' && !parent) errors.push(`${label} references unknown parent ${body.parentId}.`)
-    if (body.kind === 'star' && (body.parentId !== null || body.hasSurface === true)) errors.push(`${label}: a star must have no parent or landable surface.`)
-    if (body.kind === 'planet' && parent && parent.kind !== 'star') errors.push(`${label}: a planet must orbit a star.`)
-    if (body.kind === 'moon' && parent && parent.kind !== 'planet' && parent.kind !== 'moon') errors.push(`${label}: a moon must orbit a planet or moon.`)
-    if (body.kind !== 'star' && body.parentId === null) errors.push(`${label} must have a parent body.`)
+    const primary = typeof body.kind === 'string' && primaryKinds.has(body.kind)
+    if ((primary || body.kind === 'wormhole') && body.hasSurface === true) errors.push(`${label}: stellar primaries, barycenters, and wormholes cannot have a landable surface.`)
+    if ((primary || body.kind === 'wormhole') && body.supportsAtmosphericBraking === true) errors.push(`${label}: technical stellar atmospheres and portals cannot support atmospheric braking.`)
+    if (primary && parent && !primaryKinds.has(typeof parent.kind === 'string' ? parent.kind : '')) errors.push(`${label}: a stellar primary or barycenter must orbit another stellar primary or barycenter.`)
+    if (body.kind === 'planet' && parent && !primaryKinds.has(typeof parent.kind === 'string' ? parent.kind : '')) errors.push(`${label}: a planet must orbit a star, black hole, or barycenter.`)
+    if (body.kind === 'moon' && parent && parent.kind !== 'planet' && parent.kind !== 'moon' && parent.kind !== 'barycenter') errors.push(`${label}: a moon must orbit a planet, moon, or barycenter.`)
+    if (body.kind === 'wormhole' && parent && parent.kind !== 'planet') errors.push(`${label}: a wormhole must orbit a physical planet.`)
+    if (!primary && body.parentId === null) errors.push(`${label} must have a parent body.`)
     const seen = new Set<unknown>([body.id])
     let ancestor = body.parentId
     while (typeof ancestor === 'string' && bodyById.has(ancestor)) {
@@ -120,8 +129,43 @@ export function validatePlanetPack(pack: unknown): string[] {
     const body = typeof node.bodyId === 'string' ? bodyById.get(node.bodyId) : undefined
     if (!body) errors.push(`${label} references unknown body ${display(node.bodyId)}.`)
     if (typeof node.kind !== 'string' || !nodeKinds.has(node.kind)) errors.push(`${label} has an unsupported kind.`)
+    if (node.kind === 'reference' && body && !primaryKinds.has(typeof body.kind === 'string' ? body.kind : '')) errors.push(`${label}: a reference state must belong to a stellar primary or barycenter.`)
     if (node.kind === 'surface' && body && body.hasSurface !== true) errors.push(`${label}: ${display(body.name)} has no landable surface.`)
     if (node.altitudeKm !== undefined && (typeof node.altitudeKm !== 'number' || !Number.isFinite(node.altitudeKm) || node.altitudeKm < 0)) errors.push(`${label} altitude must be finite and nonnegative.`)
+  }
+
+  function transition(fromId: unknown, toId: unknown, kind: unknown, label: string) {
+    if (typeof kind !== 'string' || !maneuverKinds.has(kind)) errors.push(`${label} has an unsupported kind.`)
+    const from = typeof fromId === 'string' ? nodeById.get(fromId) : undefined
+    const to = typeof toId === 'string' ? nodeById.get(toId) : undefined
+    if (!from || !to) {
+      errors.push(`${label} references an unknown routing endpoint.`)
+      return
+    }
+    const fromBody = typeof from.bodyId === 'string' ? bodyById.get(from.bodyId) : undefined
+    const toBody = typeof to.bodyId === 'string' ? bodyById.get(to.bodyId) : undefined
+    if (!fromBody || !toBody) return
+    const sameBody = from.bodyId === to.bodyId
+    const fromBound = from.kind === 'orbit' || from.kind === 'reference'
+    const toBound = to.kind === 'orbit' || to.kind === 'reference'
+    let allowed = false
+    switch (kind) {
+      case 'ascent': allowed = sameBody && from.kind === 'surface' && to.kind === 'orbit'; break
+      case 'descent': allowed = sameBody && from.kind === 'orbit' && to.kind === 'surface'; break
+      case 'escape': allowed = sameBody && ((fromBound && (to.kind === 'elliptical' || to.kind === 'encounter')) || (from.kind === 'elliptical' && to.kind === 'encounter')); break
+      case 'capture': allowed = sameBody && ((from.kind === 'encounter' && (to.kind === 'elliptical' || toBound)) || (from.kind === 'elliptical' && toBound)); break
+      case 'transfer': {
+        const toChild = (fromBound || from.kind === 'elliptical') && to.kind === 'encounter' && toBody.parentId === fromBody.id
+        const fromChild = from.kind === 'encounter' && (toBound || to.kind === 'elliptical') && fromBody.parentId === toBody.id
+        const betweenPlanets = from.kind === 'encounter' && to.kind === 'encounter' && fromBody.kind === 'planet' && toBody.kind === 'planet' && fromBody.parentId === toBody.parentId
+        // A published pair may specify a complete two-burn journey between
+        // reference orbits. No encounter energy is silently discarded here.
+        allowed = !sameBody && (toChild || fromChild || betweenPlanets || fromBound && toBound)
+        break
+      }
+      case 'wormhole': allowed = !sameBody && from.kind === 'orbit' && to.kind === 'orbit' && fromBody.kind === 'planet' && toBody.kind === 'planet'; break
+    }
+    if (!allowed) errors.push(`${label} has an unsupported ${display(kind)} transition (${display(fromId)} → ${display(toId)}).`)
   }
 
   for (const edge of maneuvers) {
@@ -130,32 +174,29 @@ export function validatePlanetPack(pack: unknown): string[] {
     texts(edge.assumptions, `${label} assumptions`)
     if (typeof edge.deltaV !== 'number' || !Number.isFinite(edge.deltaV) || edge.deltaV < 0) errors.push(`${label} Delta-V must be finite and nonnegative.`)
     if (typeof edge.sourceId !== 'string' || !sourceById.has(edge.sourceId)) errors.push(`${label} references unknown source ${display(edge.sourceId)}.`)
-    if (typeof edge.kind !== 'string' || !maneuverKinds.has(edge.kind)) errors.push(`${label} has an unsupported kind.`)
-    const from = typeof edge.from === 'string' ? nodeById.get(edge.from) : undefined
-    const to = typeof edge.to === 'string' ? nodeById.get(edge.to) : undefined
-    if (!from || !to) {
-      errors.push(`${label} references an unknown routing endpoint.`)
-      continue
-    }
-    const fromBody = typeof from.bodyId === 'string' ? bodyById.get(from.bodyId) : undefined
-    const toBody = typeof to.bodyId === 'string' ? bodyById.get(to.bodyId) : undefined
-    if (!fromBody || !toBody) continue
-    const sameBody = from.bodyId === to.bodyId
-    let allowed = false
-    switch (edge.kind) {
-      case 'ascent': allowed = sameBody && from.kind === 'surface' && to.kind === 'orbit'; break
-      case 'descent': allowed = sameBody && from.kind === 'orbit' && to.kind === 'surface'; break
-      case 'escape': allowed = sameBody && ((from.kind === 'orbit' && (to.kind === 'elliptical' || to.kind === 'encounter')) || (from.kind === 'elliptical' && to.kind === 'encounter')); break
-      case 'capture': allowed = sameBody && ((from.kind === 'encounter' && (to.kind === 'elliptical' || to.kind === 'orbit')) || (from.kind === 'elliptical' && to.kind === 'orbit')); break
-      case 'transfer': {
-        const toMoon = (from.kind === 'orbit' || from.kind === 'elliptical') && to.kind === 'encounter' && toBody.parentId === fromBody.id
-        const fromMoon = from.kind === 'encounter' && (to.kind === 'orbit' || to.kind === 'elliptical') && fromBody.parentId === toBody.id
-        const betweenPlanets = from.kind === 'encounter' && to.kind === 'encounter' && fromBody.kind === 'planet' && toBody.kind === 'planet' && fromBody.parentId === toBody.parentId
-        allowed = !sameBody && (toMoon || fromMoon || betweenPlanets)
-        break
+    transition(edge.from, edge.to, edge.kind, label)
+  }
+  for (const connection of connections) {
+    const label = `Unpriced connection ${display(connection.id)}`
+    text(connection.label, `${label} label`)
+    texts(connection.assumptions, `${label} assumptions`)
+    if (typeof connection.sourceId !== 'string' || !sourceById.has(connection.sourceId)) errors.push(`${label} references unknown source ${display(connection.sourceId)}.`)
+    transition(connection.from, connection.to, connection.forwardKind, `${label} forward`)
+    transition(connection.to, connection.from, connection.reverseKind, `${label} reverse`)
+  }
+  for (const region of regions) {
+    const label = `Map region ${display(region.id)}`
+    if (region.id === 'all') errors.push(`${label}: ID all is reserved for the complete map overview.`)
+    text(region.label, `${label} label`)
+    if (!Array.isArray(region.bodyIds) || region.bodyIds.length === 0) errors.push(`${label} must list at least one body.`)
+    else {
+      const seen = new Set<string>()
+      for (const id of region.bodyIds) {
+        if (typeof id !== 'string' || !bodyById.has(id)) errors.push(`${label} references unknown body ${display(id)}.`)
+        else if (seen.has(id)) errors.push(`${label} lists body ${id} more than once.`)
+        else seen.add(id)
       }
     }
-    if (!allowed) errors.push(`${label} has an unsupported ${display(edge.kind)} transition (${display(edge.from)} → ${display(edge.to)}).`)
   }
   return errors
 }

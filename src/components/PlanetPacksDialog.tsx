@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
-  IconButton, Link, Stack, Typography,
+  IconButton, Link, Stack, Tab, Tabs, Typography,
 } from '@mui/material'
 import UploadFileRounded from '@mui/icons-material/UploadFileRounded'
 import DownloadRounded from '@mui/icons-material/DownloadRounded'
 import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded'
 import CheckRounded from '@mui/icons-material/CheckRounded'
 import type { PlanetPack } from '../types/planner'
+import { builtInConfigurations } from '../data/planetPacks'
 import { MAX_CUSTOM_PACKS, MAX_PACK_BYTES, parsePlanetPackJson } from '../utils/customPacks'
 
 interface PlanetPacksDialogProps {
@@ -18,15 +19,17 @@ interface PlanetPacksDialogProps {
   onImport: (pack: PlanetPack) => string | null
   onSelect: (id: string) => void
   onRemove: (id: string) => void
+  onEditAllowances: () => void
   onClose: () => void
 }
 
-function PackContent({ currentPack, customPacks, storageWarning, onImport, onSelect, onRemove }: Omit<PlanetPacksDialogProps, 'open' | 'onClose'>) {
+function PackContent({ currentPack, customPacks, storageWarning, onImport, onSelect, onRemove, onEditAllowances }: Omit<PlanetPacksDialogProps, 'open' | 'onClose'>) {
   const fileInput = useRef<HTMLInputElement>(null)
   const mounted = useRef(false)
   const [busy, setBusy] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
   const [notice, setNotice] = useState<string | null>(null)
+  const [tab, setTab] = useState<'addons' | 'custom'>(() => builtInConfigurations.some(configuration => configuration.pack.id === currentPack.id) ? 'addons' : 'custom')
   const atLimit = customPacks.length >= MAX_CUSTOM_PACKS
 
   useEffect(() => {
@@ -80,9 +83,32 @@ function PackContent({ currentPack, customPacks, storageWarning, onImport, onSel
   }
 
   return <DialogContent sx={{ px: 1.5, pt: .5, pb: 1, minWidth: 0, overflowY: 'auto' }}>
+    <Tabs value={tab} onChange={(_, value: typeof tab) => setTab(value)} variant="fullWidth" aria-label="Planet pack sections" sx={{ mb: 1, minHeight: 32, '& .MuiTab-root': { minHeight: 32, py: .5, textTransform: 'none', fontSize: 12 } }}>
+      <Tab value="addons" label="Add-ons" /><Tab value="custom" label="Custom packs" />
+    </Tabs>
     <Typography id="planet-packs-description" sx={{ mb: 1, fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>
-      Import your own maneuver data. Files stay in this browser; imported estimates are provided by their author.
+      Choose a reviewed configuration or import your own maneuver data. Imported files stay in this browser.
     </Typography>
+    {tab === 'addons' && <>
+    <Typography component="h3" sx={{ mb: .75, fontSize: 12, fontWeight: 500, color: 'text.secondary' }}>Built-in configurations</Typography>
+    <Box component="ul" aria-label="Built-in planet configurations" sx={{ listStyle: 'none', m: 0, mb: 1.25, p: 0, display: 'grid', gap: .5 }}>
+      {builtInConfigurations.map(({ pack }) => <Box component="li" key={pack.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, px: 1, py: .5, border: '1px solid', borderColor: pack.id === currentPack.id ? '#73c8fa80' : 'divider', borderRadius: 1, bgcolor: pack.id === currentPack.id ? '#73c8fa0a' : '#ffffff03' }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: 12, fontWeight: 500 }}>{pack.name}</Typography>
+          <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>Official map · unpriced links need allowances</Typography>
+        </Box>
+        <Button size="small" aria-label={`Use ${pack.name}`} onClick={() => onSelect(pack.id)} sx={{ minHeight: 36, minWidth: 44, px: .75, fontSize: 11 }}>{pack.id === currentPack.id ? 'Active' : 'Use'}</Button>
+      </Box>)}
+    </Box>
+    {builtInConfigurations.some(configuration => configuration.pack.id === currentPack.id) && <Button size="small" onClick={() => {
+      const base = builtInConfigurations.find(configuration => configuration.pack.id === currentPack.id)?.basePackId
+      if (base) onSelect(base)
+    }} sx={{ mb: .5, minHeight: 32, fontSize: 11 }}>Disable Kcalbeloh</Button>}
+    {(currentPack.unpricedConnections?.length ?? 0) > 0 && <Button variant="outlined" size="small" onClick={onEditAllowances} sx={{ mb: 1.25, ml: .5, minHeight: 34, fontSize: 11 }}>Link allowances</Button>}
+    <Typography sx={{ mb: 1, fontSize: 10.5, color: 'text.secondary' }}>The main Stock, OPM, and RSS buttons switch base systems. Kcalbeloh stays enabled when switching between Stock and OPM.</Typography>
+    </>}
+    <Box sx={{ display: tab === 'custom' ? 'block' : 'none' }}>
+    <Typography component="h3" sx={{ mb: .75, fontSize: 12, fontWeight: 500, color: 'text.secondary' }}>Import and export</Typography>
     <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: .75 }}>
       <Button variant="contained" size="small" startIcon={<UploadFileRounded sx={{ fontSize: '17px !important' }} />} disabled={busy || atLimit} onClick={() => fileInput.current?.click()} sx={{ px: .75, minHeight: 36, fontSize: 12, whiteSpace: 'nowrap' }}>
         {busy ? 'Reading…' : 'Import JSON'}
@@ -126,13 +152,14 @@ function PackContent({ currentPack, customPacks, storageWarning, onImport, onSel
       </Box>)}
     </Box>
     {atLimit && <Typography role="status" sx={{ mt: .75, fontSize: 11, color: 'text.secondary' }}>All {MAX_CUSTOM_PACKS} pack slots are in use. Remove a pack to import another.</Typography>}
+    </Box>
   </DialogContent>
 }
 
-export default function PlanetPacksDialog({ open, currentPack, customPacks, storageWarning, onImport, onSelect, onRemove, onClose }: PlanetPacksDialogProps) {
+export default function PlanetPacksDialog({ open, currentPack, customPacks, storageWarning, onImport, onSelect, onRemove, onEditAllowances, onClose }: PlanetPacksDialogProps) {
   return <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" aria-labelledby="planet-packs-heading" aria-describedby="planet-packs-description" sx={{ '& .MuiDialog-paper': { m: 1, width: 'calc(100% - 16px)', maxHeight: 'calc(100dvh - 16px)' } }}>
     <DialogTitle id="planet-packs-heading" sx={{ px: 1.5, py: 1, fontSize: 16, lineHeight: 1.5 }}>Planet packs</DialogTitle>
-    <PackContent key={String(open)} currentPack={currentPack} customPacks={customPacks} storageWarning={storageWarning} onImport={onImport} onSelect={onSelect} onRemove={onRemove} />
+    <PackContent key={String(open)} currentPack={currentPack} customPacks={customPacks} storageWarning={storageWarning} onImport={onImport} onSelect={onSelect} onRemove={onRemove} onEditAllowances={onEditAllowances} />
     <DialogActions sx={{ px: 1.5, py: .75, justifyContent: 'space-between' }}>
       <Link href="https://github.com/AntonioToni/ksp-deltav/blob/main/docs/CUSTOM_PACKS.md" target="_blank" rel="noreferrer" sx={{ fontSize: 12 }}>Pack format guide</Link>
       <Button size="small" variant="contained" onClick={onClose} sx={{ minHeight: 36, px: 2, fontSize: 12 }}>Done</Button>

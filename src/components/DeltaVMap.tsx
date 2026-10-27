@@ -1,8 +1,8 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Box, Typography } from '@mui/material'
+import { Box, MenuItem, TextField, Typography } from '@mui/material'
 import type { KeyboardEvent } from 'react'
 import type { ManeuverEdge, NodeKind, PlanetPack, RouteResult } from '../types/planner'
-import { arrowPosition, connectionPoints, createMapLayout, pathFromPoints } from './mapLayout'
+import { arrowPosition, connectionPoints, createMapLayout, packForMapRegion, pathFromPoints } from './mapLayout'
 import type { MapMode } from './mapLayout'
 import { getAerobrakingEdges } from '../utils/aerobraking'
 import type { AtmosphericAdjustment } from '../utils/atmosphericAssistance'
@@ -14,10 +14,12 @@ interface DeltaVMapProps {
   waypointIds?: readonly string[]
   adjustments?: ReadonlyMap<string, AtmosphericAdjustment>
   route: RouteResult | null
+  /** Last explicit selection, including choices made outside the visible map. */
+  focusNodeId?: string | null
   onSelect: (nodeId: string) => void
 }
 
-const stateNames: Record<NodeKind, string> = { surface: 'Land', orbit: 'Orbit', elliptical: 'High', encounter: 'Flyby' }
+const stateNames: Record<NodeKind, string> = { surface: 'Land', orbit: 'Orbit', reference: 'Ref', elliptical: 'High', encounter: 'Flyby' }
 const originColor = '#73c8fa'
 const destinationColor = '#e7bd7b'
 const waypointColor = '#8fcdbd'
@@ -25,10 +27,12 @@ const aerobrakingColor = '#c6e8d8'
 const noWaypoints: readonly string[] = []
 const noAdjustments: ReadonlyMap<string, AtmosphericAdjustment> = new Map()
 
-export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoints, adjustments = noAdjustments, route, onSelect }: DeltaVMapProps) {
+export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoints, adjustments = noAdjustments, route, focusNodeId = null, onSelect }: DeltaVMapProps) {
   const container = useRef<HTMLDivElement>(null)
   const [mode, setMode] = useState<MapMode>('wide')
   const [inspectedId, setInspectedId] = useState<string | null>(null)
+  const [regionChoice, setRegionChoice] = useState(() => ({ packId: pack.id, focusNodeId, regionId: pack.mapRegions?.[0]?.id ?? 'all' }))
+  if (regionChoice.packId !== pack.id) setRegionChoice({ packId: pack.id, focusNodeId, regionId: pack.mapRegions?.[0]?.id ?? 'all' })
   const prefix = useId().replace(/:/g, '')
   useLayoutEffect(() => {
     const element = container.current
@@ -42,8 +46,17 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
-  const layout = useMemo(() => createMapLayout(pack, mode), [pack, mode])
   const nodeById = useMemo(() => new Map(pack.nodes.map(node => [node.id, node])), [pack])
+  const regions = pack.mapRegions ?? []
+  const focusedBodyId = focusNodeId ? nodeById.get(focusNodeId)?.bodyId : undefined
+  const focusedRegion = regions.find(region => focusedBodyId && region.bodyIds.includes(focusedBodyId))
+  // The selection key lets a manual view choice survive unrelated renders,
+  // while an endpoint/stop selected outside this view can reveal its region.
+  const regionId = regionChoice.packId !== pack.id ? regions[0]?.id ?? 'all'
+    : regionChoice.focusNodeId !== focusNodeId ? focusedRegion?.id ?? regionChoice.regionId
+      : regionChoice.regionId
+  const visiblePack = useMemo(() => packForMapRegion(pack, regionId), [pack, regionId])
+  const layout = useMemo(() => createMapLayout(visiblePack, mode), [visiblePack, mode])
   const bodyById = useMemo(() => new Map(pack.bodies.map(body => [body.id, body])), [pack])
   const waypointIndexes = useMemo(() => {
     const indexes = new Map<string, number[]>()
@@ -56,18 +69,26 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   }, [waypointIds])
   const routeEdges = useMemo(() => new Set(route?.status === 'success' ? route.legs.map(leg => leg.edge.id) : []), [route])
   const routeNodes = useMemo(() => new Set(route?.status === 'success' ? route.nodeIds : []), [route])
-  const aerobrakingEdges = useMemo(() => getAerobrakingEdges(pack), [pack])
+  const aerobrakingEdges = useMemo(() => getAerobrakingEdges(visiblePack), [visiblePack])
   const connectionGroups = useMemo(() => {
     const groups = new Map<string, ManeuverEdge[]>()
-    for (const edge of pack.maneuvers) {
+    for (const edge of visiblePack.maneuvers) {
       const pair = JSON.stringify([edge.from, edge.to].sort())
       const group = groups.get(pair) ?? []
       group.push(edge)
       groups.set(pair, group)
     }
     return [...groups.values()]
-  }, [pack])
-  const inspected = inspectedId ? nodeById.get(inspectedId) : undefined
+  }, [visiblePack])
+  const unpricedConnections = (visiblePack.unpricedConnections ?? []).filter(connection => !visiblePack.maneuvers.some(edge =>
+    edge.id === `allowance:${connection.id}:forward` || edge.id === `allowance:${connection.id}:reverse`))
+  const routeRegions = route?.status === 'success' ? route.nodeIds.flatMap(id => {
+    const bodyId = nodeById.get(id)?.bodyId
+    const region = regions.find(candidate => bodyId && candidate.bodyIds.includes(bodyId))
+    return region ? [region] : []
+  }).filter((region, index, all) => region.id !== all[index - 1]?.id) : []
+  const regionSummary = routeRegions.length ? `Route: ${routeRegions.map(region => region.label).join(' → ')}` : 'Views show one part of the complete mission map.'
+  const inspected = inspectedId ? visiblePack.nodes.find(node => node.id === inspectedId) : undefined
   const inspectedStops = inspected ? waypointIndexes.get(inspected.id) : undefined
 
   function activate(event: KeyboardEvent<SVGGElement>, id: string) {
@@ -89,7 +110,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   function pointsFor(edge: ManeuverEdge) {
     const from = nodeById.get(edge.from)
     const to = nodeById.get(edge.to)
-    return from && to ? connectionPoints(from, to, layout, pack) : []
+    return from && to ? connectionPoints(from, to, layout, visiblePack) : []
   }
 
   function adjustmentDescription(adjustment: AtmosphericAdjustment) {
@@ -103,15 +124,25 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   }
 
   return (
-    <Box ref={container} sx={{ position: 'relative', width: '100%', height: '100%', minWidth: 0, minHeight: 0, overflow: 'hidden' }} onMouseLeave={() => setInspectedId(null)}>
+    <Box ref={container} data-map-region={regions.length ? regionId : undefined} sx={{ position: 'relative', display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minWidth: 0, minHeight: 0, overflow: 'hidden' }} onMouseLeave={() => setInspectedId(null)}>
+      {regions.length > 0 && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, pt: .75, pb: .25, minWidth: 0, flexShrink: 0 }}>
+        <TextField select size="small" label="Map view" value={regionId} onChange={event => {
+          setRegionChoice({ packId: pack.id, focusNodeId, regionId: event.target.value })
+          setInspectedId(null)
+        }} sx={{ width: { xs: 152, sm: 190 }, flexShrink: 0, '& .MuiInputBase-root': { fontSize: 12, minHeight: 32, bgcolor: '#101b2fdd' }, '& .MuiInputLabel-root': { fontSize: 11 }, '& .MuiSelect-select': { py: .75 } }}>
+          {regions.map(region => <MenuItem key={region.id} value={region.id} sx={{ fontSize: 12 }}>{region.label}</MenuItem>)}
+          <MenuItem value="all" sx={{ fontSize: 12 }}>All systems</MenuItem>
+        </TextField>
+        <Typography role="status" title={regionSummary} sx={{ fontSize: 10, lineHeight: 1.35, color: 'text.secondary', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{regionSummary}</Typography>
+      </Box>}
       <Box
         component="svg"
         role="group"
-        aria-label={`${pack.bodies.find(body => body.kind === 'star')?.name ?? pack.name} system Delta-V state map`}
+        aria-label={regions.length ? `${regions.find(region => region.id === regionId)?.label ?? 'All systems'} Delta-V state map` : `${pack.bodies.find(body => body.kind === 'star')?.name ?? pack.name} system Delta-V state map`}
         viewBox={`0 0 ${layout.width} ${layout.height}`}
         preserveAspectRatio="xMidYMid meet"
         sx={{
-          display: 'block', width: '100%', height: '100%', overflow: 'hidden',
+          display: 'block', width: '100%', height: '100%', minHeight: 0, flex: 1, overflow: 'hidden',
           '& .map-node': { cursor: 'pointer', outline: 'none' },
           '& .map-node .state-circle': { transition: 'stroke-width 120ms ease, stroke-opacity 120ms ease' },
           '& .map-node .focus-ring': { opacity: 0 },
@@ -127,6 +158,14 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           </linearGradient>
           <filter id={`${prefix}-glow`} x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5" /></filter>
         </defs>
+
+        {unpricedConnections.map(connection => {
+          const from = nodeById.get(connection.from)
+          const to = nodeById.get(connection.to)
+          return from && to ? <path key={`unpriced-${connection.id}`} d={pathFromPoints(connectionPoints(from, to, layout, visiblePack))} fill="none" stroke="#ddbf91" strokeWidth={mode === 'portrait' ? 6 : 10} strokeOpacity={.6} strokeDasharray="14 12" strokeLinecap="round" data-unpriced-id={connection.id}>
+            <title>{`Unpriced: ${connection.label}. Set link allowances to include this connection in a mission.`}</title>
+          </path> : null
+        })}
 
         {connectionGroups.map(edges => {
           const edge = edges[0]!
@@ -145,7 +184,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           ><title>{assisted ? edges.map(edgeTitle).join('; ') : edgeTitle(edge)}</title></path>
         })}
 
-        {pack.maneuvers.filter(edge => routeEdges.has(edge.id)).map(edge => {
+        {visiblePack.maneuvers.filter(edge => routeEdges.has(edge.id)).map(edge => {
           const points = pointsFor(edge)
           const d = pathFromPoints(points)
           const color = edgeColor(edge)
@@ -184,7 +223,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           style={{ pointerEvents: 'none' }}
         >{body.name}<title>{body.name}</title></text>)}
 
-        {pack.nodes.map(node => {
+        {visiblePack.nodes.map(node => {
           const point = layout.nodePositions.get(node.id)
           if (!point) return null
           const start = node.id === startId
