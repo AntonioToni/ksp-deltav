@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle,
-  FormControlLabel, IconButton, Link, Paper, Popper, Slider, Stack, Tab, Tabs,
-  ToggleButton, ToggleButtonGroup, Tooltip, Typography,
+  Box, Button, Checkbox, FormControlLabel, IconButton, Paper, Popper, Slider, Stack, Tab, Tabs,
+  ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery,
 } from '@mui/material'
 import RocketLaunchRounded from '@mui/icons-material/RocketLaunchRounded'
 import SwapHorizRounded from '@mui/icons-material/SwapHorizRounded'
@@ -26,12 +25,15 @@ import PlanetPacksDialog from './components/PlanetPacksDialog'
 import AtmosphereDialog from './components/AtmosphereDialog'
 import RelayPlannerDialog from './components/RelayPlannerDialog'
 import ConnectionAllowancesDialog from './components/ConnectionAllowancesDialog'
+import EstimateInfoDialog, { type EstimateSection } from './components/EstimateInfoDialog'
+import { basisColors, basisShortNames } from './components/estimatePresentation'
 import { buildGraph } from './utils/buildGraph'
 import { findMissionRoute, type MissionMode } from './utils/mission'
 import { calculateBudget } from './utils/budget'
 import { readCustomPacks, saveCustomPacks, validateCustomPackAddition } from './utils/customPacks'
 import { applyAtmosphericAssistance, getAtmosphericCapabilities, type AtmosphericPlan } from './utils/atmosphericAssistance'
 import { applyConnectionAllowances, type ConnectionPlan } from './utils/connectionAllowances'
+import { describeManeuverBasis, summarizeBudgetBasis } from './utils/estimateBasis'
 
 const format = new Intl.NumberFormat('en-US')
 const compactBreakdown = '@media (max-height: 500px), (max-width: 699px) and (max-height: 650px)'
@@ -47,6 +49,7 @@ const selectorGroupStyles = {
 } as const
 
 export default function App() {
+  const compactDetails = useMediaQuery('(max-width: 699px), (max-height: 750px)')
   const [customPackState, setCustomPackState] = useState(() => {
     try { return readCustomPacks(window.localStorage) }
     catch { return { packs: [] as PlanetPack[], warning: 'Browser storage is unavailable. Imported packs will work for this session; export a copy to keep them.' } }
@@ -86,6 +89,7 @@ export default function App() {
   const [breakdownPage, setBreakdownPage] = useState(0)
   const [showBreakdown, setShowBreakdown] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
+  const [infoSection, setInfoSection] = useState<EstimateSection>('sources')
   const [breakdownAnchor, setBreakdownAnchor] = useState<HTMLDivElement | null>(null)
   const breakdownToggle = useRef<HTMLInputElement>(null)
   const route = useMemo(
@@ -99,7 +103,7 @@ export default function App() {
   const atmosphericDifference = route?.status === 'success' && referenceRoute?.status === 'success'
     ? route.totalDeltaV - referenceRoute.totalDeltaV : null
   const atmosphericComparison = atmosphericDifference !== null && referenceRoute?.status === 'success'
-    ? `${atmosphericDifference > 0 ? '+' : ''}${format.format(atmosphericDifference)} m/s atmosphere · ${format.format(referenceRoute.totalDeltaV)} m/s reference, before reserve.` : null
+    ? `${atmosphericDifference > 0 ? '+' : ''}${format.format(atmosphericDifference)} m/s atmosphere · ${format.format(referenceRoute.totalDeltaV)} m/s before atmosphere, before reserve.` : null
   const showingReturn = returnOnly || roundTrip && breakdownLeg === 'return'
   const activeJourney = route?.status === 'success'
     ? showingReturn ? route.returnRoute : route.outbound
@@ -107,7 +111,7 @@ export default function App() {
   const stages = route?.status === 'success' ? showingReturn ? route.returnStages : route.outboundStages : []
   const stageIndex = Math.min(breakdownStage, Math.max(0, stages.length - 1))
   const activeLeg = stages[stageIndex] ?? activeJourney
-  const pageSize = isCustomPack || (activeLeg?.legs.length ?? 0) > 17 ? 8 : activeLeg?.legs.length || 1
+  const pageSize = compactDetails || isCustomPack || (activeLeg?.legs.length ?? 0) > 17 ? 8 : activeLeg?.legs.length || 1
   const pageCount = Math.ceil((activeLeg?.legs.length ?? 0) / pageSize)
   const pageIndex = Math.min(breakdownPage, Math.max(0, pageCount - 1))
   const pageStart = pageIndex * pageSize
@@ -130,7 +134,21 @@ export default function App() {
   const layoverNotice = isCustomPack || pack.mapRegions ? 'Includes intermediate parking orbits.' : `Includes a ${hubName} parking-orbit layover.`
   const hasUnpricedLinks = (pack.unpricedConnections?.length ?? 0) > 0
   const needsLinkAllowances = hasUnpricedLinks && route?.status === 'unreachable'
-  const usesLinkAllowances = route?.status === 'success' && route.legs.some(({ edge }) => edge.id.startsWith('allowance:'))
+  const allowanceEdgeIds = useMemo(() => new Set(allowanceEdges.map(edge => edge.id)), [allowanceEdges])
+  const usesLinkAllowances = route?.status === 'success' && route.legs.some(({ edge }) => allowanceEdgeIds.has(edge.id))
+  const basisOptions = useMemo(() => ({ customPack: isCustomPack, allowanceEdgeIds, atmosphericPlan }), [isCustomPack, allowanceEdgeIds, atmosphericPlan])
+  const basisGroups = useMemo(() => route?.status === 'success' ? summarizeBudgetBasis(route.legs, pack, basisOptions) : [], [route, pack, basisOptions])
+  const basisByEdge = useMemo(() => new Map(route?.status === 'success' ? route.legs.map(({ edge }) => [edge.id, describeManeuverBasis(edge, pack, basisOptions)]) : []), [route, pack, basisOptions])
+  const estimateNotices = [
+    ...(hasLayover ? [layoverNotice] : []),
+    'Stops retain arrival conditions. Return only starts at the destination; the reserve applies once to the complete selected mission.',
+  ]
+
+  function openInfo(section: EstimateSection) {
+    setInfoSection(section)
+    setShowBreakdown(false)
+    setShowInfo(true)
+  }
 
   useEffect(() => {
     if (!showBreakdown && selection !== 'stop') return
@@ -256,10 +274,13 @@ export default function App() {
     setShowBreakdown(false)
   }
 
+  const personalLanding = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && !allowanceEdgeIds.has(edge.id) && basisByEdge.get(edge.id)?.kind === 'user')
+  const landingNotice = basisGroups.some(group => group.kind === 'placeholder') ? 'Atmospheric landing uses an unverified placeholder.'
+    : personalLanding ? 'Atmospheric landing includes your powered allowance.' : "Atmospheric landing follows the pack's supplied budget."
   const routeStatus = needsLinkAllowances ? 'Some route links are unpriced. Open Link allowances to enter your estimates.'
     : route?.status === 'invalid' || route?.status === 'unreachable' ? route.message
     : route?.status === 'success' && route.legs.length === 0 ? 'No maneuvers required.'
-      : hasAtmosphericLanding ? `Atmospheric landing uses a planning allowance.${hasLayover ? ` ${layoverNotice}` : ''}`
+      : hasAtmosphericLanding ? `${landingNotice}${hasLayover ? ` ${layoverNotice}` : ''}`
         : hasLayover ? layoverNotice
           : route?.status === 'success' ? usesLinkAllowances ? `${route.legs.length} maneuvers · Includes user link allowances.` : `${route.legs.length} maneuvers · Select a state to update your ${selection === 'start' ? 'origin' : 'destination'}.`
             : `Select ${selection === 'start' ? 'an origin' : 'a destination'} on the map.`
@@ -309,7 +330,7 @@ export default function App() {
             </Button>
           </Tooltip>
           <Typography variant="caption" color="text.secondary" title={pack.name} sx={{ display: { xs: 'none', sm: 'block' }, minWidth: 0, fontSize: 10, letterSpacing: '.1em', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.shortName ?? pack.name} · KSP 1</Typography>
-          <Tooltip title="Model assumptions and data sources"><IconButton aria-label="Model assumptions and data sources" size="small" onClick={() => setShowInfo(true)}><InfoOutlined sx={{ fontSize: 19 }} /></IconButton></Tooltip>
+          <Tooltip title="Model assumptions and data sources"><IconButton aria-label="Model assumptions and data sources" size="small" onClick={() => openInfo('sources')}><InfoOutlined sx={{ fontSize: 19 }} /></IconButton></Tooltip>
         </Stack>
       </Box>
 
@@ -364,7 +385,7 @@ export default function App() {
                   boxShadow: 'inset 0 1px 0 #ffffff05',
                 }}>
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography component="span" sx={{ display: 'block', fontSize: 9, letterSpacing: '.1em', textTransform: 'uppercase', lineHeight: 1.2, opacity: .82, whiteSpace: 'nowrap', '@media (min-width: 700px) and (max-width: 899px), (max-height: 500px) and (max-width: 699px)': { fontSize: 8, letterSpacing: '.05em' } }}>{endpoint === 'start' ? 'A' : 'B'} · {label}</Typography>
+                    <Typography component="span" sx={{ display: 'block', fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', lineHeight: 1.2, opacity: .9, whiteSpace: 'nowrap', '@media (min-width: 700px) and (max-width: 899px), (max-height: 500px) and (max-width: 699px)': { fontSize: 9, letterSpacing: '.04em' } }}>{endpoint === 'start' ? 'A' : 'B'} · {label}</Typography>
                     <Typography component="span" id={`${endpoint}-state`} title={nodeId ? nodesById.get(nodeId)?.label : undefined} sx={{ display: 'block', fontSize: 12, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', mt: .25 }}>{nodeId ? nodesById.get(nodeId)?.label : `Select ${label.toLowerCase()}`}</Typography>
                   </Box>
                 </Button>
@@ -382,12 +403,14 @@ export default function App() {
           </Box>
 
           <Box sx={{ gridArea: 'budget', minWidth: 0, containerType: 'inline-size' }}>
-            <Typography sx={{ fontSize: 10, color: 'text.secondary', letterSpacing: '.1em', textTransform: 'uppercase' }}>{roundTrip ? 'Round-trip budget' : returnOnly ? 'Return-only budget' : 'Delta-V budget'}</Typography>
-            {budget ? <Typography component="output" data-testid="route-total" sx={{ display: 'block', fontSize: { xs: 25, sm: 32 }, lineHeight: 1.1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 700, letterSpacing: '-.025em', '@container (max-width: 170px)': { fontSize: 25 }, ...(isCustomPack || hasAtmosphericOptions ? { fontSize: `min(32px, ${100 / budgetTextWidth}cqi)`, '@container (max-width: 170px)': { fontSize: `min(25px, ${100 / budgetTextWidth}cqi)` } } : {}) }}>
+            <Button aria-label="Budget assumptions" aria-haspopup="dialog" onClick={() => openInfo('mission')} sx={{ minHeight: 24, minWidth: 0, maxWidth: '100%', px: 0, py: 0, gap: .5, color: 'text.secondary', fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', '@media (max-height: 500px)': { minHeight: 18 } }}>
+              <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{roundTrip ? 'Round-trip budget' : returnOnly ? 'Return-only budget' : 'Delta-V budget'}</Box><InfoOutlined sx={{ fontSize: 13, flexShrink: 0 }} />
+            </Button>
+            {budget ? <Typography component="output" data-testid="route-total" sx={{ display: 'block', fontSize: `min(32px, ${100 / budgetTextWidth}cqi)`, lineHeight: 1.1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 700, letterSpacing: '-.025em', '@container (max-width: 170px)': { fontSize: `min(25px, ${100 / budgetTextWidth}cqi)` } }}>
               {budgetText} <Box component="span" sx={{ fontSize: '.55em', color: 'text.secondary' }}>m/s</Box>
             </Typography> : <Typography sx={{ fontSize: 25, lineHeight: 1.1, color: 'text.secondary' }}>— <Box component="span" sx={{ fontSize: 13 }}>m/s</Box></Typography>}
-            <Typography title={budget ? `${format.format(budget.baseDeltaV)} m/s base +${format.format(budget.extraDeltaV)} m/s reserve` : undefined} sx={{ fontSize: 9, color: 'text.secondary', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {budget ? <><Box component="span" data-testid="route-base">{format.format(budget.baseDeltaV)} m/s</Box> base <Box component="span" sx={{ color: 'primary.main' }} data-testid="route-margin">+{format.format(budget.extraDeltaV)} m/s</Box></> : 'Select two states to calculate'}
+            <Typography title={budget ? `${format.format(budget.baseDeltaV)} m/s maneuvers +${format.format(budget.extraDeltaV)} m/s reserve and final rounding. Open Budget assumptions for the cost basis.` : undefined} sx={{ fontSize: 10, color: 'text.secondary', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {budget ? <><Box component="span" data-testid="route-base">{format.format(budget.baseDeltaV)} m/s</Box> plan <Box component="span" sx={{ color: 'primary.main' }} data-testid="route-margin">+{format.format(budget.extraDeltaV)} m/s</Box></> : 'Select two states to calculate'}
             </Typography>
           </Box>
 
@@ -403,12 +426,15 @@ export default function App() {
             <Button startIcon={<RestartAltRounded sx={{ fontSize: '16px !important' }} />} aria-label="Reset mission" size="small" onClick={reset} sx={{ minHeight: 28, minWidth: 0, fontSize: 11, px: .5 }}>Clear</Button>
           </Box>
         </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, px: { xs: 1.25, sm: 2.5 }, pb: .75, minHeight: 20 }}>
-          <Typography role={selection !== 'stop' && (hasAtmosphericLanding || route?.status === 'invalid') ? 'alert' : 'status'} title={atmosphericComparison && selection !== 'stop' ? `${atmosphericComparison} ${status}` : status} sx={{ flex: 1, minWidth: 0, fontSize: 10, color: selection === 'stop' ? '#92d5c6' : hasAtmosphericOptions ? '#92d5c6' : hasAtmosphericLanding ? 'secondary.main' : 'text.secondary', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{atmosphericDifference !== null && referenceRoute?.status === 'success' && selection !== 'stop' ? <>
-            <Box component="output" data-testid="atmospheric-change">{atmosphericDifference > 0 ? '+' : ''}{format.format(atmosphericDifference)} m/s</Box> atmosphere · <Box component="output" data-testid="atmospheric-reference">{format.format(referenceRoute.totalDeltaV)} m/s</Box> base ref
-          </> : status}</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', columnGap: 1, rowGap: .25, px: { xs: 1.25, sm: 2.5 }, pb: .75, minHeight: 20 }}>
+          <Box role={selection !== 'stop' && (hasAtmosphericLanding || route?.status === 'invalid') ? 'alert' : 'status'} title={atmosphericComparison && selection !== 'stop' ? `${status} ${atmosphericComparison}` : status} sx={{ flex: '1 1 100%', minWidth: 0, color: selection === 'stop' ? '#92d5c6' : hasAtmosphericOptions ? '#92d5c6' : hasAtmosphericLanding ? 'secondary.main' : 'text.secondary', '@media (min-width: 700px)': { flex: '1 1 0' } }}>
+            <Typography data-testid="route-status" sx={{ fontSize: 11, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', '@media (max-height: 500px)': { fontSize: 10, lineHeight: 1.2 } }}>{status}</Typography>
+            {atmosphericDifference !== null && referenceRoute?.status === 'success' && selection !== 'stop' && <Typography sx={{ fontSize: 10, lineHeight: 1.3, color: '#92d5c6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <Box component="output" data-testid="atmospheric-change">{atmosphericDifference > 0 ? '+' : ''}{format.format(atmosphericDifference)} m/s</Box> atmosphere · <Box component="output" data-testid="atmospheric-reference">{format.format(referenceRoute.totalDeltaV)} m/s</Box> before atmosphere
+            </Typography>}
+          </Box>
           {needsLinkAllowances ? <Button size="small" color="secondary" onClick={() => setShowAllowances(true)} sx={{ minHeight: 20, minWidth: 0, px: .25, py: 0, fontSize: 11, whiteSpace: 'nowrap' }}>Link allowances</Button>
-            : pack.dataNotice && <Button size="small" color="secondary" onClick={() => setShowInfo(true)} title={pack.dataNotice} sx={{ minHeight: 15, minWidth: 0, maxWidth: isCustomPack ? '40%' : pack.mapRegions ? '45%' : undefined, flexShrink: 0, p: 0, fontSize: 10, lineHeight: 1.5 }}><Box component="span" sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.dataNotice}</Box></Button>}
+            : pack.dataNotice && <Button size="small" color="secondary" onClick={() => openInfo('sources')} title={pack.dataNotice} sx={{ minHeight: 18, minWidth: 0, maxWidth: isCustomPack ? '40%' : pack.mapRegions ? '45%' : undefined, flexShrink: 0, p: 0, fontSize: 10, lineHeight: 1.5 }}><Box component="span" sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.dataNotice}</Box></Button>}
           <Typography sx={{ display: { xs: 'none', md: 'block' }, fontSize: 10, color: 'text.secondary', whiteSpace: 'nowrap' }}>Estimates in m/s · {redundancy}% reserve · Schematic, not to scale</Typography>
         </Box>
       </Box>
@@ -440,9 +466,10 @@ export default function App() {
               {stages.length > 1 && <Typography component="output" data-testid="stage-total" sx={{ flexShrink: 0, color: 'text.secondary', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>{format.format(activeLeg.totalDeltaV)} m/s</Typography>}
             </Box>
             <Box component="ol" aria-label="Maneuver breakdown" sx={{ listStyle: 'none', m: 0, p: 0, '@media (max-height: 500px)': { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' } }}>
-              {visibleManeuvers.map(({ edge }, index) => <Box component="li" key={`${edge.id}:${pageStart + index}`} data-assisted={adjustments.has(edge.id) ? 'true' : undefined} title={adjustments.has(edge.id) ? `${edge.label}: ${format.format(edge.deltaV)} m/s · ${adjustments.get(edge.id)?.kind === 'capture' ? 'Ideal atmospheric capture; cleanup excluded' : 'User landing allowance'} · Reference ${format.format(adjustments.get(edge.id)!.originalDeltaV)} m/s` : edge.label} sx={{ display: 'flex', alignItems: 'center', gap: .75, px: 1.5, py: .45, bgcolor: index % 2 === 0 ? '#ffffff08' : undefined, minWidth: 0, [compactBreakdown]: { py: 0, '& .MuiTypography-root': { fontSize: 10, lineHeight: 1.25 } } }}>
+              {visibleManeuvers.map(({ edge }, index) => <Box component="li" key={`${edge.id}:${pageStart + index}`} data-budget-basis={basisByEdge.get(edge.id)?.kind} data-assisted={adjustments.has(edge.id) ? 'true' : undefined} title={`${edge.label}: ${format.format(edge.deltaV)} m/s · ${basisByEdge.get(edge.id)?.label}. ${basisByEdge.get(edge.id)?.description}${adjustments.has(edge.id) ? ` Original figure ${format.format(adjustments.get(edge.id)!.originalDeltaV)} m/s.` : ''}`} sx={{ display: 'flex', alignItems: 'center', gap: .75, px: 1.5, py: .45, bgcolor: index % 2 === 0 ? '#ffffff08' : undefined, minWidth: 0, [compactBreakdown]: { py: 0, '& .MuiTypography-root': { fontSize: 10, lineHeight: 1.25 } } }}>
                 <Box component="span" sx={{ width: 5, height: 5, flexShrink: 0, borderRadius: '50%', bgcolor: bodiesById.get(nodesById.get(edge.to)?.bodyId ?? '')?.color ?? 'primary.main' }} />
                 <Typography sx={{ flex: 1, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nodesById.get(edge.to)?.label}</Typography>
+                {basisByEdge.get(edge.id) && <Box component="span" aria-label={`${basisByEdge.get(edge.id)!.label}: ${basisByEdge.get(edge.id)!.description}`} sx={{ flexShrink: 0, fontSize: 10, lineHeight: 1.3, color: basisColors[basisByEdge.get(edge.id)!.kind], bgcolor: '#ffffff06', borderRadius: .5, px: .5 }}>{basisShortNames[basisByEdge.get(edge.id)!.kind]}</Box>}
                 {adjustments.has(edge.id) && <AirRounded aria-label="Atmospheric allowance" sx={{ fontSize: 11, color: '#92d5c6', flexShrink: 0 }} />}
                 <Typography sx={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{format.format(edge.deltaV)} m/s</Typography>
               </Box>)}
@@ -455,7 +482,7 @@ export default function App() {
             {activeLeg.legs.length === 0 && <Typography sx={{ px: 1.5, py: 1, fontSize: 12 }}>No maneuvers required.</Typography>}
             <Typography title={nodesById.get(activeEnd ?? '')?.label} sx={{ px: 1.5, py: .5, color: endColor, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', [compactBreakdown]: { py: .125 } }}>End · {nodesById.get(activeEnd ?? '')?.label}</Typography>
             </Box>
-            {redundancy > 0 && <Typography sx={{ px: 1.5, py: .75, borderTop: '1px solid', borderColor: 'divider', fontSize: 11, [compactBreakdown]: { py: .5 } }}>+{redundancy}% redundancy · {format.format(budget.extraDeltaV)} m/s {roundTrip ? 'mission reserve' : 'extra'}</Typography>}
+            {redundancy > 0 && <Typography sx={{ px: 1.5, py: .75, borderTop: '1px solid', borderColor: 'divider', fontSize: 11, [compactBreakdown]: { py: .5 } }}>+{redundancy}% redundancy · {format.format(budget.extraDeltaV)} m/s reserve + rounding</Typography>}
           </> : <Typography sx={{ p: 1.5, fontSize: 12, color: 'text.secondary' }}>Select an origin and destination to see the maneuvers.</Typography>}
         </Paper>
       </Popper>
@@ -470,19 +497,7 @@ export default function App() {
 
       <RelayPlannerDialog key={pack.id} open={showRelays} pack={pack} initialBodyId={nodesById.get(endId ?? '')?.bodyId ?? pack.transferHubBodyId ?? null} onClose={() => setShowRelays(false)} />
 
-      <Dialog open={showInfo} onClose={() => setShowInfo(false)} maxWidth="sm" fullWidth aria-labelledby="model-info-heading">
-        <DialogTitle id="model-info-heading">About these estimates</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ mb: 1.5 }}>{pack.description}</Typography>
-          {isCustomPack && <Typography variant="body2" sx={{ mb: 1.5, color: 'secondary.main' }}>Custom pack · These estimates and sources are supplied by the pack author.</Typography>}
-          <Typography variant="body2" sx={{ mb: 1.5 }}>Stops are visited in outbound order, and return journeys visit them in reverse. Arrival conditions carry through each stop and the round-trip turnaround. Return only starts independently at the destination. Redundancy applies once to the selected mission budget. Arrows show potential atmospheric braking; {hasAtmosphericOptions ? 'selected ideal capture options use a zero-powered-burn estimate, and selected atmospheric landings use your entered allowances. Cleanup burns and entry feasibility are not simulated. Bundled transfer costs are retained. The source assumptions below describe the original unassisted data.' : 'no atmospheric savings are included.'}</Typography>
-          <Box component="ul" sx={{ pl: 2.5, '& li': { fontSize: 13, mb: 1 } }}>
-            {pack.assumptions.map((assumption, index) => <li key={index}>{assumption}</li>)}
-          </Box>
-          <Stack spacing={.75}>{pack.sources.map(source => <Link key={source.id} href={source.url} target="_blank" rel="noreferrer" variant="body2">{source.title}</Link>)}</Stack>
-        </DialogContent>
-        <DialogActions><Button onClick={() => setShowInfo(false)}>Close</Button></DialogActions>
-      </Dialog>
+      <EstimateInfoDialog open={showInfo} initialSection={infoSection} pack={pack} customPack={isCustomPack} groups={basisGroups} budget={budget} notices={estimateNotices} onClose={() => setShowInfo(false)} />
     </Box>
   )
 }

@@ -104,6 +104,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const current = profiles.get(bodyId) ?? profile(body)
   const preset = body ? findRelayBodyPreset(body) : undefined
   const source = commNetSources.find(candidate => candidate.id === preset?.sourceId)
+  const usesRssBodyData = preset?.sourceId === 'commnet-rss-bodies'
   const [tab, setTab] = useState<'network' | 'deployment' | 'body'>(() => first && findRelayBodyPreset(first) ? 'network' : 'body')
   const [satelliteCount, setSatelliteCount] = useState(3)
   const [relayId, setRelayId] = useState(relayAntennas.find(antenna => antenna.id === 'hg-5')?.id ?? relayAntennas[0]?.id ?? '')
@@ -216,11 +217,11 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
       <Box component="span" id="relay-planner-heading">CommNet relay planner</Box>
       <IconButton aria-label="Close relay planner" size="small" onClick={onClose}><CloseRounded sx={{ fontSize: 19 }} /></IconButton>
     </DialogTitle>
-    <Box sx={{ px: 1.5, pt: .5, pb: .75, display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+    <Box sx={{ px: 1.5, pt: .5, pb: .75, display: 'flex', alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' }, columnGap: 1, rowGap: .5, minWidth: 0 }}>
       <TextField select fullWidth size="small" label="Relay body" value={bodyId} onChange={event => changeBody(event.target.value)} sx={{ ...fieldStyles, maxWidth: 380 }}>
         {bodies.map(candidate => <MenuItem key={candidate.id} value={candidate.id} sx={{ fontSize: 12 }}>{candidate.name}</MenuItem>)}
       </TextField>
-      <Typography sx={{ display: { xs: 'none', sm: 'block' }, fontSize: 11, color: 'text.secondary', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pack.shortName ?? pack.name} · Stock CommNet model</Typography>
+      <Typography sx={{ display: usesRssBodyData ? 'block' : { xs: 'none', sm: 'block' }, flexBasis: usesRssBodyData ? { xs: '100%', sm: 'auto' } : undefined, fontSize: 11, lineHeight: 1.35, color: 'text.secondary', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{usesRssBodyData ? 'RSS body data' : pack.shortName ?? pack.name} · Stock radio model</Typography>
     </Box>
     <Tabs value={tab} onChange={(_, value: typeof tab) => setTab(value)} aria-label="Relay planner sections" variant="fullWidth" sx={{ px: 1.5, minHeight: 32, borderBottom: '1px solid', borderColor: 'divider', '& .MuiTab-root': { minHeight: 32, minWidth: 0, py: .5, px: 1, fontSize: 12, textTransform: 'none' } }}>
       <Tab id="relay-network-tab" aria-controls="relay-network-panel" value="network" label="Network" />
@@ -229,7 +230,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     </Tabs>
     <DialogContent sx={{ p: 1.5, minWidth: 0, minHeight: 0, overflowY: 'auto', [compact]: { py: 1 } }}>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.25, '@media (min-width: 600px)': { gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' } }}>
-        <Box role="tabpanel" id={`relay-${tab}-panel`} aria-labelledby={`relay-${tab}-tab`} sx={{ minWidth: 0 }}>
+        <Box role="tabpanel" id={`relay-${tab}-panel`} aria-labelledby={`relay-${tab}-tab`} sx={{ minWidth: 0, containerType: 'inline-size' }}>
           {tab === 'network' && <Stack spacing={.5}>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, .7fr)', gap: .75 }}>
               <NumericField label="Orbit altitude" value={current.altitude} unit="km" onChange={value => changeProfile({ altitude: value, altitudeAutomatic: false })} />
@@ -287,22 +288,22 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
 
           {tab === 'body' && <Stack spacing={1}>
             <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: .5 }}>
-              <Typography sx={{ fontSize: 11, color: 'text.secondary', lineHeight: 1.35 }}>{preset ? current.edited ? 'Edited reference body data' : 'Reference body preset' : 'Enter body data for this system'}</Typography>
-              {preset && <Button size="small" onClick={() => setProfiles(previous => new Map(previous).set(bodyId, profile(body, numeric(safetyMargin))))} sx={{ minHeight: 28, fontSize: 10, minWidth: 0, whiteSpace: 'nowrap' }}>Restore preset</Button>}
+              <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>{preset ? current.edited ? 'Edited reference body data' : 'Reference body preset' : 'Enter body data for this system'}</Typography>
+              {preset && <Button size="small" onClick={() => setProfiles(previous => new Map(previous).set(bodyId, profile(body, numeric(safetyMargin))))} sx={{ minHeight: 32, fontSize: 11, minWidth: 0, flexShrink: 0, whiteSpace: 'nowrap' }}>Restore preset</Button>}
             </Stack>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
-              <NumericField label="Body radius" value={current.radius} unit="km" min={Number.MIN_VALUE} onChange={value => changeProfile({ radius: value, edited: true })} />
-              <NumericField label="Gravitational parameter" value={current.mu} unit="m³/s²" min={Number.MIN_VALUE} onChange={value => changeProfile({ mu: value, edited: true })} />
-              <NumericField label="Atmosphere height" value={current.atmosphere} unit="km" onChange={value => changeProfile({ atmosphere: value, edited: true })} />
-              <NumericField label="Sphere of influence" value={current.soi} unit="km" optional onChange={value => changeProfile({ soi: value, edited: true })} />
-              <TextField select fullWidth size="small" label="Occlusion" value={occlusion} onChange={event => setOcclusion(event.target.value as typeof occlusion)} sx={fieldStyles}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridTemplateAreas: '"radius atmosphere" "mu soi" "occlusion multiplier"', gap: .75, '@container (max-width: 399px)': { gridTemplateAreas: '"radius atmosphere" "mu mu" "soi soi" "occlusion multiplier"' } }}>
+              <Box sx={{ gridArea: 'radius', minWidth: 0 }}><NumericField label="Body radius" value={current.radius} unit="km" min={Number.MIN_VALUE} onChange={value => changeProfile({ radius: value, edited: true })} /></Box>
+              <Box sx={{ gridArea: 'atmosphere', minWidth: 0 }}><NumericField label="Atmosphere height" value={current.atmosphere} unit="km" onChange={value => changeProfile({ atmosphere: value, edited: true })} /></Box>
+              <Box sx={{ gridArea: 'mu', minWidth: 0 }}><NumericField label="Gravitational parameter" value={current.mu} unit="m³/s²" min={Number.MIN_VALUE} onChange={value => changeProfile({ mu: value, edited: true })} /></Box>
+              <Box sx={{ gridArea: 'soi', minWidth: 0 }}><NumericField label="Sphere of influence" value={current.soi} unit="km" optional onChange={value => changeProfile({ soi: value, edited: true })} /></Box>
+              <TextField select fullWidth size="small" label="Occlusion" value={occlusion} onChange={event => setOcclusion(event.target.value as typeof occlusion)} sx={{ ...fieldStyles, gridArea: 'occlusion' }}>
                 <MenuItem value="full" sx={{ fontSize: 12 }}>Full radius</MenuItem><MenuItem value="normal" sx={{ fontSize: 12 }}>KSP normal</MenuItem>
               </TextField>
-              <NumericField label="Range multiplier" value={rangeMultiplier} min={Number.MIN_VALUE} onChange={setRangeMultiplier} />
+              <Box sx={{ gridArea: 'multiplier', minWidth: 0 }}><NumericField label="Range multiplier" value={rangeMultiplier} min={Number.MIN_VALUE} onChange={setRangeMultiplier} /></Box>
             </Box>
             <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Occlusion uses {occlusion === 'full' ? 'the full body radius' : `${numeric(current.atmosphere) > 0 ? '0.75' : '0.90'} × the body radius (KSP normal)`}. Ground receivers remain at the physical radius. A missing SOI leaves the orbit limit unchecked.</Typography>
-            <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Body data is editable for your installation. The radio model stays stock CommNet; RealAntennas, RemoteTech, terrain, and perturbations are not modeled.</Typography>
-            {source && <Link href={source.url} target="_blank" rel="noreferrer" sx={{ fontSize: 11 }}>{source.title}</Link>}
+            <Typography sx={{ fontSize: 11, color: 'text.secondary', lineHeight: 1.4 }}>{usesRssBodyData ? 'RSS presets supply body physics. Radio estimates use stock antennas and DSN powers; RSS radio patches, RealAntennas, and RemoteTech are not modeled.' : 'Body data is editable for your installation. Radio estimates use the stock CommNet model; RealAntennas and RemoteTech are not modeled.'} Terrain and orbital perturbations are not modeled.</Typography>
+            {source && <Link href={source.url} target="_blank" rel="noreferrer" sx={{ fontSize: 11, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{source.title}</Link>}
           </Stack>}
         </Box>
 

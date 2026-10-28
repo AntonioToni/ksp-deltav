@@ -66,7 +66,7 @@ function AllowancesContent({ pack, plan, onApply, onClose, headingId, descriptio
     </DialogTitle>
     <Box id={descriptionId} sx={{ px: 1.5, pb: 1, flexShrink: 0 }}>
       <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>
-        These links have no published budget. Enter your own complete maneuver allowance for each direction; blank leaves that direction unavailable. Zero is an explicit planning assumption.
+        These links have no complete published budget. Forward and Reverse follow the endpoints below independently of the mission mode. Enter your whole maneuver allowance; blank is unavailable, and zero is your assumption.
       </Typography>
     </Box>
     <DialogContent sx={{ px: 1.5, pt: .5, pb: 1, minWidth: 0, minHeight: 0, overflowY: 'auto' }}>
@@ -81,10 +81,10 @@ function AllowancesContent({ pack, plan, onApply, onClose, headingId, descriptio
           const rowHeadingId = `${headingId}-row-${index}`
           return <Box component="li" key={connection.id} aria-labelledby={rowHeadingId} data-allowance-id={connection.id} sx={{ p: 1, minWidth: 0, border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: '#ffffff03' }}>
             <Typography component="h3" id={rowHeadingId} sx={{ fontSize: 12.5, fontWeight: 500, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{connection.label}</Typography>
-            {connection.assumptions[0] && <Typography title={connection.assumptions[0]} sx={{ mt: .25, mb: 1, fontSize: 10.5, lineHeight: 1.35, color: 'text.secondary', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>{connection.assumptions[0]}</Typography>}
+            {connection.assumptions[0] && <Typography sx={{ mt: .25, mb: 1, fontSize: 11, lineHeight: 1.4, color: 'text.secondary', overflowWrap: 'anywhere' }}>{connection.assumptions[0]}</Typography>}
             <Box sx={{ mt: .75, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1 }}>
               {(['forward', 'reverse'] as const).map(direction => {
-                const label = direction === 'forward' ? 'Outbound' : 'Return'
+                const label = direction === 'forward' ? 'Forward' : 'Reverse'
                 const text = row[direction]
                 const invalid = !validAllowance(text)
                 const journey = direction === 'forward' ? `${from} → ${to}` : `${to} → ${from}`
@@ -96,7 +96,7 @@ function AllowancesContent({ pack, plan, onApply, onClose, headingId, descriptio
                       input: { endAdornment: <InputAdornment position="end"><Typography sx={{ fontSize: 10 }}>m/s</Typography></InputAdornment> },
                     }}
                     sx={{ minWidth: 0, '& .MuiInputBase-root': { fontSize: 12, minHeight: 38 }, '& .MuiInputLabel-root': { fontSize: 11 }, '& .MuiInputBase-input': { px: 1, py: 1, fontVariantNumeric: 'tabular-nums' }, '& .MuiInputAdornment-root': { ml: .25 } }} />
-                  <Typography title={journey} sx={{ mt: .375, fontSize: 10, lineHeight: 1.3, color: 'text.secondary', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{journey}</Typography>
+                  <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.4, color: 'text.secondary', overflowWrap: 'anywhere' }}>{journey}</Typography>
                   {invalid && <Typography sx={{ mt: .25, fontSize: 10, lineHeight: 1.3, color: 'error.main' }}>Enter 0–1,000,000 m/s or leave blank.</Typography>}
                 </Box>
               })}

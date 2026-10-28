@@ -170,6 +170,7 @@ export const opmPack: PlanetPack = {
     { ...opmConfigSource },
     {
       id: analyticSourceId,
+      budgetType: 'model',
       title: 'OPM analytical model: reference orbits, formulas, assumptions, and worked examples',
       url: 'https://github.com/AntonioToni/ksp-deltav/blob/main/docs/DATA.md#outer-planets-mod-pack',
     },
@@ -180,6 +181,7 @@ export const opmPack: PlanetPack = {
     },
     {
       id: mapSourceId,
+      budgetType: 'reference',
       title: 'Historical OPM 1.8.1 atmospheric surface allowances · Tekto and Thatmo only',
       url: 'https://github.com/Kowgan/ksp_cheat_sheets/blob/ca2d4910dd98e5fd14277b04ec686e61cd6967ce/delta_v_map_outer_planets/DvMap_OP_2_A4.svg',
     },

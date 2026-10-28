@@ -48,6 +48,24 @@ describe('custom planet pack JSON', () => {
     expect(parse(renamed)).toEqual({ status: 'success', pack: renamed })
   })
 
+  it('preserves optional source budget metadata while accepting legacy sources without it', () => {
+    const custom = pack()
+    custom.sources[0]!.budgetType = 'model'
+    expect(parse(custom)).toEqual({ status: 'success', pack: custom })
+    const store = storage()
+    expect(saveCustomPacks(store, [custom])).toBeNull()
+    expect(readCustomPacks(store).packs[0]?.sources[0]?.budgetType).toBe('model')
+    const legacy = { ...custom, sources: custom.sources.map(({ id, title, url }) => ({ id, title, url })) }
+    expect(parse(legacy)).toEqual({ status: 'success', pack: legacy })
+  })
+
+  it.each(['verified', '', null, true, 12, {}])('rejects unsupported source budget metadata %j', budgetType => {
+    const custom = pack()
+    const malformed = { ...custom, sources: custom.sources.map(source => ({ ...source, budgetType })) }
+    expect(errors(malformed).join(' ')).toContain('budgetType must be reference or model')
+    expect(validatePlanetPack(malformed).join(' ')).toContain('budgetType must be reference or model')
+  })
+
   it('round-trips stellar hierarchy, published references, unpriced connections, and overlapping map regions without adding prices', () => {
     const custom = pack()
     custom.bodies.push(

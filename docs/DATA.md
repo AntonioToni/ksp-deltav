@@ -42,11 +42,11 @@ orbit and an elliptical orbit are different states.
   map's simplified budgeting convention rather than asserting equal physical
   trajectories.
 - Vacuum surface descent reverses the map ascent estimate. Atmospheric powered
-  descent deliberately uses a **conservative placeholder budget equal to the
+  descent deliberately uses a **placeholder budget equal to the
   ascent budget** in the source dataset and default planner configuration.
-  This is not a verified landing calculation. Optional atmospheric choices can
-  replace eligible costs as described below; vehicle-dependent descent modeling
-  remains future work.
+  This is not a verified landing calculation or an upper bound. Optional
+  atmospheric choices can replace eligible costs as described below;
+  vehicle-dependent descent modeling remains future work.
 - Only interplanetary branches to/from Kerbin are supplied by this pack. A
   route between two other planetary systems must capture into a low parking
   orbit at Kerbin before escaping for the next transfer. The routing search
@@ -176,6 +176,13 @@ retained OPM atmospheric allowances or historical RSS references, or prove that
 a reference orbit clears terrain in a particular installation.
 
 ## Auditing changes
+
+The [validation record](VALIDATION.md) separates pinned-source comparisons,
+independent arithmetic checks, and limits on physical interpretation. Open
+**Budget assumptions** in the planner to see which kinds of figures contribute
+to the current mission. User-entered allowances and ideal capture assumptions
+take precedence over the original source label; the source remains available
+as context. Atmospheric descent placeholders are identified separately.
 
 `src/data/stock.test.ts` checks coverage, references, topology, and landmark totals.
 Useful source-map landmarks from Kerbin surface, excluding plane changes:
@@ -544,11 +551,13 @@ and arrival into the endpoint parking orbit. A plugin jump alone does not prove
 fuel-free exit matching or an arbitrary compatible return trajectory.
 
 Open **Link allowances** in the manager's **Add-ons** tab, or through the route
-status when a route is unavailable in a pack with unpriced links. Enter independent **Outbound**
-and **Return** values following the endpoint arrows under each field. Each value
-may be **0–1,000,000 m/s**. Blank leaves that direction unavailable; an explicit
-zero records the user's planning assumption. Arorua allowances cover the whole
-pair, including any printed known component, rather than only its N.A. side.
+status when a route is unavailable in a pack with unpriced links. Enter independent
+**Forward** and **Reverse** values following the endpoint arrows under each field.
+The link's directions stay fixed when mission mode changes; they do not mean the
+mission's Outbound and Return legs. Each value may be **0–1,000,000 m/s**. Blank
+leaves that direction unavailable; an explicit zero records the user's planning
+assumption. Arorua allowances cover the whole pair, including any printed known
+component, rather than only its N.A. side.
 
 **Apply** commits the staged draft; **Cancel** or Escape discards it. Clearing
 allowances clears the draft until applied. Entered costs apply before mission

@@ -405,7 +405,7 @@ function createRegionOverview(pack: PlanetPack): MapLayout | undefined {
   const naturalWidth = secondary.reduce((sum, content) => sum + content.layout.width + 32, 0)
   const horizontalScale = Math.min(1, available / naturalWidth)
   const panelHeight = Math.max(...secondary.map(content => content.layout.height)) + 54
-  const top = primaryHeight + 68
+  const top = primaryHeight + 44
   let left = (width - (naturalWidth * horizontalScale + gap * (secondary.length - 1))) / 2
   for (const content of secondary) {
     const panelWidth = (content.layout.width + 32) * horizontalScale
@@ -418,7 +418,7 @@ function createRegionOverview(pack: PlanetPack): MapLayout | undefined {
   const result: MapLayout = {
     width, height: top + panelHeight + 20, mode: 'wide', nodePositions, labels,
     radius: 24, hitRadius: 32, hubId: findHub(pack), nodeFontSize: 18, labelFontSize: 21,
-    presentation: 'overview', panels, nodePanels, panelContents, overviewRailY: primaryHeight + 40,
+    presentation: 'overview', panels, nodePanels, panelContents, overviewRailY: primaryHeight + 28,
   }
   const nodes = new Map(pack.nodes.map(node => [node.id, node]))
   for (const edge of [...pack.maneuvers, ...(pack.unpricedConnections ?? [])]) {

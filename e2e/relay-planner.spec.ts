@@ -190,7 +190,7 @@ test('uses RSS body physics while keeping the stock radio model and omitting gas
   await section(page, 'Body data')
   expect(Number(await field(page, 'Body radius').inputValue())).toBeGreaterThan(6000)
   expect(Number(await field(page, 'Gravitational parameter').inputValue())).toBeGreaterThan(1e14)
-  await expect(planner(page).getByText(/radio model stays stock CommNet/)).toBeVisible()
+  await expect(planner(page).getByText(/Radio estimates use stock antennas and DSN powers; RSS radio patches/)).toBeVisible()
   await planner(page).getByRole('button', { name: 'Close', exact: true }).click()
   await button(page, 'Stock').click()
   await openPlanner(page)

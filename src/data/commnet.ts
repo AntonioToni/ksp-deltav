@@ -1,7 +1,7 @@
 import type { CelestialBody, DataSource } from '../types/planner'
 import { opmReferences } from './opmReference'
 import { kcalbelohConfigSource } from './kcalbelohReference'
-import { kcalbelohGravitySource, kcalbelohPhysicalReferences, kcalbelohSoiSource } from './kcalbelohPhysics'
+import { kcalbelohGravitySource, kcalbelohPhysicalReferences, kcalbelohSoiConstants, kcalbelohSoiSource } from './kcalbelohPhysics'
 
 export interface RelayBodyPreset {
   bodyId: string
@@ -120,9 +120,14 @@ const gravitationalParameters = new Map<string, number>([
 
 function bodyPreset(row: PhysicalRow, sourceId: string): RelayBodyPreset {
   const [bodyId, parentBodyId, radiusM, gravitationalParameter, atmosphereHeightM, semiMajorAxisM, override] = row
-  // Standard patched-conic SOI: a × (μbody / μparent)^(2/5). Explicit official
-  // overrides (Hale, Ovok, Phobos, Deimos, Mimas) take priority.
-  const sphereOfInfluenceM = override ?? semiMajorAxisM * (gravitationalParameter / gravitationalParameters.get(parentBodyId)!) ** (2 / 5)
+  const laplaceSoiM = semiMajorAxisM * (gravitationalParameter / gravitationalParameters.get(parentBodyId)!) ** (2 / 5)
+  // Default RSS uses the same Kopernicus minimums as Kcalbeloh. They affect
+  // Enceladus and Miranda; Principia/recomputed-SOI configurations are separate.
+  // Explicit source overrides, including Mimas below 2R, retain priority.
+  const derivedSoiM = sourceId === 'commnet-rss-bodies'
+    ? Math.max(laplaceSoiM, radiusM * kcalbelohSoiConstants.minimumRadiusMultiplier, radiusM + kcalbelohSoiConstants.minimumAltitudeM)
+    : laplaceSoiM
+  const sphereOfInfluenceM = override ?? derivedSoiM
   return { bodyId, parentBodyId, radiusM, gravitationalParameter, atmosphereHeightM, sphereOfInfluenceM, sourceId }
 }
 

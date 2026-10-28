@@ -262,6 +262,7 @@ export const rssPack: PlanetPack = {
   sources: [
     {
       id: mapSourceId,
+      budgetType: 'reference',
       title: 'Delta-V Map of the Solar System · pinned community diagram',
       url: `https://github.com/davidson16807/mission-planner/blob/${mapCommit}/rss-dvmap.webp`,
     },

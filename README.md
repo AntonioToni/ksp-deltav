@@ -7,7 +7,7 @@ return-only budgets, and add a reserve for your mission.
 
 **[Open the planner](https://antoniotoni.github.io/ksp-deltav/)** ·
 [Data and assumptions](docs/DATA.md) · [Relay guide](docs/RELAYS.md) ·
-[Developer guide](docs/DEVELOPMENT.md)
+[Validation record](docs/VALIDATION.md) · [Developer guide](docs/DEVELOPMENT.md)
 
 ## Features
 
@@ -89,9 +89,10 @@ both combined configurations; regional views remain available for a closer look.
 
 Some Kcalbeloh connections have no published fuel budget. Open **Link allowances**
 from the Add-ons tab, or from the route status when a link is missing. Enter the
-complete outward and return costs separately: blank leaves a direction
-unavailable, and zero is an explicit user assumption. Choose **Apply** to use the
-draft. Source data and exported JSON keep the original unpriced links.
+complete **Forward** and **Reverse** costs following each field's endpoint arrow.
+These link directions stay fixed when you change mission mode. Blank leaves a
+direction unavailable, and zero is an explicit user assumption. Choose **Apply**
+to use the draft. Source data and exported JSON keep the original unpriced links.
 
 Open **Relays** in the header (the satellite icon on phones) to plan a local
 CommNet constellation. Choose a body, orbit altitude, relay count, and antennas,
@@ -106,6 +107,12 @@ stock parts and counts, then choose **Apply**. A relay loadout is fitted to each
 satellite separately; antennas on different satellites do not combine.
 
 ## About the estimates
+
+Open **Budget assumptions** beside the total to see the selected mission's
+reference-map figures, analytic estimates, personal allowances, ideal capture,
+and landing placeholders. The dialog lists reserves and final rounding
+separately. **Sources & assumptions** explains the active pack. Imported budgets
+remain author-supplied even when their source metadata names a map or model.
 
 These are schematic planning estimates within the supplied maneuver graph,
 rather than simulated trajectories. The supplied interplanetary branches are
@@ -145,7 +152,10 @@ claims are omitted. See the data guide for coverage and calculation assumptions.
 
 **Relay coverage is equatorial.** A visible surface receiver and a working local
 ring do not establish a connection back to the DSN. The radio presets use stock
-CommNet rules; RealAntennas and RemoteTech are not modeled.
+CommNet rules; RSS radio patches, RealAntennas, and RemoteTech are not applied
+automatically. Use custom powers for your installation. The
+[validation record](docs/VALIDATION.md) describes the checked data, independent
+calculation tests, and remaining limits.
 
 ## Run locally
 

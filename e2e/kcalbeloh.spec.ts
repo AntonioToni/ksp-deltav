@@ -15,7 +15,7 @@ const opmWormhole = 'Sarnus low orbit ↔ Sera low orbit via wormhole'
 const blackHoleLink = 'Kcalbeloh reference ↔ Rouqea low orbit'
 const sunorcLink = 'Sunorc reference ↔ Suluco low orbit'
 const maelgLink = 'Maelg reference ↔ Mehtna low orbit'
-const allowance = (page: Page, label: string, direction: 'Outbound' | 'Return' = 'Outbound') =>
+const allowance = (page: Page, label: string, direction: 'Forward' | 'Reverse' = 'Forward') =>
   editor(page).getByRole('spinbutton', { name: direction + ' allowance for ' + label, exact: true })
 let browserErrors: string[]
 
@@ -83,7 +83,7 @@ async function enterLinks(page: Page, values: { label: string; forward: string; 
   await openAllowances(page)
   for (const row of values) {
     await allowance(page, row.label).fill(row.forward)
-    if (row.reverse !== undefined) await allowance(page, row.label, 'Return').fill(row.reverse)
+    if (row.reverse !== undefined) await allowance(page, row.label, 'Reverse').fill(row.reverse)
   }
   await apply(page)
 }
@@ -157,7 +157,7 @@ test('leaves missing source links unavailable until each directional wormhole al
   await missionModeButton(page, 'return-only').click()
   await expect(total(page)).toHaveCount(0)
   await openAllowances(page)
-  await allowance(page, wormhole, 'Return').fill('2000')
+  await allowance(page, wormhole, 'Reverse').fill('2000')
   await apply(page)
   await expect(total(page)).toHaveText('13,900 m/s')
   await missionModeButton(page, 'round-trip').click()
@@ -208,9 +208,9 @@ test('keeps compatible allowances across compositions while resetting the reloca
   await button(page, 'OPM').click()
   await openAllowances(page)
   await expect(allowance(page, blackHoleLink)).toHaveValue('400')
-  await expect(allowance(page, blackHoleLink, 'Return')).toHaveValue('500')
+  await expect(allowance(page, blackHoleLink, 'Reverse')).toHaveValue('500')
   await expect(allowance(page, opmWormhole)).toHaveValue('')
-  await expect(allowance(page, opmWormhole, 'Return')).toHaveValue('')
+  await expect(allowance(page, opmWormhole, 'Reverse')).toHaveValue('')
   await expect(allowance(page, wormhole)).toHaveCount(0)
   await editor(page).getByRole('button', { name: 'Cancel', exact: true }).click()
   await openManager(page)

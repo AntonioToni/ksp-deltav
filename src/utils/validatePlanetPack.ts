@@ -116,6 +116,9 @@ export function validatePlanetPack(pack: unknown): string[] {
 
   for (const source of sources) {
     text(source.title, `Source ${display(source.id)} title`)
+    if (source.budgetType !== undefined && source.budgetType !== 'reference' && source.budgetType !== 'model') {
+      errors.push(`Source ${display(source.id)} budgetType must be reference or model when supplied.`)
+    }
     try {
       if (typeof source.url !== 'string' || new URL(source.url).protocol !== 'https:') throw new Error('Invalid URL')
     } catch {

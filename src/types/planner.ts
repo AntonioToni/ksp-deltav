@@ -26,6 +26,8 @@ export interface DataSource {
   id: string
   title: string
   url: string
+  /** Declared origin of maneuver figures; this is not a validation guarantee. */
+  budgetType?: 'reference' | 'model'
 }
 
 export interface ManeuverEdge {

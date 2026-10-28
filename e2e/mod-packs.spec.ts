@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { missionModeButton } from './helpers/missionMode'
 import { opmPack } from '../src/data/opm'
+import { expectedMission, expectBreakdownPages } from './helpers/breakdownPages'
 
 const node = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
 const packButton = (page: Page, name: 'Stock' | 'OPM') => page.getByRole('button', { name, exact: true })
@@ -185,7 +186,11 @@ test('makes every new OPM state selectable and omits surfaces for gas giants', a
   }
 })
 
-for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }]) {
+for (const viewport of [
+  { width: 320, height: 568 }, { width: 667, height: 375 },
+  { width: 700, height: 651 }, { width: 700, height: 749 },
+  { width: 900, height: 750 }, { width: 1280, height: 751 },
+]) {
   test(`fits the maximum 17-maneuver OPM return leg above usable controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
     await packButton(page, 'OPM').click()
@@ -199,13 +204,11 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     await detailsToggle(page).check()
     await page.getByRole('tab', { name: 'Return', exact: true }).click()
 
-    const legs = maneuverList(page).getByRole('listitem')
-    await expect(legs).toHaveCount(17)
-    for (let index = 0; index < 17; index++) {
-      // Mobile IntersectionObserver can round a fully visible row slightly below 1.
-      await expect(legs.nth(index)).toBeInViewport({ ratio: 0.99999 })
-      await expect(legs.nth(index)).toContainText('m/s')
-    }
+    const journey = expectedMission(opmPack, 'opm:tal:surface', 'stock:gilly:surface', 'round-trip').returnRoute!
+    expect(journey.legs).toHaveLength(17)
+    await expect(page.getByTestId('route-total')).toHaveText('34,492 m/s')
+    const pageSize = viewport.width <= 699 || viewport.height <= 750 ? 8 : 17
+    await expectBreakdownPages(page, opmPack, journey, pageSize)
     const panel = await page.getByRole('region', { name: 'Maneuver breakdown panel', exact: true }).boundingBox()
     const footer = await page.getByRole('contentinfo').boundingBox()
     expect(panel).not.toBeNull()

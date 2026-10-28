@@ -63,7 +63,7 @@ and optional reference altitudes use **km**.
 | `shortName` | Optional compact display name, up to 12 characters. |
 | `dataNotice` | Optional short note shown beside the route status; opens the assumptions dialog. |
 | `transferHubBodyId` | Optional ID of a planet with a low-orbit state, used to describe the pack's reference transfers. |
-| `sources` | Objects with unique `id`, `title`, and an HTTPS `url`. |
+| `sources` | Objects with unique `id`, `title`, and an HTTPS `url`; optional `budgetType` is `reference` or `model`. |
 | `assumptions` | An array of strings describing the pack's modeling choices. |
 | `bodies` | The body hierarchy and presentation metadata. |
 | `nodes` | Selectable surface, orbit, reference, high-ellipse, and encounter states. |
@@ -74,6 +74,14 @@ and optional reference altitudes use **km**.
 Keep source attribution and licensing when adapting an exported pack. Validation
 checks data consistency; it does not establish that reference figures are
 accurate for a particular mod release or vehicle.
+
+Optional `source.budgetType` describes the author's intended basis:
+`"reference"` for published planning figures or `"model"` for computed estimates.
+Omitting it remains valid. The importer preserves this metadata in storage and
+exports; it does not fetch or verify the cited source. Imported maneuver costs
+still appear as **Imported budget**, including a renamed export of a built-in
+pack. A declaration is not independent verification. Applied personal allowances
+and ideal-capture choices are identified by their actual use in the mission.
 
 ### Bodies and states
 
@@ -163,11 +171,13 @@ existing states and both directional kinds must follow the topology rules above.
 The descriptor contains **no `deltaV`** and does not add a zero-cost edge.
 
 Open **Link allowances** from the manager's **Add-ons** tab, or from the route
-status when a route is unavailable in a pack with unpriced links. Users can enter the whole
-cost independently in each direction. Blank leaves that direction unavailable;
-zero explicitly assumes a free journey. Inputs must be finite and between
-0 and 1,000,000 m/s. For a partially priced source pair, the allowance must cover
-both its known component and its unknown component.
+status when a route is unavailable in a pack with unpriced links. **Forward**
+follows the descriptor's `from` → `to` endpoints; **Reverse** follows `to` → `from`.
+Read the endpoint arrows under each field. These directions are independent of
+the selected mission mode. Enter the whole cost independently in each direction.
+Blank leaves that direction unavailable; zero explicitly assumes a free journey.
+Inputs must be finite and between 0 and 1,000,000 m/s. For a partially priced
+source pair, the allowance must cover both its known and unknown components.
 
 **Apply** commits the staged draft, while **Cancel** or Escape discards it.
 **Clear allowances** clears the draft until applied. Session allowances feed the

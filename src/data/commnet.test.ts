@@ -3,6 +3,7 @@ import { stockPack } from './stock'
 import { opmPack } from './opm'
 import { rssPack } from './rss'
 import { stockKcalbelohPack, opmKcalbelohPack } from './kcalbeloh'
+import { calculateRelayPlan } from '../utils/relay'
 import {
   clientAntennas, commNetSources, dsnLevels, findRelayBodyPreset,
   relayAntennas, relayBodyPresets, vesselAntennas,
@@ -91,6 +92,28 @@ describe('CommNet reference catalog', () => {
     const titan = findRelayBodyPreset(rssPack.bodies.find(body => body.id === 'rss:titan')!)!
     expect(titan.gravitationalParameter).toBe(8.9778648e12)
     expect(titan.atmosphereHeightM).toBe(600_000)
+  })
+
+  it.each([
+    { bodyId: 'rss:enceladus', effectiveSoiM: 504_200, orbitRadiusM: 500_000 },
+    { bodyId: 'rss:miranda', effectiveSoiM: 471_400, orbitRadiusM: 465_000 },
+  ])('uses the default Kopernicus minimum SOI for $bodyId when validating relay orbits', ({ bodyId, effectiveSoiM, orbitRadiusM }) => {
+    const preset = findRelayBodyPreset(rssPack.bodies.find(body => body.id === bodyId)!)!
+    // These radii are outside the raw Laplace estimates (488,586.743 m and
+    // 459,755.119 m) but inside the game's 2R minimum spheres of influence.
+    expect(preset.sphereOfInfluenceM).toBe(effectiveSoiM)
+    const input = {
+      body: preset, hasSurface: true, satelliteCount: 3,
+      altitudeM: orbitRadiusM - preset.radiusM,
+      relayPower: 5e6, clientPower: 5e5, dsnPower: 250e9,
+      rangeMultiplier: 1, occlusionFactor: 1,
+      phaseDeg: 0, stationLongitudeDeg: 0, safetyMarginM: 10_000,
+      deploymentMode: 'lower' as const,
+    }
+    expect(calculateRelayPlan(input).status).toBe('success')
+    const boundary = calculateRelayPlan({ ...input, altitudeM: effectiveSoiM - preset.radiusM })
+    expect(boundary.status).toBe('invalid')
+    if (boundary.status === 'invalid') expect(boundary.errors).toContain('The circular orbit must remain inside the body’s sphere of influence.')
   })
 
   it('never substitutes a familiar name or a changed hierarchy for missing custom physical data', () => {

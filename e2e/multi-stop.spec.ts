@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { missionModeButton } from './helpers/missionMode'
+import { opmPack } from '../src/data/opm'
+import { expectedMission, expectBreakdownPages } from './helpers/breakdownPages'
 
 const state = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
 const pack = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
@@ -305,15 +307,21 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     await details(page).check()
     await page.getByRole('tab', { name: 'Return', exact: true }).click()
     await expectStage(page, '1 / 2', 'Gilly surface', 'Tal surface')
-    const count = await maneuvers(page).count()
-    expect(count).toBeGreaterThan(0)
-    expect(count, 'The details should show one stage instead of the whole mission').toBeLessThanOrEqual(17)
-    for (const row of await maneuvers(page).all()) await expectOnScreen(row, page)
+    const journey = expectedMission(opmPack, 'opm:tal:surface', 'stock:gilly:surface', 'round-trip', ['opm:tal:surface']).returnStages[0]!
+    expect(journey.legs).toHaveLength(17)
+    await expectBreakdownPages(page, opmPack, journey)
     await expectDetailsAboveControls(page)
+    await page.getByRole('button', { name: 'Next maneuvers', exact: true }).click()
+    await expect(page.getByTestId('maneuver-position')).toHaveText('9–16 of 17')
     await nextStage(page).click()
     await expectStage(page, '2 / 2', 'Tal surface', 'Tal surface', '0')
     await expect(maneuvers(page)).toHaveCount(0)
+    await expect(page.getByTestId('maneuver-position')).toHaveCount(0)
     await expectDetailsAboveControls(page)
+    await previousStage(page).click()
+    await expectStage(page, '1 / 2', 'Gilly surface', 'Tal surface')
+    await expect(page.getByTestId('maneuver-position')).toHaveText('1–8 of 17')
+    await expect(page.getByTestId('route-total')).toHaveText('34,492 m/s')
     await expectOnScreen(editStops(page), page)
     await expectPageFits(page)
   })

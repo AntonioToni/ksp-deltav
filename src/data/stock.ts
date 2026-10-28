@@ -103,7 +103,7 @@ function surfaceBudget(body: string, deltaV: number) {
   ])
   edge(id(body, 'orbit'), id(body, 'surface'), deltaV, 'descent', `${name} powered descent`, [
     atmospheric
-      ? 'Conservative placeholder budget: reuses the map ascent figure for powered descent. This is not a verified landing calculation; no parachute, aerobraking, or aerocapture savings are credited.'
+      ? 'Powered-descent placeholder budget: reuses the map ascent figure for powered descent. This is not a verified landing calculation or upper bound; no parachute, aerobraking, or aerocapture savings are credited.'
       : 'Reverses the source map vacuum ascent estimate for a powered landing; actual descent losses depend on the vehicle and trajectory.',
   ])
 }
@@ -203,13 +203,14 @@ export const stockPack: PlanetPack = {
   description: 'An idealized stock-system Delta-V budget map with directed maneuvers and explicit reference orbits.',
   sources: [{
     id: sourceId,
+    budgetType: 'reference',
     title: 'Kowgan / WAC community stock Delta-V map · KSP 1.7.3',
     url: 'https://github.com/Kowgan/ksp_cheat_sheets/blob/ca2d4910dd98e5fd14277b04ec686e61cd6967ce/delta_v_map_vanilla/DvMap_A4.svg',
   }],
   assumptions: [
     'All budgets are in m/s and use the source map reference orbits. These are schematic estimates, not a trajectory simulation.',
     'Favorable launch windows and idealized transfers. Plane-change allowances, launch dates, travel time, gravity assists, and spacecraft performance are excluded; add a mission margin.',
-    'No atmospheric assistance is credited. Atmospheric powered-descent budgets are conservative placeholders equal to the ascent map budget, not verified landing calculations.',
+    'No atmospheric assistance is credited. Atmospheric powered-descent budgets are placeholders equal to the ascent map budget, not verified landing calculations or upper bounds.',
     'Only Kerbin-centered interplanetary transfer segments are provided. Routes between other planetary systems require capture into a low parking orbit before the next interplanetary departure; direct transfers and encounter-to-encounter flyby chaining are not modeled.',
     'Eve, Duna, and Jool moon transfers branch from high elliptical orbit. Low-orbit capture and moon transfer costs must not be conflated.',
     'Kerbol has no selectable mission states; Jool has no surface. Surface states are omitted where landing is unsupported.',

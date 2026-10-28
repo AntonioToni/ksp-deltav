@@ -120,7 +120,9 @@ function canonicalPack(pack: PlanetPack): PlanetPack {
     ...(pack.dataNotice !== undefined ? { dataNotice: pack.dataNotice } : {}),
     ...(pack.transferHubBodyId !== undefined ? { transferHubBodyId: pack.transferHubBodyId } : {}),
     assumptions: [...pack.assumptions],
-    sources: pack.sources.map(({ id, title, url }) => ({ id, title, url })),
+    sources: pack.sources.map(({ id, title, url, budgetType }) => ({ id, title, url,
+      ...(budgetType !== undefined ? { budgetType } : {}),
+    })),
     bodies: pack.bodies.map(({ id, name, parentId, kind, hasSurface, hasAtmosphere, supportsAtmosphericBraking, color }) => ({
       id, name, parentId, kind, hasSurface, hasAtmosphere, color,
       ...(supportsAtmosphericBraking !== undefined ? { supportsAtmosphericBraking } : {}),

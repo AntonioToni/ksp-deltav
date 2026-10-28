@@ -30,6 +30,14 @@ npm run build        # Strict TypeScript checks and production bundle
 
 Use `npm run test:watch` to rerun unit tests as files change.
 
+The [validation record](VALIDATION.md) documents pinned-source comparisons and
+their scope. `missionAudit.test.ts` compares ordered Dijkstra routing with an
+independently implemented Bellman–Ford oracle on deterministic directed graphs,
+and reserve rounding with exact rational arithmetic. Pack/reference tests keep
+source landmarks, unit conversions, parent contexts, atmosphere bounds, and
+SOI overrides under regression coverage. The unit suite uses local fixtures;
+it does not fetch upstream data or run a KSP installation.
+
 ### Browser tests
 
 Playwright opens the planner in Chromium to check selection, budgets, controls,
@@ -74,6 +82,9 @@ On Linux CI machines that also need browser system dependencies, use
 | Graph construction and ordered contextual route search | `src/utils/buildGraph.ts`, `src/utils/findRoute.ts` |
 | Mission modes, ordered stops, and stage budgets | `src/utils/mission.ts` |
 | Reserve calculations | `src/utils/budget.ts` |
+| Effective maneuver basis and mission category totals | `src/utils/estimateBasis.ts` |
+| Mission budget explanation and source assumptions | `src/components/EstimateInfoDialog.tsx` |
+| Shared budget basis labels and colors | `src/components/estimatePresentation.ts` |
 | Informational atmospheric-braking markers | `src/utils/aerobraking.ts` |
 | Atmospheric capabilities and adjusted routing costs | `src/utils/atmosphericAssistance.ts` |
 | Schematic layouts and SVG interaction | `src/components/mapLayout.ts`, `src/components/DeltaVMap.tsx` |
@@ -106,6 +117,16 @@ Stage costs restart their cumulative totals locally; the complete mission retain
 its full cumulative budget. Reserve calculations remain separate from routing
 costs and apply once after the selected atmospheric adjustments.
 
+`DataSource.budgetType` optionally records `reference` or `model`. The estimate
+basis helpers classify the effective flown edges: active directional/landing
+allowances and ideal capture precede source metadata, atmospheric descent
+placeholders have their own label, and imported figures remain author-supplied.
+Classification changes presentation only. `summarizeBudgetBasis` counts every
+flown occurrence, including repeated and zero-cost maneuvers, before reserves.
+The information dialog separates those totals, the percentage reserve, and any
+round-up to whole m/s. Source URLs provide context and do not verify personal
+allowances or imported costs.
+
 Atmospheric choices are session state keyed by body ID. The dialog edits a draft;
 Apply commits it, Cancel discards it, and Disable all clears the draft. A checked
 landing option requires an explicit finite allowance from 0 to 1,000,000 m/s.
@@ -127,9 +148,9 @@ The Stops editor stores visits in outbound order. Pack changes filter out
 unsupported stops, swapping reverses their order, and reset empties the list.
 The map shows numbered stop badges, and the optional breakdown pages through
 stages to keep long missions compact.
-Custom pack stages and built-in stages longer than 17 maneuvers page through
-rows in groups of eight, keeping the breakdown within the available map area
-without page scrolling.
+Custom pack stages, built-in stages longer than 17 maneuvers, and narrow or
+short-screen breakdowns page through rows in groups of eight. This keeps names,
+basis badges, and navigation above the mission dock without page scrolling.
 
 To try a pack without rebuilding the app, open **Custom planet packs** using the
 puzzle button beside the system selectors and import its JSON.
@@ -190,7 +211,10 @@ actual low-parking-orbit reset before another interplanetary transfer.
 `unpricedConnections` is source metadata, not zero-cost edges. A descriptor names
 the endpoints, direction-specific maneuver kinds, source, and assumptions.
 `applyConnectionAllowances` validates the session plan and adds only entered
-forward/reverse costs to a copied graph. Values are finite 0–1,000,000 m/s;
+forward/reverse costs to a copied graph. The dialog labels **Forward** as
+`from` → `to` and **Reverse** as `to` → `from`, independently of mission mode;
+endpoint captions wrap to retain the full state identities. Values are finite
+0–1,000,000 m/s;
 `null` leaves a direction unavailable. Generated edge IDs start with
 `allowance:` and their assumptions identify the user-supplied cost. The whole
 wormhole connector covers approach, crossing, exit matching, and parking capture.
@@ -257,6 +281,12 @@ parent context. This matters for Eeloo, whose parent and sphere of influence
 change in OPM. The editable Body data tab supports bodies without a recognized
 preset; missing physical inputs do not silently fall back to Kerbin. A missing
 sphere of influence leaves that orbital bound unchecked.
+
+RSS-derived SOIs apply Kopernicus's default `2R` and `R + 40 km` floors before
+checking the target orbit; explicit source overrides still win. These minimums
+affect Enceladus and Miranda. RSS body physics do not imply RSS radio settings:
+the workspace retains stock powers and occlusion options unless the user changes
+them. The relay guide documents the pinned RSS radio patches separately.
 
 The catalog includes all 25 Kcalbeloh planets/moons in either composition, for
 89 total contextual presets. `kcalbelohPhysics.ts` reuses pinned body facts and

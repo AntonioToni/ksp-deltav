@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { missionMode, missionModeButton } from './helpers/missionMode'
 import { rssPack } from '../src/data/rss'
+import { expectedMission, expectBreakdownPages } from './helpers/breakdownPages'
 
 const node = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
 const packButton = (page: Page, name: 'Stock' | 'OPM' | 'RSS') => page.getByRole('button', { name, exact: true })
@@ -268,14 +269,10 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     await slider.press('End')
     await detailsToggle(page).check()
     await page.getByRole('tab', { name: 'Return', exact: true }).click()
-    const legs = maneuverList(page).getByRole('listitem')
-    await expect(legs).toHaveCount(14)
+    const journey = expectedMission(rssPack, 'rss:phobos:surface', 'rss:io:surface', 'round-trip').returnRoute!
+    expect(journey.legs).toHaveLength(14)
+    await expectBreakdownPages(page, rssPack, journey)
     await assertDetailsAboveDock(page)
-    for (let index = 0; index < 14; index++) {
-      // Mobile IntersectionObserver can round a fully visible row slightly below 1.
-      await expect(legs.nth(index)).toBeInViewport({ ratio: 0.99999 })
-      await expect(legs.nth(index)).toContainText('m/s')
-    }
     await assertSettingsVisible(page)
     await page.locator('.MuiSlider-root').click()
     await slider.press('Home')

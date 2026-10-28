@@ -41,7 +41,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
       const bounds = entries[0]?.contentRect
       if (!bounds || !bounds.width || !bounds.height) return
       const ratio = bounds.width / bounds.height
-      setMode(ratio < 1.15 ? 'portrait' : ratio > 2.8 ? 'short' : 'wide')
+      setMode(ratio > 2.8 ? 'short' : bounds.width < 600 || ratio < 1.15 ? 'portrait' : 'wide')
     })
     observer.observe(element)
     return () => observer.disconnect()

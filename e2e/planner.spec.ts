@@ -1,4 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { stockPack } from '../src/data/stock'
+import { expectedMission, expectBreakdownPages } from './helpers/breakdownPages'
 
 const state = (page: Page, body: string, kind: string) =>
   page.locator(`[data-node-id="stock:${body}:${kind}"]`)
@@ -174,7 +176,7 @@ test('keeps the atmospheric landing assumption available as a compact note', asy
   await state(page, 'kerbin', 'orbit').click()
   await state(page, 'kerbin', 'surface').click()
   await expect(page.getByTestId('route-total')).toHaveText('3,400 m/s')
-  await expect(page.getByRole('alert')).toContainText('Atmospheric landing uses a planning allowance.')
+  await expect(page.getByRole('alert')).toContainText('Atmospheric landing uses an unverified placeholder.')
 })
 
 test('shows atmospheric braking opportunities independently of the selected route without changing its budget', async ({ page }) => {
@@ -252,14 +254,10 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 390 }
 
     const list = breakdown(page)
     const panel = page.getByRole('region', { name: 'Maneuver breakdown panel', exact: true })
-    const legs = list.getByRole('listitem')
-    await expect(legs).toHaveCount(12)
+    const journey = expectedMission(stockPack, 'stock:gilly:surface', 'stock:ike:surface', 'one-way').outbound!
+    expect(journey.legs).toHaveLength(12)
+    await expectBreakdownPages(page, stockPack, journey)
     await assertOnScreen(panel, page)
-    for (let index = 0; index < 12; index++) {
-      // Mobile IntersectionObserver can round a fully visible row slightly below 1.
-      await expect(legs.nth(index)).toBeInViewport({ ratio: 0.99999 })
-      await expect(legs.nth(index)).toContainText('m/s')
-    }
     const panelBounds = await panel.boundingBox()
     const footerBounds = await page.getByRole('contentinfo').boundingBox()
     expect(panelBounds).not.toBeNull()

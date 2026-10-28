@@ -9,6 +9,7 @@ export const kcalbelohConfigSource: DataSource = {
 }
 export const kcalbelohMapSource: DataSource = {
   id: 'kcalbeloh-map-1.1.8',
+  budgetType: 'reference',
   title: 'Official Kcalbeloh System Delta-V and transfer-window reference map',
   url: `https://github.com/jcyuan06/Kcalbeloh-System/blob/${kcalbelohConfigCommit}/Kcalbeloh%20dv%20and%20Transfer%20Windows%20Map.png`,
 }

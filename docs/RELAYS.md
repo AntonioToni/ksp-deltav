@@ -306,9 +306,13 @@ Rescaling, alternate homeworlds, or other physics patches may require edits.
   uses a sphere at that equatorial datum; terrain and oblateness are not
   simulated.
 - Explicit SOI overrides for OPM Hale/Ovok and RSS Phobos/Deimos/Mimas are
-  retained. Other SOIs in those catalogs use the relation above with the same
-  pinned body and parent constants. Optional SigmaBinary and other compatibility
-  patches are not modeled.
+  retained. Other RSS SOIs follow the default Kopernicus relation with minimums:
+  `max(a × (mu_body / mu_parent)^(2/5), 2R, R + 40,000 m)`. This gives an effective
+  SOI radius of **504.2 km** for Enceladus and **471.4 km** for Miranda. Raw Laplace
+  values of about 488.587 and 459.755 km would omit the active `2R` floor.
+  The remaining OPM Laplace values already exceed these minimums; explicit
+  overrides take priority. Optional SigmaBinary and other compatibility patches
+  are not modeled.
 - Kcalbeloh physical constants: [official v1.1.8 configs](https://github.com/jcyuan06/Kcalbeloh-System/tree/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem),
   pinned to `1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9`. The physical table shares
   radius, atmosphere height, semi-major axis, and hierarchy facts with the pack;
@@ -348,6 +352,21 @@ Preset values are reference facts for the pinned versions. Relay coverage and
 deployment calculations remain separate from the OPM analytic maneuver model
 described in the [data guide](DATA.md). These presets do not guarantee
 compatibility with a different mod release or radio overhaul.
+
+### RSS radio configuration
+
+Selecting RSS loads its body physics while retaining the planner's **stock
+CommNet radio presets**. The pinned RSS
+[`DSN_Ranges.cfg`](https://github.com/KSP-RO/RealSolarSystem/blob/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/DSN_Ranges.cfg)
+multiplies transmitter powers by 20 and, when a CustomBarnKit configuration node
+is present, supplies DSN powers of 5e9, 5e11, and 5e13 m. Its
+[`CommNetFixer`](https://github.com/KSP-RO/RealSolarSystem/blob/75139b961567f4dab61af83fe162a7e52026558b/Source/CommNetFixer.cs)
+also sets normal occlusion defaults to 1.0. These patches are not applied
+automatically here. Choose **Custom power** for the effective vessel and DSN
+powers in your installation, and match the occlusion setting. **Full radius**
+uses 1.0; **KSP normal** uses stock 0.75/0.9 factors. RealAntennas and RemoteTech
+use different models and remain unsupported. See the
+[validation record](VALIDATION.md) for the source audit and calculation checks.
 
 ### Retained MIT notice for the antenna reference
 
