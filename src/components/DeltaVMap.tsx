@@ -87,13 +87,15 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
     const region = regions.find(candidate => bodyId && candidate.bodyIds.includes(bodyId))
     return region ? [region] : []
   }).filter((region, index, all) => region.id !== all[index - 1]?.id) : []
-  const regionSummary = routeRegions.length ? `Route: ${routeRegions.map(region => region.label).join(' → ')}` : 'Views show one part of the complete mission map.'
+  const regionSummary = routeRegions.length ? `Route: ${routeRegions.map(region => region.label).join(' → ')}`
+    : regionId === 'all' ? 'Complete mission map · Choose a regional view for a closer look.' : 'Views show one part of the complete mission map.'
   const inspected = inspectedId ? visiblePack.nodes.find(node => node.id === inspectedId) : undefined
   const inspectedStops = inspected ? waypointIndexes.get(inspected.id) : undefined
 
   function activate(event: KeyboardEvent<SVGGElement>, id: string) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
+      setRegionChoice({ packId: pack.id, focusNodeId: id, regionId })
       onSelect(id)
     }
   }
@@ -138,6 +140,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
       <Box
         component="svg"
         role="group"
+        data-map-presentation={layout.presentation}
         aria-label={regions.length ? `${regions.find(region => region.id === regionId)?.label ?? 'All systems'} Delta-V state map` : `${pack.bodies.find(body => body.kind === 'star')?.name ?? pack.name} system Delta-V state map`}
         viewBox={`0 0 ${layout.width} ${layout.height}`}
         preserveAspectRatio="xMidYMid meet"
@@ -159,10 +162,16 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           <filter id={`${prefix}-glow`} x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5" /></filter>
         </defs>
 
+        {layout.panels?.map(panel => <g key={panel.id} data-map-panel={panel.id} pointerEvents="none">
+          <rect x={panel.x} y={panel.y} width={panel.width} height={panel.height} rx={18} fill="#13243a" fillOpacity={.34} stroke="#83aec8" strokeOpacity={.16} strokeWidth={1.5} />
+          <rect x={panel.x + 20} y={panel.y + 18} width={4} height={20} rx={2} fill={panel.color} fillOpacity={.9} />
+          <text x={panel.x + 36} y={panel.y + 34} fill="#cbddec" fontSize={24} fontWeight={500}>{panel.label}</text>
+        </g>)}
+
         {unpricedConnections.map(connection => {
           const from = nodeById.get(connection.from)
           const to = nodeById.get(connection.to)
-          return from && to ? <path key={`unpriced-${connection.id}`} d={pathFromPoints(connectionPoints(from, to, layout, visiblePack))} fill="none" stroke="#ddbf91" strokeWidth={mode === 'portrait' ? 6 : 10} strokeOpacity={.6} strokeDasharray="14 12" strokeLinecap="round" data-unpriced-id={connection.id}>
+          return from && to ? <path key={`unpriced-${connection.id}`} d={pathFromPoints(connectionPoints(from, to, layout, visiblePack))} fill="none" stroke="#ddbf91" strokeWidth={layout.presentation === 'overview' ? 5 : mode === 'portrait' ? 6 : 10} strokeOpacity={layout.presentation === 'overview' ? .45 : .6} strokeDasharray="14 12" strokeLinejoin="round" strokeLinecap="round" data-unpriced-id={connection.id}>
             <title>{`Unpriced: ${connection.label}. Set link allowances to include this connection in a mission.`}</title>
           </path> : null
         })}
@@ -175,7 +184,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
             d={pathFromPoints(pointsFor(edge))}
             fill="none"
             stroke={edgeColor(edge)}
-            strokeWidth={mode === 'portrait' ? 9 : 15}
+            strokeWidth={layout.presentation === 'overview' ? 7 : mode === 'portrait' ? 9 : 15}
             strokeOpacity={routeEdges.size ? 0.25 : 0.46}
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -189,8 +198,8 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           const d = pathFromPoints(points)
           const color = edgeColor(edge)
           return <g key={edge.id}>
-            <path d={d} fill="none" stroke={color} strokeWidth={mode === 'portrait' ? 20 : 29} strokeOpacity={0.1} strokeLinejoin="round" strokeLinecap="round" pointerEvents="none" />
-            <path d={d} fill="none" stroke={color} strokeWidth={mode === 'portrait' ? 12 : 19} strokeOpacity={0.95} strokeLinejoin="round" strokeLinecap="round" data-edge-id={edge.id} data-route-edge="true" data-assisted={adjustments.has(edge.id) ? 'true' : undefined}><title>{edgeTitle(edge)}</title></path>
+            <path d={d} fill="none" stroke={color} strokeWidth={layout.presentation === 'overview' ? 19 : mode === 'portrait' ? 20 : 29} strokeOpacity={0.1} strokeLinejoin="round" strokeLinecap="round" pointerEvents="none" />
+            <path d={d} fill="none" stroke={color} strokeWidth={layout.presentation === 'overview' ? 11 : mode === 'portrait' ? 12 : 19} strokeOpacity={0.95} strokeLinejoin="round" strokeLinecap="round" data-edge-id={edge.id} data-route-edge="true" data-assisted={adjustments.has(edge.id) ? 'true' : undefined}><title>{edgeTitle(edge)}</title></path>
             <path d={d} fill="none" stroke="#ffffff" strokeWidth={1.5} strokeOpacity={0.16} strokeLinejoin="round" pointerEvents="none" />
           </g>
         })}
@@ -216,6 +225,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
 
         {layout.labels.map(({ body, x, y, anchor, maxWidth }) => <text
           key={body.id} x={x} y={y} textAnchor={anchor}
+          data-body-label={body.id}
           fontSize={layout.labelFontSize}
           textLength={maxWidth && body.name.length * layout.labelFontSize * 0.6 > maxWidth ? maxWidth : undefined}
           lengthAdjust="spacingAndGlyphs"
@@ -244,7 +254,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
             role="button" tabIndex={0} aria-label={node.label} aria-pressed={selected}
             aria-description={stopDescription} data-waypoint-indexes={stopIndexes?.join(',')}
             data-node-id={node.id} className="map-node"
-            onClick={() => { setInspectedId(node.id); onSelect(node.id) }}
+            onClick={() => { setInspectedId(node.id); setRegionChoice({ packId: pack.id, focusNodeId: node.id, regionId }); onSelect(node.id) }}
             onKeyDown={event => activate(event, node.id)}
             onMouseEnter={() => setInspectedId(node.id)}
             onFocus={() => setInspectedId(node.id)}

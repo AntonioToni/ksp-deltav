@@ -1,4 +1,5 @@
 import type { CelestialBody, NodeKind, PlanetPack, RouteNode } from '../types/planner'
+import { routeToGutter } from './mapRouting'
 
 export interface Point { x: number; y: number }
 export type MapMode = 'wide' | 'portrait' | 'short'
@@ -6,6 +7,20 @@ export interface BodyLabel extends Point {
   body: CelestialBody
   anchor: 'start' | 'middle' | 'end'
   maxWidth?: number
+}
+export interface MapPanel extends Point {
+  id: string
+  label: string
+  width: number
+  height: number
+  color: string
+}
+interface PanelContent {
+  pack: PlanetPack
+  layout: MapLayout
+  offset: Point
+  scaleX: number
+  scaleY: number
 }
 export interface MapLayout {
   width: number
@@ -18,8 +33,12 @@ export interface MapLayout {
   hubId: string | undefined
   nodeFontSize: number
   labelFontSize: number
-  presentation: 'stock' | 'opm' | 'rss' | 'generated'
+  presentation: 'stock' | 'opm' | 'rss' | 'generated' | 'overview'
   bodyRails?: Map<string, number>
+  panels?: MapPanel[]
+  nodePanels?: Map<string, string>
+  panelContents?: Map<string, PanelContent>
+  overviewRailY?: number
 }
 
 /** A map view never changes the source pack or the graph used for missions. */
@@ -215,6 +234,10 @@ function findHub(pack: PlanetPack): string | undefined {
 }
 
 export function createMapLayout(pack: PlanetPack, mode: MapMode = 'wide'): MapLayout {
+  if (mode === 'wide' && pack.mapRegions?.length) {
+    const overview = createRegionOverview(pack)
+    if (overview) return overview
+  }
   if (pack.id === 'rss' && canUsePreset(pack, rssStates)) {
     return mode === 'portrait' ? createGeneratedLayout(pack, mode) : createRssLayout(pack, mode)
   }
@@ -334,6 +357,133 @@ function createStockLayout(pack: PlanetPack, mode: MapMode): MapLayout {
 
 const kindOrder: Record<NodeKind, number> = { surface: 0, orbit: 1, reference: 1, elliptical: 2, encounter: 3 }
 
+/** A complete regional overview is presentation only: every state keeps its ID. */
+function createRegionOverview(pack: PlanetPack): MapLayout | undefined {
+  const regions = pack.mapRegions!
+  if (regions.length < 2 || regions.length > 5 || new Set(regions.map(region => region.id)).size !== regions.length) return
+  if (pack.nodes.some(node => regions.filter(region => region.bodyIds.includes(node.bodyId)).length !== 1)) return
+  const primaryPack = packForMapRegion(pack, regions[0]!.id)
+  const primary = createMapLayout(primaryPack, 'short')
+  if (primary.presentation !== 'stock' && primary.presentation !== 'opm') return
+
+  const width = 2700
+  const panels: MapPanel[] = []
+  const panelContents = new Map<string, PanelContent>()
+  const nodePositions = new Map<string, Point>()
+  const nodePanels = new Map<string, string>()
+  const labels: BodyLabel[] = []
+  const addPanel = (panel: MapPanel, content: PanelContent) => {
+    panels.push(panel)
+    panelContents.set(panel.id, content)
+    const transform = (point: Point) => p(content.offset.x + point.x * content.scaleX, content.offset.y + point.y * content.scaleY)
+    for (const [id, point] of content.layout.nodePositions) {
+      nodePositions.set(id, transform(point))
+      nodePanels.set(id, panel.id)
+    }
+    labels.push(...content.layout.labels.map(label => ({ ...label, ...transform(label), ...(label.maxWidth ? { maxWidth: label.maxWidth * content.scaleX } : {}) })))
+  }
+  // Keep the familiar home-system schematic; its short preset makes room for
+  // the add-on without squeezing the OPM families into a half-width thumbnail.
+  const scale = primary.presentation === 'stock' ? 1.3 : 1
+  const contentBottom = Math.max(
+    ...[...primary.nodePositions.values()].map(point => point.y * scale + 32),
+    ...primary.labels.map(label => label.y * scale + 21 * .3),
+  )
+  const primaryHeight = 48 + contentBottom + 16
+  addPanel({ id: regions[0]!.id, label: regions[0]!.label, x: 24, y: 12, width: width - 48, height: primaryHeight, color: '#83c8f2' }, {
+    pack: primaryPack, layout: primary, scaleX: scale, scaleY: scale,
+    offset: p((width - primary.width * scale) / 2, 60),
+  })
+
+  const secondary = regions.slice(1).map(region => {
+    const regionalPack = packForMapRegion(pack, region.id)
+    return { region, pack: regionalPack, layout: createOverviewRegion(regionalPack) }
+  })
+  if (secondary.some(content => !content.pack.nodes.length || content.pack.bodies.some(body => content.pack.nodes.filter(node => node.bodyId === body.id).length > 2))) return
+  const gap = 24
+  const available = width - 48 - gap * (secondary.length - 1)
+  const naturalWidth = secondary.reduce((sum, content) => sum + content.layout.width + 32, 0)
+  const horizontalScale = Math.min(1, available / naturalWidth)
+  const panelHeight = Math.max(...secondary.map(content => content.layout.height)) + 54
+  const top = primaryHeight + 68
+  let left = (width - (naturalWidth * horizontalScale + gap * (secondary.length - 1))) / 2
+  for (const content of secondary) {
+    const panelWidth = (content.layout.width + 32) * horizontalScale
+    addPanel({ id: content.region.id, label: content.region.label, x: left, y: top, width: panelWidth, height: panelHeight, color: content.pack.bodies.find(body => content.pack.nodes.some(node => node.bodyId === body.id))?.color ?? '#a7bed7' }, {
+      pack: content.pack, layout: content.layout, scaleX: horizontalScale, scaleY: 1,
+      offset: p(left + 16 * horizontalScale, top + 44),
+    })
+    left += panelWidth + gap
+  }
+  const result: MapLayout = {
+    width, height: top + panelHeight + 20, mode: 'wide', nodePositions, labels,
+    radius: 24, hitRadius: 32, hubId: findHub(pack), nodeFontSize: 18, labelFontSize: 21,
+    presentation: 'overview', panels, nodePanels, panelContents, overviewRailY: primaryHeight + 40,
+  }
+  const nodes = new Map(pack.nodes.map(node => [node.id, node]))
+  for (const edge of [...pack.maneuvers, ...(pack.unpricedConnections ?? [])]) {
+    if (nodePanels.get(edge.from) === nodePanels.get(edge.to)) continue
+    for (const id of [edge.from, edge.to]) {
+      const node = nodes.get(id)
+      if (node && !overviewExit(node, result)) return
+    }
+  }
+  return result
+}
+
+/** Compact rows put names beside states, leaving clear lanes between rows. */
+function createOverviewRegion(pack: PlanetPack): MapLayout {
+  const active = new Set(pack.nodes.map(node => node.bodyId))
+  const root = pack.bodies.find(body => !pack.bodies.some(parent => parent.id === body.parentId))
+  const groups: CelestialBody[][] = []
+  const visited = new Set<string>()
+  const visit = (body: CelestialBody, group: CelestialBody[]) => {
+    if (visited.has(body.id)) return
+    visited.add(body.id)
+    if (active.has(body.id)) group.push(body)
+    for (const child of pack.bodies.filter(candidate => candidate.parentId === body.id)) visit(child, group)
+  }
+  if (root) {
+    visited.add(root.id)
+    if (active.has(root.id)) groups.push([root])
+    for (const child of pack.bodies.filter(body => body.parentId === root.id)) {
+      const group: CelestialBody[] = []
+      visit(child, group)
+      if (group.length) groups.push(group)
+    }
+  }
+  for (const body of pack.bodies) if (!visited.has(body.id)) {
+    const group: CelestialBody[] = []
+    visit(body, group)
+    if (group.length) groups.push(group)
+  }
+  const columnCount = active.size > 6 ? 2 : 1
+  const columns: CelestialBody[][] = Array.from({ length: columnCount }, () => [])
+  const target = Math.ceil(active.size / columnCount)
+  let column = 0
+  for (const group of groups) {
+    if (columns[column]!.length && columns[column]!.length + group.length > target && column < columnCount - 1) column++
+    columns[column]!.push(...group)
+  }
+  const nodePositions = new Map<string, Point>()
+  const labels: BodyLabel[] = []
+  const bodyRails = new Map<string, number>()
+  const cellWidth = 400
+  for (const [index, bodies] of columns.entries()) for (const [row, body] of bodies.entries()) {
+    const x = index * cellWidth
+    const y = 48 + row * 68
+    const nodes = pack.nodes.filter(node => node.bodyId === body.id).sort((a, b) => kindOrder[a.kind] - kindOrder[b.kind] || a.id.localeCompare(b.id))
+    nodes.forEach((node, state) => nodePositions.set(node.id, p(x + 40 + state * 72, y)))
+    labels.push({ body, x: x + 154, y: y + 7, anchor: 'start', maxWidth: cellWidth - 180 })
+    bodyRails.set(body.id, x + cellWidth - 8)
+  }
+  return {
+    width: columnCount * cellWidth, height: 48 + (Math.max(...columns.map(bodies => bodies.length)) - 1) * 68 + 64,
+    mode: 'wide', nodePositions, labels, bodyRails, radius: 24, hitRadius: 32,
+    hubId: undefined, nodeFontSize: 18, labelFontSize: 21, presentation: 'generated',
+  }
+}
+
 /** Group hierarchy branches without assuming a home planet, namespace or depth. */
 function bodyGroups(pack: PlanetPack): CelestialBody[][] {
   const active = new Set(pack.nodes.map(node => node.bodyId))
@@ -419,6 +569,21 @@ export function connectionPoints(from: RouteNode, to: RouteNode, layout: MapLayo
   const a = layout.nodePositions.get(from.id)
   const b = layout.nodePositions.get(to.id)
   if (!a || !b) return []
+  if (layout.presentation === 'overview') {
+    const fromPanel = layout.nodePanels!.get(from.id)!
+    const toPanel = layout.nodePanels!.get(to.id)!
+    if (fromPanel === toPanel) {
+      const content = layout.panelContents!.get(fromPanel)!
+      return connectionPoints(from, to, content.layout, content.pack).map(point => p(content.offset.x + point.x * content.scaleX, content.offset.y + point.y * content.scaleY))
+    }
+    const forward = from.id.localeCompare(to.id) <= 0
+    const startNode = forward ? from : to
+    const endNode = forward ? to : from
+    const start = overviewExit(startNode, layout)!
+    const end = overviewExit(endNode, layout)!
+    const points = [...start, ...[...end].reverse()]
+    return forward ? points : points.reverse()
+  }
   if (layout.presentation === 'rss' && (from.id === layout.hubId || to.id === layout.hubId)) {
     const forward = from.id === layout.hubId
     const planet = shortId(forward ? to.bodyId : from.bodyId)
@@ -504,6 +669,63 @@ export function connectionPoints(from: RouteNode, to: RouteNode, layout: MapLayo
   const lane = shortId(parentBody?.id ?? '') === 'jool' ? 380 : 300
   const points = [parent, p(parent.x, parent.y + 35), p(lane, parent.y + 35), p(lane, child.y - 35), p(child.x, child.y - 35), child]
   return parentFirst ? points : points.reverse()
+}
+
+/** Reach the shared inter-system gutter without passing through other states.
+ * Ports are selected from clear orthogonal lanes in the endpoint's own panel.
+ * The same deterministic port is used in both directions and after pricing a link.
+ */
+const overviewPorts = new WeakMap<MapLayout, Map<string, Point[]>>()
+function overviewExit(node: RouteNode, layout: MapLayout): Point[] | undefined {
+  let ports = overviewPorts.get(layout)
+  if (!ports) {
+    ports = new Map()
+    overviewPorts.set(layout, ports)
+  }
+  const cached = ports.get(node.id)
+  if (cached) return cached
+  const start = layout.nodePositions.get(node.id)!
+  const panel = layout.panels!.find(panel => panel.id === layout.nodePanels!.get(node.id))!
+  const railY = layout.overviewRailY!
+  const margin = layout.radius + 10
+  const others = [...layout.nodePositions].filter(([id]) => id !== node.id).map(([, point]) => point)
+  const textBounds = [
+    ...layout.labels.map(label => {
+      const width = Math.min(label.maxWidth ?? Infinity, label.body.name.length * layout.labelFontSize * .6)
+      const left = label.anchor === 'middle' ? label.x - width / 2 : label.anchor === 'end' ? label.x - width : label.x
+      return { left: left - 5, right: left + width + 5, top: label.y - layout.labelFontSize * .85 - 4, bottom: label.y + layout.labelFontSize * .25 + 4 }
+    }),
+    ...layout.panels!.map(panel => ({ left: panel.x + 16, right: panel.x + 42 + panel.label.length * 24 * .6, top: panel.y + 10, bottom: panel.y + 43 })),
+  ]
+  const rails = [panel.x + 12, panel.x + panel.width - 12,
+    ...others.flatMap(point => [point.x - margin - 2, point.x + margin + 2])]
+    .filter(x => x >= panel.x + 10 && x <= panel.x + panel.width - 10)
+  const clear = (points: Point[]) => points.slice(1).every((b, index) => {
+    const a = points[index]!
+    const statesClear = others.every(point => {
+      const dx = b.x - a.x
+      const dy = b.y - a.y
+      const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy || 1)))
+      return Math.hypot(point.x - (a.x + dx * t), point.y - (a.y + dy * t)) > margin
+    })
+    return statesClear && textBounds.every(rectangle => Math.max(a.x, b.x) < rectangle.left || Math.min(a.x, b.x) > rectangle.right
+      || Math.max(a.y, b.y) < rectangle.top || Math.min(a.y, b.y) > rectangle.bottom)
+  })
+  const candidates = rails.flatMap(x => [start.y + 32, start.y - 32].map(y => [start, p(start.x, y), p(x, y), p(x, railY)]))
+    .filter(points => points[1]!.y > panel.y + 40 && points[1]!.y < panel.y + panel.height - 4 && clear(points))
+  candidates.sort((a, b) => {
+    const length = (points: Point[]) => points.slice(1).reduce((sum, point, index) => sum + Math.abs(point.x - points[index]!.x) + Math.abs(point.y - points[index]!.y), 0)
+    return length(a) - length(b)
+  })
+  // Dense OPM families can need several turns to avoid both states and names.
+  // Search only obstacle-edge lanes, once per endpoint in this layout.
+  const lanes = (values: number[], minimum: number, maximum: number) => [...new Set(values.filter(value => value >= minimum && value <= maximum))].sort((a, b) => a - b)
+  const result = candidates[0] ?? routeToGutter(start, railY,
+    lanes([start.x, ...rails, ...textBounds.flatMap(rectangle => [rectangle.left - 2, rectangle.right + 2])], panel.x + 10, panel.x + panel.width - 10),
+    lanes([start.y, railY, ...others.flatMap(point => [point.y - margin - 2, point.y + margin + 2]),
+      ...textBounds.flatMap(rectangle => [rectangle.top - 2, rectangle.bottom + 2])], Math.min(panel.y + 44, railY), Math.max(panel.y + panel.height - 4, railY)), clear)
+  if (result) ports.set(node.id, result)
+  return result
 }
 
 export const pathFromPoints = (points: Point[]) => points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ')

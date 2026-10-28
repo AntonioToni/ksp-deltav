@@ -211,6 +211,13 @@ their region. Unpriced links are dashed; applied allowances become ordinary
 priced route segments. Technical stellar atmospheres are excluded from braking,
 and the relay workspace lists physical planets/moons only.
 
+The wide **All systems** overview groups the Kerbol schematic in an upper band
+and the four Kcalbeloh regions below it. This presentation requires a complete,
+nonoverlapping partition of active bodies and a recognized Stock/OPM base;
+unsupported partitions retain the generated layout. Regional views and smaller
+screen layouts keep their existing presentations. These groups change only map
+geometry, leaving all states, directed costs, and mission searches intact.
+
 See the [data guide](DATA.md#kcalbeloh-configurations) for the pinned reference,
 coverage gaps, assumptions, and numerical landmarks. The [custom pack guide](CUSTOM_PACKS.md)
 documents the same optional JSON fields and bounded import rules.

@@ -83,6 +83,10 @@ Sunorc, Aralc, or **All systems**. Routes still use the complete pack. Switching
 between Stock and OPM retains Kcalbeloh; choosing RSS disables it. Use
 **Disable Kcalbeloh** in the manager to return to the base pack.
 
+On desktop, **All systems** places the Kerbol system above four labeled groups
+for Kcalbeloh, Maelg, Sunorc, and Aralc. This overview uses the screen's width in
+both combined configurations; regional views remain available for a closer look.
+
 Some Kcalbeloh connections have no published fuel budget. Open **Link allowances**
 from the Add-ons tab, or from the route status when a link is missing. Enter the
 complete outward and return costs separately: blank leaves a direction
