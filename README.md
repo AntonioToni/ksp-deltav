@@ -26,8 +26,8 @@ return-only budgets, and add a reserve for your mission.
 - **Mission reserves** from 0–100%, added to the final budget without changing
   the selected route.
 - **Optional maneuver breakdowns**, with one stage at a time for multi-stop
-  missions and separate Outbound and Return tabs for round trips. Details stay
-  hidden until you enable them.
+  missions and separate Outbound and Return tabs for round trips. Long stages
+  have page controls; details stay hidden until you enable them.
 - **Atmospheric-braking markers** showing where atmospheric assistance may be
   possible in the indicated direction.
 - **Optional atmospheric assistance**, with per-body ideal capture choices and
@@ -55,7 +55,7 @@ return-only budgets, and add a reserve for your mission.
    **Choose a stop** or **Select stop on map**, then reorder or remove entries.
    Numbered teal badges identify the stops on the map.
 5. Open **Atmosphere** (**Aero** on phones) in the header to choose ideal capture
-   or enter a powered landing allowance for each atmospheric body, then choose
+   or enter a powered landing allowance for supported bodies, then choose
    **Apply**. These options start disabled.
 6. Adjust **Redundancy** for your reserve and enable **Breakdown** to inspect
    individual maneuvers. Use the stage arrows to browse a multi-stop journey.
@@ -68,28 +68,32 @@ only starts at the selected destination state without including an outbound
 flight or its arrival conditions. The reserve applies once to the full budget.
 
 **Swap** reverses both the endpoints and the stop order. Changing systems keeps
-states available in the new pack and removes unsupported stops; **Clear** also
-removes all stops, atmospheric choices, and link allowances. Atmospheric choices
-follow body IDs, so swapping or changing mission modes keeps them, and changing
-systems retains compatible choices.
+states available in the new pack and removes unsupported stops. **Clear** removes
+the endpoints, stops, atmospheric choices, and link allowances, resets the reserve
+to 0%, returns to **One way**, and hides the breakdown. Atmospheric choices follow
+body IDs, so swapping or changing mission modes keeps them, and changing systems
+retains compatible choices.
 
 The **Custom planet packs** manager accepts up to five JSON packs and keeps them
-on this browser; files are not uploaded. Use **Export current pack** to save a copy or
-start editing a new pack. See the [custom pack guide](docs/CUSTOM_PACKS.md) for
-the format and a small working example.
+in this browser; files are not uploaded. If browser storage is unavailable, packs
+remain usable for the session. Use **Export current pack** to save a copy or start
+editing a new pack. See the [custom pack guide](docs/CUSTOM_PACKS.md) for the format
+and a small working example.
 
 With Kcalbeloh enabled, **Map view** switches between Kerbol, Kcalbeloh, Maelg,
 Sunorc, Aralc, or **All systems**. Routes still use the complete pack. Switching
 between Stock and OPM retains Kcalbeloh; choosing RSS disables it. Use
 **Disable Kcalbeloh** in the manager to return to the base pack.
 
-On desktop, **All systems** places the Kerbol system above four labeled groups
-for Kcalbeloh, Maelg, Sunorc, and Aralc. This overview uses the screen's width in
-both combined configurations; regional views remain available for a closer look.
+When space allows, the desktop **All systems** overview places the Kerbol system
+above four labeled groups for Kcalbeloh, Maelg, Sunorc, and Aralc. This overview
+uses the screen's width in both combined configurations; regional views remain
+available for a closer look.
 
-Some Kcalbeloh connections have no published fuel budget. Open **Link allowances**
-from the Add-ons tab, or from the route status when a link is missing. Enter the
-complete **Forward** and **Reverse** costs following each field's endpoint arrow.
+Some Kcalbeloh connections have no published Delta-V budget. Open
+**Link allowances** from the Add-ons tab, or from the route status when a link is
+missing. Enter the complete **Forward** and **Reverse** costs following each
+field's endpoint arrow.
 These link directions stay fixed when you change mission mode. Blank leaves a
 direction unavailable, and zero is an explicit user assumption. Choose **Apply**
 to use the draft. Source data and exported JSON keep the original unpriced links.
@@ -137,7 +141,7 @@ example and the exact scope of the adjustments.
 pinned official 2.2.12 constants and parking orbits above current atmospheres.
 The model circularizes orbital distances and uses inclination at a nominal
 encounter; it does not simulate a dated trajectory. Tekto and Thatmo retain
-historical atmospheric ascent/landing allowances pending vehicle modeling.
+historical atmospheric ascent allowances, also used as landing placeholders.
 See the [data guide](docs/DATA.md) for the calculations and limitations.
 
 **Kcalbeloh uses its official 1.1.8 reference map.** Missing wormhole, stellar
@@ -151,11 +155,11 @@ Some reference orbit altitudes differ from modern RSS; incompatible altitude
 claims are omitted. See the data guide for coverage and calculation assumptions.
 
 **Relay coverage is equatorial.** A visible surface receiver and a working local
-ring do not establish a connection back to the DSN. The radio presets use stock
-CommNet rules; RSS radio patches, RealAntennas, and RemoteTech are not applied
-automatically. Use custom powers for your installation. The
-[validation record](docs/VALIDATION.md) describes the checked data, independent
-calculation tests, and remaining limits.
+ring do not establish a connection back to the homeworld's Deep Space Network
+(DSN). The radio presets use stock CommNet rules; RSS radio patches,
+RealAntennas, and RemoteTech are not applied automatically. Use custom powers
+for your installation. The [validation record](docs/VALIDATION.md) describes the
+checked data, independent calculation tests, and remaining limits.
 
 ## Run locally
 
@@ -180,12 +184,13 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 ## Planned additions
 
-- Additional mod packs and installation configurations.
-- Atmospheric entry feasibility and vehicle-specific landing estimates.
+- More planet packs and supported mod combinations or settings, such as
+  rescaled systems and alternative starting homeworlds.
 - Additional direct interplanetary transfers in the supplied packs.
 - Interplanetary signal planning: antenna pairs, changing planet-to-planet
   distances, best/worst-case signal strength, and occlusion checks.
-- Advanced relay planning: inclined constellations and complete DSN paths.
+- Advanced relay planning: inclined and polar constellations for coverage beyond
+  the equator, and complete communication paths through relays back to the DSN.
 
 Suggestions, bug reports, and contributions are welcome through
 [GitHub issues](https://github.com/AntonioToni/ksp-deltav/issues) and pull requests.
