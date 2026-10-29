@@ -275,7 +275,7 @@ export default function App() {
   }
 
   const personalLanding = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && !allowanceEdgeIds.has(edge.id) && basisByEdge.get(edge.id)?.kind === 'user')
-  const landingNotice = basisGroups.some(group => group.kind === 'placeholder') ? 'Atmospheric landing uses an unverified placeholder.'
+  const landingNotice = basisGroups.some(group => group.kind === 'placeholder') ? 'Atmospheric landing uses a default Delta-V allowance. Open budget info for details.'
     : personalLanding ? 'Atmospheric landing includes your powered allowance.' : "Atmospheric landing follows the pack's supplied budget."
   const routeStatus = needsLinkAllowances ? 'Some route links are unpriced. Open Link allowances to enter your estimates.'
     : route?.status === 'invalid' || route?.status === 'unreachable' ? route.message

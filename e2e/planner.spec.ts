@@ -176,7 +176,7 @@ test('keeps the atmospheric landing assumption available as a compact note', asy
   await state(page, 'kerbin', 'orbit').click()
   await state(page, 'kerbin', 'surface').click()
   await expect(page.getByTestId('route-total')).toHaveText('3,400 m/s')
-  await expect(page.getByRole('alert')).toContainText('Atmospheric landing uses an unverified placeholder.')
+  await expect(page.getByRole('alert')).toContainText('Atmospheric landing uses a default Delta-V allowance. Open budget info for details.')
 })
 
 test('shows atmospheric braking opportunities independently of the selected route without changing its budget', async ({ page }) => {
