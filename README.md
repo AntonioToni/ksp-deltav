@@ -19,8 +19,9 @@ return-only budgets, and add a reserve for your mission.
   budgets, regional views, and explicit allowances for unpriced links.
 - **Custom planet packs** imported from JSON, stored in your browser, and usable
   with the same route planner. Export any pack as a starting point for your own.
-- **One-way, round-trip, and return-only planning** with highlighted routes, editable
-  endpoints, swap, and reset.
+- **One-way, round-trip, and return-only planning** with animated route highlights,
+  editable endpoints, swap, and reset. The moving highlight follows stops and
+  return legs in order; reduced-motion settings keep the route static.
 - **Ordered multi-stop missions** with up to four intermediate states. Search for
   stops or select them on the map, then reorder or remove them in the Stops editor.
 - **Mission reserves** from 0–100%, added to the final budget without changing

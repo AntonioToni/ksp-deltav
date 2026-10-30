@@ -1,11 +1,13 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { keyframes } from '@emotion/react'
 import { Box, MenuItem, TextField, Typography } from '@mui/material'
-import type { KeyboardEvent } from 'react'
+import type { CSSProperties, KeyboardEvent } from 'react'
 import type { ManeuverEdge, NodeKind, PlanetPack, RouteResult } from '../types/planner'
 import { arrowPosition, connectionPoints, createMapLayout, packForMapRegion, pathFromPoints } from './mapLayout'
 import type { MapMode } from './mapLayout'
 import { getAerobrakingEdges } from '../utils/aerobraking'
 import type { AtmosphericAdjustment } from '../utils/atmosphericAssistance'
+import { createRouteFlow } from './routeFlow'
 
 interface DeltaVMapProps {
   pack: PlanetPack
@@ -26,6 +28,10 @@ const waypointColor = '#8fcdbd'
 const aerobrakingColor = '#c6e8d8'
 const noWaypoints: readonly string[] = []
 const noAdjustments: ReadonlyMap<string, AtmosphericAdjustment> = new Map()
+const routeTravel = keyframes`
+  from { stroke-dashoffset: var(--route-flow-from); }
+  to { stroke-dashoffset: var(--route-flow-to); }
+`
 
 export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoints, adjustments = noAdjustments, route, focusNodeId = null, onSelect }: DeltaVMapProps) {
   const container = useRef<HTMLDivElement>(null)
@@ -80,6 +86,19 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
     }
     return [...groups.values()]
   }, [visiblePack])
+  // Preserve the flown order and repeated traversals. A set of selected edges
+  // cannot distinguish a visit to a stop from the subsequent flight back.
+  const routeFlow = useMemo(() => {
+    if (route?.status !== 'success') return createRouteFlow([])
+    const visibleEdges = new Set(visiblePack.maneuvers.map(edge => edge.id))
+    return createRouteFlow(route.legs.map(({ edge }) => {
+      if (!visibleEdges.has(edge.id)) return []
+      const from = nodeById.get(edge.from)
+      const to = nodeById.get(edge.to)
+      return from && to ? connectionPoints(from, to, layout, visiblePack) : []
+    }))
+  }, [route, visiblePack, nodeById, layout])
+  const flowKey = JSON.stringify([mode, regionId, routeFlow.period, routeFlow.runs.map(run => [run.startDistance, run.path])])
   const unpricedConnections = (visiblePack.unpricedConnections ?? []).filter(connection => !visiblePack.maneuvers.some(edge =>
     edge.id === `allowance:${connection.id}:forward` || edge.id === `allowance:${connection.id}:reverse`))
   const routeRegions = route?.status === 'success' ? route.nodeIds.flatMap(id => {
@@ -151,7 +170,16 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           '& .map-node .focus-ring': { opacity: 0 },
           '& .map-node:hover .focus-ring, & .map-node:focus-visible .focus-ring': { opacity: 1 },
           '& .map-node:hover .state-circle, & .map-node:focus-visible .state-circle': { strokeWidth: 3 },
-          '@media (prefers-reduced-motion: reduce)': { '& .map-node .state-circle': { transition: 'none' } },
+          '& .route-flow-trail': {
+            strokeDashoffset: 'var(--route-flow-from)',
+            animation: `${routeTravel} var(--route-flow-duration) linear infinite`,
+            animationDelay: 'var(--route-flow-delay)',
+          },
+          '@media (prefers-reduced-motion: reduce)': {
+            '& .map-node .state-circle': { transition: 'none' },
+            '& [data-route-animation]': { display: 'none' },
+            '& .route-flow-trail': { animation: 'none' },
+          },
         }}
       >
         <defs>
@@ -203,6 +231,30 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
             <path d={d} fill="none" stroke="#ffffff" strokeWidth={1.5} strokeOpacity={0.16} strokeLinejoin="round" pointerEvents="none" />
           </g>
         })}
+
+        {routeFlow.runs.length > 0 && <g key={flowKey}
+          data-route-animation="true" data-flow-distance={routeFlow.totalDistance}
+          data-flow-period={routeFlow.period} data-flow-duration={routeFlow.duration}
+          aria-hidden="true" pointerEvents="none"
+          style={{
+            '--route-flow-duration': `${routeFlow.duration}s`,
+            '--route-flow-delay': `${-routeFlow.runs[0]!.startDistance / routeFlow.period * routeFlow.duration}s`,
+          } as CSSProperties}
+        >
+          {routeFlow.runs.map((run, index) => <g key={index}
+            data-flow-run={index} data-first-segment={run.firstSegment} data-last-segment={run.lastSegment}
+            style={{ '--route-flow-from': `${run.startDistance + routeFlow.trailLength}px`, '--route-flow-to': `${run.startDistance + routeFlow.trailLength - routeFlow.period}px` } as CSSProperties}
+          >
+            <path className="route-flow-trail" d={run.path} data-flow-start={run.startDistance}
+              fill="none" stroke="#c5eaff" strokeWidth={layout.presentation === 'overview' ? 8 : mode === 'portrait' ? 9 : 13}
+              strokeOpacity={.3} strokeDasharray={`${routeFlow.trailLength} ${routeFlow.period - routeFlow.trailLength}`}
+              strokeLinecap="round" strokeLinejoin="round" />
+            <path className="route-flow-trail" d={run.path} data-flow-start={run.startDistance}
+              fill="none" stroke="#f1faff" strokeWidth={layout.presentation === 'overview' ? 3 : mode === 'portrait' ? 3 : 4}
+              strokeOpacity={.9} strokeDasharray={`${routeFlow.trailLength} ${routeFlow.period - routeFlow.trailLength}`}
+              strokeLinecap="round" strokeLinejoin="round" />
+          </g>)}
+        </g>}
 
         {aerobrakingEdges.map(edge => {
           const arrow = arrowPosition(pointsFor(edge))

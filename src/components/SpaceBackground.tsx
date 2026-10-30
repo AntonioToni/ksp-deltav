@@ -19,6 +19,18 @@ const stars = [
   [76.1, 93.5, 1.5, .35], [78.4, 27.6, 1, .29], [82.6, 62.4, 1, .3],
   [86.8, 8.9, 1.5, .37], [88.2, 86.3, 1, .25], [91.7, 32.6, 1, .3],
   [93.4, 57.1, 2, .4], [96.1, 15.3, 1, .27], [98.4, 75.6, 1.5, .34],
+  [6.8, 33.4, 1, .24], [11.9, 91.6, 1, .28], [18.1, 15.7, 1.5, .3],
+  [24.2, 64.8, 1, .27], [32.7, 91.1, 1, .23], [42.6, 48.5, 1.5, .28],
+  [50.5, 31.7, 1, .25], [60.8, 12.6, 1, .3], [67.1, 75.2, 1.5, .29],
+  [73.9, 57.2, 1, .24], [81.2, 87.1, 1, .28], [87.6, 45.7, 1, .25],
+  [92.5, 7.8, 1, .3], [95.8, 83.1, 1.5, .29],
+] as const
+
+// A few soft diffraction spikes give brighter stars a small, static + shape.
+const crossStars = [
+  [5.8, 57.2, 7, .36], [17.2, 43.5, 6, .32], [31.4, 13.7, 8, .36],
+  [46.8, 83.6, 7, .32], [62.3, 46.2, 6, .34], [77.1, 12.8, 9, .38],
+  [90.4, 77.6, 8, .34], [96.3, 29.5, 6, .32],
 ] as const
 
 export default function SpaceBackground() {
@@ -37,6 +49,26 @@ export default function SpaceBackground() {
           component="span"
           sx={{ position: 'absolute', borderRadius: '50%', bgcolor: '#d6e6ff' }}
           style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, opacity, boxShadow: size === 2 ? '0 0 5px rgba(163,199,255,.25)' : undefined }}
+        />
+      ))}
+      {crossStars.map(([left, top, size, opacity]) => (
+        <Box
+          key={`cross-${left}-${top}`}
+          component="span"
+          sx={{
+            position: 'absolute',
+            filter: 'drop-shadow(0 0 2px rgba(163,199,255,.3))',
+            '&::before, &::after': { content: '""', position: 'absolute' },
+            '&::before': {
+              left: 0, top: '50%', width: '100%', height: '1px', transform: 'translateY(-50%)',
+              backgroundImage: 'linear-gradient(90deg, transparent, #d6e6ff 50%, transparent)',
+            },
+            '&::after': {
+              left: '50%', top: 0, width: '1px', height: '100%', transform: 'translateX(-50%)',
+              backgroundImage: 'linear-gradient(transparent, #d6e6ff 50%, transparent)',
+            },
+          }}
+          style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, opacity }}
         />
       ))}
     </Box>
