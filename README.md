@@ -16,7 +16,8 @@ return-only budgets, and add a reserve for your mission.
 - **Config-based OPM estimates** using official 2.2.12 constants, explicit parking
   orbits, and analytic transfer, capture, and vacuum surface budgets.
 - **Stock + Kcalbeloh and OPM + Kcalbeloh configurations**, with official map
-  budgets, regional views, and explicit allowances for unpriced links.
+  budgets, regional views, wormholes on/off, and explicit allowances for
+  unpriced links.
 - **Custom planet packs** imported from JSON, stored in your browser, and usable
   with the same route planner. Export any pack as a starting point for your own.
 - **One-way, round-trip, and return-only planning** with animated route highlights,
@@ -46,7 +47,8 @@ return-only budgets, and add a reserve for your mission.
 
 1. Choose **Stock**, **OPM**, or **RSS**, or open **Custom planet packs** using the
    puzzle button beside them. Its **Add-ons** tab offers **Stock + Kcalbeloh**
-   and **OPM + Kcalbeloh**; **Custom packs** imports your own JSON.
+   and **OPM + Kcalbeloh**. Set **Wormholes** to match your installation, then
+   choose **Use** to apply the configuration. **Custom packs** imports your own JSON.
 2. Select an origin, then a destination on the map. Use the Origin and
    Destination controls to edit either endpoint.
 3. Choose a mission mode: **One way** for origin → destination, **Round trip**
@@ -83,8 +85,15 @@ and a small working example.
 
 With Kcalbeloh enabled, **Map view** switches between Kerbol, Kcalbeloh, Maelg,
 Sunorc, Aralc, or **All systems**. Routes still use the complete pack. Switching
-between Stock and OPM retains Kcalbeloh; choosing RSS disables it. Use
-**Disable Kcalbeloh** in the manager to return to the base pack.
+between Stock and OPM retains Kcalbeloh and the selected wormhole setting;
+choosing RSS disables the add-on. Use **Disable Kcalbeloh** in the manager to
+return to the base pack.
+
+With **Wormholes** off, local routes remain available in both systems, but the
+supplied graph has no Kerbol–Kcalbeloh connection. Local link allowances cannot
+create that missing interstellar route. Disabling wormholes clears their entered
+allowance; enabling them again starts with that allowance blank. Other compatible
+allowances, endpoints, and stops are retained.
 
 When space allows, the desktop **All systems** overview places the Kerbol system
 above four labeled groups for Kcalbeloh, Maelg, Sunorc, and Aralc. This overview
@@ -103,9 +112,9 @@ Open **Relays** in the header (the satellite icon on phones) to plan a local
 CommNet constellation. Choose a body, orbit altitude, relay count, and antennas,
 then inspect **Network**, **Deployment**, and **Body data**. Closing the tool
 keeps your current Delta-V mission intact. Kcalbeloh planets and moons load their
-body data automatically in either combined configuration. Inputs remain editable;
-**Restore preset** returns to the reference values. The [relay guide](docs/RELAYS.md)
-explains the calculations and supported data.
+body data automatically with either base system and wormhole setting. Inputs
+remain editable; **Restore preset** returns to the reference values. The
+[relay guide](docs/RELAYS.md) explains the calculations and supported data.
 
 Choose **Antenna array…** under **Relay antenna** or **Surface antenna** to mix
 stock parts and counts, then choose **Apply**. A relay loadout is fitted to each
@@ -145,11 +154,12 @@ encounter; it does not simulate a dated trajectory. Tekto and Thatmo retain
 historical atmospheric ascent allowances, also used as landing placeholders.
 See the [data guide](docs/DATA.md) for the calculations and limitations.
 
-**Kcalbeloh uses its official 1.1.8 reference map.** Missing wormhole, stellar
-connector, and binary-system costs require user allowances. These are not
-calculated interstellar trajectories. Noi and individual Simetra/Simeht low
-orbits lack priced map states; see the [data guide](docs/DATA.md#kcalbeloh-configurations)
-for exact coverage and supported installation settings.
+**Kcalbeloh uses its official 1.1.8 reference map.** Missing stellar-connector and
+binary-system costs require user allowances, as does the wormhole link when
+enabled. With wormholes off, no interstellar transfer is supplied. Noi and
+individual Simetra/Simeht low orbits lack priced map states; see the
+[data guide](docs/DATA.md#kcalbeloh-configurations) for exact coverage and supported
+installation settings.
 
 **RSS uses a community Solar System reference** covering 33 base-mod bodies.
 Some reference orbit altitudes differ from modern RSS; incompatible altitude
@@ -185,8 +195,8 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 ## Planned additions
 
-- More planet packs and supported mod combinations or settings, such as
-  rescaled systems and alternative starting homeworlds.
+- Additional planet packs, rescaled systems, and alternative starting-homeworld
+  configurations.
 - Additional direct interplanetary transfers in the supplied packs.
 - Interplanetary signal planning: antenna pairs, changing planet-to-planet
   distances, best/worst-case signal strength, and occlusion checks.

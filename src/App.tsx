@@ -33,6 +33,7 @@ import { calculateBudget } from './utils/budget'
 import { readCustomPacks, saveCustomPacks, validateCustomPackAddition } from './utils/customPacks'
 import { applyAtmosphericAssistance, getAtmosphericCapabilities, type AtmosphericPlan } from './utils/atmosphericAssistance'
 import { applyConnectionAllowances, type ConnectionPlan } from './utils/connectionAllowances'
+import { hasPotentialConnectionRoute } from './utils/connectionAvailability'
 import { describeManeuverBasis, summarizeBudgetBasis } from './utils/estimateBasis'
 
 const format = new Intl.NumberFormat('en-US')
@@ -59,7 +60,8 @@ export default function App() {
   const [packId, setPackId] = useState('stock')
   const pack = availablePacks.find(candidate => candidate.id === packId) ?? stockPack
   const isCustomPack = customPacks.some(candidate => candidate.id === pack.id)
-  const activeAddons = builtInConfigurations.find(configuration => configuration.pack.id === pack.id)?.addons ?? []
+  const activeConfiguration = builtInConfigurations.find(configuration => configuration.pack.id === pack.id)
+  const activeAddons = activeConfiguration?.addons ?? []
   const [showPacks, setShowPacks] = useState(false)
   const [showAtmosphere, setShowAtmosphere] = useState(false)
   const [showRelays, setShowRelays] = useState(false)
@@ -133,13 +135,25 @@ export default function App() {
   ).length > 1)
   const layoverNotice = isCustomPack || pack.mapRegions ? 'Includes intermediate parking orbits.' : `Includes a ${hubName} parking-orbit layover.`
   const hasUnpricedLinks = (pack.unpricedConnections?.length ?? 0) > 0
-  const needsLinkAllowances = hasUnpricedLinks && route?.status === 'unreachable'
+  const needsLinkAllowances = useMemo(() => hasUnpricedLinks && route?.status === 'unreachable'
+    && startId !== null && endId !== null
+    && hasPotentialConnectionRoute(referenceGraph, pack, startId, endId, missionMode, waypointIds),
+  [hasUnpricedLinks, route, startId, endId, referenceGraph, pack, missionMode, waypointIds])
+  const itineraryRegions = [startId, ...waypointIds, endId].map(id => {
+    const bodyId = nodesById.get(id ?? '')?.bodyId
+    return pack.mapRegions?.find(region => bodyId && region.bodyIds.includes(bodyId))?.id
+  })
+  const unavailableInterstellarNotice = activeConfiguration?.settings?.wormholes === false
+    && route?.status === 'unreachable' && itineraryRegions.includes('kerbol')
+    && itineraryRegions.some(region => region !== undefined && region !== 'kerbol')
+    ? 'Wormholes are disabled. No interstellar route is supplied between Kerbol and Kcalbeloh.' : null
   const allowanceEdgeIds = useMemo(() => new Set(allowanceEdges.map(edge => edge.id)), [allowanceEdges])
   const usesLinkAllowances = route?.status === 'success' && route.legs.some(({ edge }) => allowanceEdgeIds.has(edge.id))
   const basisOptions = useMemo(() => ({ customPack: isCustomPack, allowanceEdgeIds, atmosphericPlan }), [isCustomPack, allowanceEdgeIds, atmosphericPlan])
   const basisGroups = useMemo(() => route?.status === 'success' ? summarizeBudgetBasis(route.legs, pack, basisOptions) : [], [route, pack, basisOptions])
   const basisByEdge = useMemo(() => new Map(route?.status === 'success' ? route.legs.map(({ edge }) => [edge.id, describeManeuverBasis(edge, pack, basisOptions)]) : []), [route, pack, basisOptions])
   const estimateNotices = [
+    ...(unavailableInterstellarNotice ? [unavailableInterstellarNotice] : []),
     ...(hasLayover ? [layoverNotice] : []),
     'Stops retain arrival conditions. Return only starts at the destination; the reserve applies once to the complete selected mission.',
   ]
@@ -277,13 +291,13 @@ export default function App() {
   const personalLanding = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && !allowanceEdgeIds.has(edge.id) && basisByEdge.get(edge.id)?.kind === 'user')
   const landingNotice = basisGroups.some(group => group.kind === 'placeholder') ? 'Atmospheric landing uses a default Delta-V allowance. Open budget info for details.'
     : personalLanding ? 'Atmospheric landing includes your powered allowance.' : "Atmospheric landing follows the pack's supplied budget."
-  const routeStatus = needsLinkAllowances ? 'Some route links are unpriced. Open Link allowances to enter your estimates.'
+  const routeStatus = unavailableInterstellarNotice ?? (needsLinkAllowances ? 'Some route links are unpriced. Open Link allowances to enter your estimates.'
     : route?.status === 'invalid' || route?.status === 'unreachable' ? route.message
     : route?.status === 'success' && route.legs.length === 0 ? 'No maneuvers required.'
       : hasAtmosphericLanding ? `${landingNotice}${hasLayover ? ` ${layoverNotice}` : ''}`
         : hasLayover ? layoverNotice
           : route?.status === 'success' ? usesLinkAllowances ? `${route.legs.length} maneuvers · Includes user link allowances.` : `${route.legs.length} maneuvers · Select a state to update your ${selection === 'start' ? 'origin' : 'destination'}.`
-            : `Select ${selection === 'start' ? 'an origin' : 'a destination'} on the map.`
+            : `Select ${selection === 'start' ? 'an origin' : 'a destination'} on the map.`)
   const status = selection === 'stop' ? `Select stop ${waypointIds.length + 1} on the map. Escape cancels.`
     : returnOnly && route?.status === 'success'
     ? `Return only: ${nodesById.get(endId ?? '')?.label} → ${nodesById.get(startId ?? '')?.label}. ${routeStatus}`

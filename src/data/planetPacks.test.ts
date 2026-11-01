@@ -6,21 +6,23 @@ import {
 import { stockPack } from './stock'
 import { opmPack } from './opm'
 import { rssPack } from './rss'
-import { opmKcalbelohPack, stockKcalbelohPack } from './kcalbeloh'
+import { opmKcalbelohPack, stockKcalbelohPack, stockKcalbelohNoWormholesPack, opmKcalbelohNoWormholesPack } from './kcalbeloh'
 import { parsePlanetPackJson } from '../utils/customPacks'
 import { validatePlanetPack } from '../utils/validatePlanetPack'
 
 describe('reviewed pack registry and compatible add-on selection', () => {
-  it('keeps three compact base buttons while registering both complete Kcalbeloh configurations', () => {
+  it('keeps three compact base buttons while registering the four Kcalbeloh configurations', () => {
     expect(primaryPlanetPacks).toEqual([stockPack, opmPack, rssPack])
-    expect(planetPacks.map(pack => pack.id)).toEqual(['stock', 'opm', 'rss', 'stock-kcalbeloh', 'opm-kcalbeloh'])
+    expect(planetPacks.map(pack => pack.id)).toEqual(['stock', 'opm', 'rss', 'stock-kcalbeloh', 'opm-kcalbeloh', 'stock-kcalbeloh-no-wormholes', 'opm-kcalbeloh-no-wormholes'])
     expect(new Set(planetPacks.map(pack => pack.id)).size).toBe(planetPacks.length)
     expect(planetPacks.slice(0, 3)).toEqual(primaryPlanetPacks)
     expect(planetPacks.find(pack => pack.id === 'stock-kcalbeloh')).toBe(stockKcalbelohPack)
     expect(planetPacks.find(pack => pack.id === 'opm-kcalbeloh')).toBe(opmKcalbelohPack)
     expect(builtInConfigurations).toEqual([
-      { pack: stockKcalbelohPack, basePackId: 'stock', addons: ['Kcalbeloh'] },
-      { pack: opmKcalbelohPack, basePackId: 'opm', addons: ['Kcalbeloh'] },
+      { pack: stockKcalbelohPack, basePackId: 'stock', addons: ['Kcalbeloh'], settings: { wormholes: true } },
+      { pack: opmKcalbelohPack, basePackId: 'opm', addons: ['Kcalbeloh'], settings: { wormholes: true } },
+      { pack: stockKcalbelohNoWormholesPack, basePackId: 'stock', addons: ['Kcalbeloh'], settings: { wormholes: false } },
+      { pack: opmKcalbelohNoWormholesPack, basePackId: 'opm', addons: ['Kcalbeloh'], settings: { wormholes: false } },
     ])
     for (const configuration of builtInConfigurations) {
       expect(primaryPlanetPacks.some(base => base.id === configuration.basePackId)).toBe(true)
@@ -30,6 +32,7 @@ describe('reviewed pack registry and compatible add-on selection', () => {
 
   it.each([
     ['stock-kcalbeloh', 'stock'], ['opm-kcalbeloh', 'opm'],
+    ['stock-kcalbeloh-no-wormholes', 'stock'], ['opm-kcalbeloh-no-wormholes', 'opm'],
     ['stock', 'stock'], ['opm', 'opm'], ['rss', 'rss'],
     ['custom:test-system', 'custom:test-system'], ['unregistered', 'unregistered'],
   ])('shows base %s as %s without treating custom IDs as known add-ons', (pack, base) => {
@@ -43,6 +46,12 @@ describe('reviewed pack registry and compatible add-on selection', () => {
     ['opm-kcalbeloh', 'opm', 'opm-kcalbeloh'],
     ['stock-kcalbeloh', 'rss', 'rss'],
     ['opm-kcalbeloh', 'rss', 'rss'],
+    ['stock-kcalbeloh-no-wormholes', 'opm', 'opm-kcalbeloh-no-wormholes'],
+    ['opm-kcalbeloh-no-wormholes', 'stock', 'stock-kcalbeloh-no-wormholes'],
+    ['stock-kcalbeloh-no-wormholes', 'stock', 'stock-kcalbeloh-no-wormholes'],
+    ['opm-kcalbeloh-no-wormholes', 'opm', 'opm-kcalbeloh-no-wormholes'],
+    ['stock-kcalbeloh-no-wormholes', 'rss', 'rss'],
+    ['opm-kcalbeloh-no-wormholes', 'rss', 'rss'],
     ['stock', 'opm', 'opm'], ['opm', 'stock', 'stock'],
     ['rss', 'stock', 'stock'], ['custom:test-system', 'opm', 'opm'],
   ])('switching from %s to base %s selects %s', (current, next, expected) => {
@@ -57,7 +66,7 @@ describe('exported built-in configuration templates', () => {
     if (imported.status === 'error') expect(imported.errors.join(' ')).toContain('reserved')
   })
 
-  it.each([stockKcalbelohPack, opmKcalbelohPack])('round-trips the complete $id topology after a custom rename', pack => {
+  it.each([stockKcalbelohPack, opmKcalbelohPack, stockKcalbelohNoWormholesPack, opmKcalbelohNoWormholesPack])('round-trips the complete $id topology after a custom rename', pack => {
     const template = { ...pack, id: `custom:${pack.id}`, name: `My ${pack.name}` }
     const imported = parsePlanetPackJson(JSON.stringify(template))
     expect(imported.status).toBe('success')
@@ -65,7 +74,7 @@ describe('exported built-in configuration templates', () => {
     expect(imported.pack).toEqual(template)
     expect(imported.pack.nodes.filter(node => node.kind === 'reference')).toHaveLength(5)
     expect(imported.pack.mapRegions).toHaveLength(5)
-    expect(imported.pack.unpricedConnections).toHaveLength(10)
+    expect(imported.pack.unpricedConnections).toHaveLength(pack.id.endsWith('-no-wormholes') ? 9 : 10)
     expect(imported.pack.bodies.length).toBeGreaterThan(40)
     expect(imported.pack.nodes.length).toBe(pack.nodes.length)
     expect(imported.pack.nodes).not.toBe(pack.nodes)

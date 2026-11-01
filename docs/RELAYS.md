@@ -275,15 +275,18 @@ budget or silently substituted from Kerbin.
 The catalog has **89 contextual presets**: 16 nonstellar Stock bodies, 16 OPM
 rows including Eeloo's changed parent, 32 nonstellar RSS bodies, and all 25
 Kcalbeloh planets and moons. Kcalbeloh presets work in both **Stock + Kcalbeloh**
-and **OPM + Kcalbeloh**. They include Noi and individual Simetra/Simeht body data,
-even though those bodies lack separate priced Delta-V map states. Stars, the
-black hole, the SimeSystem barycenter, and wormholes are not relay targets.
+and **OPM + Kcalbeloh**, with wormholes on or off. They include Noi and individual
+Simetra/Simeht body data, even though those bodies lack separate priced Delta-V
+map states. Stars, the black hole, the SimeSystem barycenter, and wormholes are
+not relay targets.
 
 Kcalbeloh inputs come from the pinned default-size **1.1.8** configs, separately
 from the Delta-V map. Radius, gravity, atmosphere, and SOI load automatically;
 all remain editable, and **Restore preset** restores the reference. These values
 cover the standard 1× installation with HomeSwitch and Principia disabled.
-Rescaling, alternate homeworlds, or other physics patches may require edits.
+The wormhole setting removes portal bodies and the interstellar map connector;
+it does not change these physical planet/moon presets. Rescaling, alternate
+homeworlds, or other physics patches may require edits.
 
 - Stock body constants: [KSPTOT `bodies.ini`](https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini),
   pinned to `9972b57398742263af12374652799db210395499`. The source lists radius

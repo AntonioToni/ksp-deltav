@@ -24,6 +24,24 @@ RSS review included its settings and plugin sources when checking SOI behavior.
 The [data guide](DATA.md) and [relay guide](RELAYS.md) retain full attribution,
 configuration assumptions, and model equations.
 
+### Wormholes-disabled configuration extension
+
+The additional Stock/OPM **Wormholes off** configurations were checked against
+the same pinned Kcalbeloh 1.1.8
+[settings file](https://github.com/jcyuan06/Kcalbeloh-System/blob/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem/Kcalbeloh%20System%20Settings.cfg)
+and conditional [WH-3141-A](https://github.com/jcyuan06/Kcalbeloh-System/blob/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem/OtherFeatures/Wormholes/WH-3141-A.cfg)
+/ [WH-3141-B](https://github.com/jcyuan06/Kcalbeloh-System/blob/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem/OtherFeatures/Wormholes/WH-3141-B.cfg)
+creation rules. `Wormholes = False` removes the two portals. The planner omits
+their catalog records, region memberships, and sole unpriced wormhole connector;
+priced maneuver records, selectable states, and physical relay presets retain
+their previously reviewed values.
+
+Configuration regressions cover both bases, immutable source packs, matching
+Stock/OPM setting changes, imports/exports, and retained local route totals.
+With every remaining local allowance supplied, Kerbol and Kcalbeloh still have
+no connecting route in the wormholes-off graph. This extension does not add
+rescaling, HomeSwitch, Principia, or a new audit of their altered physics.
+
 ### Correction found
 
 RSS relay presets used the raw Laplace SOI for two small moons. Default

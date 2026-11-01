@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
-  IconButton, Link, Stack, Tab, Tabs, Typography,
+  FormControlLabel, IconButton, Link, Stack, Switch, Tab, Tabs, Typography,
 } from '@mui/material'
 import UploadFileRounded from '@mui/icons-material/UploadFileRounded'
 import DownloadRounded from '@mui/icons-material/DownloadRounded'
@@ -26,10 +26,13 @@ interface PlanetPacksDialogProps {
 function PackContent({ currentPack, customPacks, storageWarning, onImport, onSelect, onRemove, onEditAllowances }: Omit<PlanetPacksDialogProps, 'open' | 'onClose'>) {
   const fileInput = useRef<HTMLInputElement>(null)
   const mounted = useRef(false)
+  const currentConfiguration = builtInConfigurations.find(configuration => configuration.pack.id === currentPack.id)
   const [busy, setBusy] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
   const [notice, setNotice] = useState<string | null>(null)
-  const [tab, setTab] = useState<'addons' | 'custom'>(() => builtInConfigurations.some(configuration => configuration.pack.id === currentPack.id) ? 'addons' : 'custom')
+  const [tab, setTab] = useState<'addons' | 'custom'>(() => currentConfiguration ? 'addons' : 'custom')
+  const [wormholes, setWormholes] = useState(() => currentConfiguration?.settings?.wormholes ?? true)
+  const matchingConfigurations = builtInConfigurations.filter(configuration => (configuration.settings?.wormholes ?? true) === wormholes)
   const atLimit = customPacks.length >= MAX_CUSTOM_PACKS
 
   useEffect(() => {
@@ -91,8 +94,16 @@ function PackContent({ currentPack, customPacks, storageWarning, onImport, onSel
     </Typography>
     {tab === 'addons' && <>
     <Typography component="h3" sx={{ mb: .75, fontSize: 12, fontWeight: 500, color: 'text.secondary' }}>Built-in configurations</Typography>
+    <Box sx={{ mb: 1, px: 1, py: .5, border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: '#ffffff03' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+        <FormControlLabel label="Wormholes" control={<Switch size="small" checked={wormholes} onChange={(_, checked) => setWormholes(checked)} slotProps={{ input: { 'aria-describedby': 'wormhole-setting-help' } }} />} sx={{ m: 0, gap: .5, '& .MuiFormControlLabel-label': { fontSize: 12 } }} />
+        <Typography aria-hidden="true" sx={{ fontSize: 11, color: 'text.secondary' }}>{wormholes ? 'Enabled' : 'Disabled'}</Typography>
+      </Box>
+      <Typography id="wormhole-setting-help" sx={{ fontSize: 11, lineHeight: 1.4, color: 'text.secondary' }}>Choose Use to apply this setting.</Typography>
+      {!wormholes && <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.4, color: 'text.secondary' }}>Local system routes remain available. No Kerbol–Kcalbeloh transfer is supplied with wormholes off.</Typography>}
+    </Box>
     <Box component="ul" aria-label="Built-in planet configurations" sx={{ listStyle: 'none', m: 0, mb: 1.25, p: 0, display: 'grid', gap: .5 }}>
-      {builtInConfigurations.map(({ pack }) => <Box component="li" key={pack.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, px: 1, py: .5, border: '1px solid', borderColor: pack.id === currentPack.id ? '#73c8fa80' : 'divider', borderRadius: 1, bgcolor: pack.id === currentPack.id ? '#73c8fa0a' : '#ffffff03' }}>
+      {matchingConfigurations.map(({ pack }) => <Box component="li" key={pack.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, px: 1, py: .5, border: '1px solid', borderColor: pack.id === currentPack.id ? '#73c8fa80' : 'divider', borderRadius: 1, bgcolor: pack.id === currentPack.id ? '#73c8fa0a' : '#ffffff03' }}>
         <Box sx={{ minWidth: 0 }}>
           <Typography sx={{ fontSize: 12, fontWeight: 500 }}>{pack.name}</Typography>
           <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>Official map · unpriced links need allowances</Typography>
@@ -100,12 +111,9 @@ function PackContent({ currentPack, customPacks, storageWarning, onImport, onSel
         <Button size="small" aria-label={`Use ${pack.name}`} onClick={() => onSelect(pack.id)} sx={{ minHeight: 36, minWidth: 44, px: .75, fontSize: 11 }}>{pack.id === currentPack.id ? 'Active' : 'Use'}</Button>
       </Box>)}
     </Box>
-    {builtInConfigurations.some(configuration => configuration.pack.id === currentPack.id) && <Button size="small" onClick={() => {
-      const base = builtInConfigurations.find(configuration => configuration.pack.id === currentPack.id)?.basePackId
-      if (base) onSelect(base)
-    }} sx={{ mb: .5, minHeight: 32, fontSize: 11 }}>Disable Kcalbeloh</Button>}
+    {currentConfiguration && <Button size="small" onClick={() => onSelect(currentConfiguration.basePackId)} sx={{ mb: .5, minHeight: 32, fontSize: 11 }}>Disable Kcalbeloh</Button>}
     {(currentPack.unpricedConnections?.length ?? 0) > 0 && <Button variant="outlined" size="small" onClick={onEditAllowances} sx={{ mb: 1.25, ml: .5, minHeight: 34, fontSize: 11 }}>Link allowances</Button>}
-    <Typography sx={{ mb: 1, fontSize: 10.5, color: 'text.secondary' }}>The main Stock, OPM, and RSS buttons switch base systems. Kcalbeloh stays enabled when switching between Stock and OPM.</Typography>
+    <Typography sx={{ mb: 1, fontSize: 10.5, lineHeight: 1.4, color: 'text.secondary' }}>Stock/OPM switches keep Kcalbeloh and the selected wormhole setting. RSS disables Kcalbeloh.</Typography>
     </>}
     <Box sx={{ display: tab === 'custom' ? 'block' : 'none' }}>
     <Typography component="h3" sx={{ mb: .75, fontSize: 12, fontWeight: 500, color: 'text.secondary' }}>Import and export</Typography>

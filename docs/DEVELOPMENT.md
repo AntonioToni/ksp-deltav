@@ -196,10 +196,24 @@ in the [data guide](DATA.md).
 
 `planetPacks.ts` keeps the three primary base buttons separate from reviewed
 add-on configurations. The registry includes immutable Stock + Kcalbeloh and
-OPM + Kcalbeloh packs. `changeBaseConfiguration` retains an add-on set when the
-next base supports it; choosing RSS falls back to RSS alone. Composers clone the
-base records and preserve shared state IDs, so existing selections can survive
-compatible switches without mutating Stock or OPM.
+OPM + Kcalbeloh packs, each with wormholes on/off. `changeBaseConfiguration`
+matches the add-on set and configuration settings when the next base supports
+them; choosing RSS falls back to RSS alone. Composers clone the base records and
+preserve shared state IDs, so existing selections can survive compatible switches
+without mutating Stock or OPM. The manager's **Wormholes** switch stages the
+configuration choice until its **Use** button is selected.
+
+The wormholes-off variants remove only the two portal catalog records, their
+region memberships, and the unpriced wormhole connector. They retain all priced
+maneuvers and physical relay presets. An unavailable interstellar route must be
+distinguished from one repairable by entering local link allowances: these
+variants contain no supplied Kerbol–Kcalbeloh connection.
+
+`connectionAvailability.ts` checks the complete ordered itinerary with all
+source-described missing links temporarily assigned unit weights. This
+connectivity probe determines whether the Link allowances prompt can help;
+its weights never enter the displayed mission or source data. It also handles
+disconnected imported packs independently of their IDs or source declarations.
 
 Kcalbeloh uses complete, pair-specific parking/reference transfers from its
 published map. Summing each printed pair once avoids inventing universal
@@ -226,6 +240,8 @@ reserves apply afterward. Apply commits the dialog draft, Cancel/Escape discards
 it, and Clear removes the session plan. A pack switch retains allowances only
 when descriptor ID, endpoints, and maneuver kinds match. The Stock-to-OPM
 wormhole parent change consequently clears that connection's old allowance.
+Disabling wormholes also removes its allowance, and enabling them again does
+not restore it. Other compatible allowances remain eligible for retention.
 Source pack export does not include entered costs, and reloading resets them.
 
 `mapRegions` is presentation metadata. `packForMapRegion` filters visible nodes

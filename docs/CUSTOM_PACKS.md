@@ -21,9 +21,10 @@ part of the mission, while the page and map remain free of scrolling.
 Use **Export current pack** to download the active pack as JSON. Exporting a
 built-in pack is a convenient starting point: change its top-level `id`, `name`,
 and `version`, edit the data, and import the resulting file. The IDs `stock`,
-`opm`, `rss`, `stock-kcalbeloh`, and `opm-kcalbeloh` are reserved. Imports also
-cannot overwrite another custom pack with the same ID. Remove the old custom
-entry before importing a replacement.
+`opm`, `rss`, `stock-kcalbeloh`, `opm-kcalbeloh`,
+`stock-kcalbeloh-no-wormholes`, and `opm-kcalbeloh-no-wormholes` are reserved.
+Imports also cannot overwrite another custom pack with the same ID. Remove the
+old custom entry before importing a replacement.
 
 Packs stay in this browser's local storage for this site. Files are not uploaded,
 and imports do not fetch any listed source URL. Other browsers and devices have
@@ -195,10 +196,12 @@ always provides the complete overview. Region switching filters presentation
 only: mission routes, ordered stops, and budgets use the entire pack. Links
 whose endpoints are in different views are visible in the overview.
 
-For a complete example of these fields, export either reviewed Kcalbeloh
+For a complete example of these fields, export a reviewed Kcalbeloh
 configuration. Rename its top-level pack ID before importing your edited copy.
-The export retains the original source costs, regions, and unpriced descriptors,
-without any allowances entered for the current session.
+The export retains the selected configuration's source costs, regions, and
+unpriced descriptors, without any allowances entered for the current session.
+Wormholes-off exports omit both portal bodies and the wormhole connection;
+changing only the custom pack ID does not restore that absent topology.
 
 ### IDs and compatibility
 

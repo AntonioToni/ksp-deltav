@@ -122,7 +122,7 @@ describe('custom planet pack JSON', () => {
     expect(parsePlanetPackJson(text)).toMatchObject({ status: 'error', errors: [expect.stringContaining('1 MiB')] })
   })
 
-  it.each(['stock', 'opm', 'rss', 'stock-kcalbeloh', 'opm-kcalbeloh'])('protects built-in pack ID %s', id => {
+  it.each(['stock', 'opm', 'rss', 'stock-kcalbeloh', 'opm-kcalbeloh', 'stock-kcalbeloh-no-wormholes', 'opm-kcalbeloh-no-wormholes'])('protects built-in pack ID %s', id => {
     expect(errors(pack(id)).join(' ')).toContain('reserved')
   })
 

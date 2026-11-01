@@ -4,7 +4,7 @@ import { validatePlanetPack } from './validatePlanetPack'
 export const MAX_CUSTOM_PACKS = 5
 export const MAX_PACK_BYTES = 1024 * 1024
 export const CUSTOM_PACK_STORAGE_KEY = 'ksp-deltav:custom-packs:v1'
-const reservedIds = new Set(['stock', 'opm', 'rss', 'stock-kcalbeloh', 'opm-kcalbeloh'])
+const reservedIds = new Set(['stock', 'opm', 'rss', 'stock-kcalbeloh', 'opm-kcalbeloh', 'stock-kcalbeloh-no-wormholes', 'opm-kcalbeloh-no-wormholes'])
 const collectionLimits = { bodies: 100, nodes: 400, maneuvers: 1000, sources: 20, unpricedConnections: 100, mapRegions: 20 } as const
 const optionalCollections = new Set(['unpricedConnections', 'mapRegions'])
 const idPattern = /^[A-Za-z0-9][A-Za-z0-9:._/>-]*$/

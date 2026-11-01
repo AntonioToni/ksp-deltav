@@ -447,19 +447,25 @@ routing engine, and map consume the pack's metadata and supported states.
 The reviewed **Stock + Kcalbeloh** and **OPM + Kcalbeloh** configurations retain
 the selected base dataset and add the same Kcalbeloh reference data. Open the
 puzzle button beside the system selectors, choose **Add-ons**, and select the
-configuration matching your installation. Stock/OPM switches retain the add-on;
-RSS and **Disable Kcalbeloh** return to an unextended base pack.
+**Wormholes** setting matching your installation, then choose **Use** for the
+base configuration. The switch stages a choice; closing the manager without
+choosing Use keeps the active configuration. Stock/OPM switches retain the add-on
+and wormhole setting; RSS and **Disable Kcalbeloh** return to an unextended base
+pack.
 
-| Configuration | Cataloged bodies/contexts | Selectable states | Priced directed maneuvers |
-| --- | ---: | ---: | ---: |
-| Stock + Kcalbeloh | 50 | 97 | 204 |
-| OPM + Kcalbeloh | 65 | 143 | 296 |
+| Configuration | Wormholes | Cataloged bodies/contexts | Selectable states | Priced directed maneuvers | Unpriced links |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Stock + Kcalbeloh | On | 50 | 97 | 204 | 10 |
+| OPM + Kcalbeloh | On | 65 | 143 | 296 | 10 |
+| Stock + Kcalbeloh (wormholes off) | Off | 48 | 97 | 204 | 9 |
+| OPM + Kcalbeloh (wormholes off) | Off | 63 | 143 | 296 | 9 |
 
-Each adds **33 contexts**: the 30 physical mod bodies, the invisible SimeSystem
-barycenter, and two wormholes. It adds **47 states**, **106 priced directed
-maneuvers**, and **10 unpriced connection descriptors**. Shared base IDs and
-costs are preserved; the composer clones records instead of changing Stock or
-OPM. Both configurations use pack version `1.1.8-map.1`.
+With wormholes on, each adds **33 contexts**: the 30 physical mod bodies, the
+invisible SimeSystem barycenter, and two wormholes. With wormholes off, only
+the two portal bodies and their unpriced connector are omitted. All four
+configurations add the same **47 states** and **106 priced directed maneuvers**.
+Shared base IDs and costs are preserved; the composer clones records instead of
+changing Stock or OPM. All use pack version `1.1.8-map.1`.
 
 ### Sources, attribution, and supported settings
 
@@ -480,10 +486,17 @@ Git commit `1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9`:
   included.
 
 The supported installation is the default **1× size**, **HomeSwitch disabled**,
-and **Wormholes enabled**. RSS/KSRSS rescaling, Principia, alternative homeworlds,
-and other compatibility configurations are outside this reference. The pinned
-facts include the default stellar-size settings, but no stellar burn is inferred
-from a photosphere radius.
+with **Wormholes enabled or disabled**. The pinned
+[settings file](https://github.com/jcyuan06/Kcalbeloh-System/blob/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem/Kcalbeloh%20System%20Settings.cfg)
+defines `Wormholes = True` / `False`; the official
+[WH-3141-A](https://github.com/jcyuan06/Kcalbeloh-System/blob/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem/OtherFeatures/Wormholes/WH-3141-A.cfg)
+and [WH-3141-B](https://github.com/jcyuan06/Kcalbeloh-System/blob/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem/OtherFeatures/Wormholes/WH-3141-B.cfg)
+configs conditionally create the portals. Disabling them leaves the supplied
+planetary reference budgets and relay physics unchanged. RSS/KSRSS rescaling,
+Principia, alternative homeworlds, and other compatibility configurations remain
+outside this reference. In particular, selecting wormholes off does not enable
+Principia or HomeSwitch support. The pinned facts include the default stellar-size
+settings, but no stellar burn is inferred from a photosphere radius.
 
 Kcalbeloh orbits Kerbol; Maelg, Sunorc, and Aralc-A orbit the black hole, and
 Aralc-B orbits Aralc-A. Mehtna and Meiuqer are siblings around Maelg. The
@@ -533,17 +546,23 @@ modern physical calibration or terrain clearance.
 
 ### Unpriced links and wormhole allowances
 
-Missing source budgets are descriptors, **not zero-cost graph edges**. The ten
-unpriced links cover:
+Missing source budgets are descriptors, **not zero-cost graph edges**. The nine
+local/reference links, plus a tenth link when wormholes are enabled, cover:
 
 - Four stellar-reference ↔ local-planet connectors: Kcalbeloh/Rouqea,
   Maelg/Mehtna, Sunorc/Suluco, and Aralc/Anehta.
 - The Simetra–Simeht reference ↔ Noira and Anehta ↔ Efil family connectors.
 - The three source N.A. Arorua transfer pairs, with Anneheg, Ahtpan, and Anehta.
-- One complete wormhole connection between the base-system parent parking orbit
-  and Sera low orbit.
+- When enabled, one complete wormhole connection between the base-system parent
+  parking orbit and Sera low orbit.
 
-**WH-3141 A orbits Jool with Stock, or Sarnus with OPM. WH-3141 B orbits Sera.**
+**With wormholes disabled, Kerbol and the Kcalbeloh systems have no connecting
+edge in the supplied graph.** Local maps, priced maneuvers, and the remaining
+allowance controls stay available. Even pricing every remaining link cannot
+create a Kerbol–Kcalbeloh route; no direct interstellar trajectory is inferred.
+
+**When enabled, WH-3141 A orbits Jool with Stock, or Sarnus with OPM.
+WH-3141 B orbits Sera.**
 The configs describe a crossing altitude between 10 m and 30 km, but neither the
 map nor those settings specifies a complete Delta-V budget. The composite
 connection allowance must include approach, crossing, exit-velocity matching,
@@ -551,7 +570,7 @@ and arrival into the endpoint parking orbit. A plugin jump alone does not prove
 fuel-free exit matching or an arbitrary compatible return trajectory.
 
 Open **Link allowances** in the manager's **Add-ons** tab, or through the route
-status when a route is unavailable in a pack with unpriced links. Enter independent
+status when missing allowances can complete a route. Enter independent
 **Forward** and **Reverse** values following the endpoint arrows under each field.
 The link's directions stay fixed when mission mode changes; they do not mean the
 mission's Outbound and Return legs. Each value may be **0–1,000,000 m/s**. Blank
@@ -565,7 +584,9 @@ search and reserve calculations. They are session settings, do not modify source
 pack export, and reset on page reload or mission Clear. Compatible ID/endpoint/
 maneuver-kind matches survive a pack switch. Switching Stock ↔ OPM changes the
 wormhole parent, so its old composite allowance is cleared even though common
-Kcalbeloh links can retain theirs.
+Kcalbeloh links can retain theirs. Disabling wormholes also clears that connector's
+allowance. Re-enabling them leaves it blank; other compatible allowances,
+endpoints, and stops are preserved.
 
 Regional **Map view** choices show Kerbol, Kcalbeloh, Maelg, Sunorc, Aralc, or
 **All systems** without changing the graph used for the mission. Dashed links

@@ -57,12 +57,12 @@ const parkingId = (name: string) => `${bodyId(name)}:orbit`
 const referenceId = (name: string) => `${referenceByName.get(name)!.bodyId}:reference`
 const transferNodeId = (name: string) => referenceByName.has(name) ? referenceId(name) : parkingId(name)
 
-function createKcalbelohPack(base: PlanetPack, opm: boolean): PlanetPack {
+function createKcalbelohPack(base: PlanetPack, opm: boolean, wormholes = true): PlanetPack {
   const homeParentId = opm ? 'opm:sarnus' : 'stock:jool'
   const homeParentName = opm ? 'Sarnus' : 'Jool'
   const bodies = [
     ...base.bodies.map(body => ({ ...body })),
-    ...kcalbelohBodies.map(body => ({ ...body, ...(body.id === 'kcalbeloh:wh3141a' ? { parentId: homeParentId } : {}) })),
+    ...kcalbelohBodies.filter(body => wormholes || body.kind !== 'wormhole').map(body => ({ ...body, ...(body.id === 'kcalbeloh:wh3141a' ? { parentId: homeParentId } : {}) })),
   ]
   const nodes: RouteNode[] = [
     ...base.nodes.map(node => ({ ...node })),
@@ -130,25 +130,31 @@ function createKcalbelohPack(base: PlanetPack, opm: boolean): PlanetPack {
   gap('arorua-anneheg', 'Anneheg low orbit ↔ Arorua low orbit', parkingId('Anneheg'), parkingId('Arorua'), 'The source prints 4080 m/s on the Anneheg side and N.A. on the Arorua side because KSP binary dynamics prevent a reliable estimate. Enter the whole pair budget, including the known side, rather than only the missing component.')
   gap('arorua-ahtpan', 'Arorua low orbit ↔ Ahtpan low orbit', parkingId('Arorua'), parkingId('Ahtpan'), 'The source prints N.A. on the Arorua side and 1550 m/s on the Ahtpan side because KSP binary dynamics prevent a reliable estimate. Enter the whole pair budget, including the known side.')
   gap('arorua-anehta', 'Arorua low orbit ↔ Anehta low orbit', parkingId('Arorua'), parkingId('Anehta'), 'The source prints N.A. on the Arorua side and 4070 m/s on the Anehta side because KSP binary dynamics prevent a reliable estimate. Enter the whole pair budget, including the known side.')
-  gap('wormhole', `${homeParentName} low orbit ↔ Sera low orbit via wormhole`, `${homeParentId}:orbit`, parkingId('Sera'), `Composite wormhole journey: approach WH-3141-A around ${homeParentName}, cross to WH-3141-B around Sera, and establish the endpoint parking orbit. Official configs place entry between 10 m and 30 km altitude; neither the map nor these configs supplies this whole fuel budget. Enter approach, exit matching, and capture costs together. The planner does not assume free exit matching.`, configSourceId, 'wormhole')
+  if (wormholes) gap('wormhole', `${homeParentName} low orbit ↔ Sera low orbit via wormhole`, `${homeParentId}:orbit`, parkingId('Sera'), `Composite wormhole journey: approach WH-3141-A around ${homeParentName}, cross to WH-3141-B around Sera, and establish the endpoint parking orbit. Official configs place entry between 10 m and 30 km altitude; neither the map nor these configs supplies this whole fuel budget. Enter approach, exit matching, and capture costs together. The planner does not assume free exit matching.`, configSourceId, 'wormhole')
+
+  const existingBodyIds = new Set(bodies.map(body => body.id))
+  const baseId = opm ? 'opm-kcalbeloh' : 'stock-kcalbeloh'
+  const baseName = opm ? 'OPM + Kcalbeloh' : 'Stock + Kcalbeloh'
 
   return {
-    id: opm ? 'opm-kcalbeloh' : 'stock-kcalbeloh',
-    name: opm ? 'OPM + Kcalbeloh' : 'Stock + Kcalbeloh',
+    id: wormholes ? baseId : `${baseId}-no-wormholes`,
+    name: wormholes ? baseName : `${baseName} (wormholes off)`,
     shortName: opm ? 'OPM + Kcal' : 'Stock + Kcal',
-    dataNotice: 'Map + user allowances',
+    dataNotice: wormholes ? 'Map + user allowances' : 'Wormholes off',
     version: '1.1.8-map.1',
-    description: `${opm ? 'Outer Planets Mod' : 'Stock Kerbol system'} plus the Kcalbeloh 1.1.8 default-size add-on. Published local and stellar reference-pair budgets are separate from explicitly user-priced wormhole and missing-source connections.`,
+    description: `${opm ? 'Outer Planets Mod' : 'Stock Kerbol system'} plus the Kcalbeloh 1.1.8 default-size add-on. ${wormholes ? 'Published local and stellar reference-pair budgets are separate from explicitly user-priced wormhole and missing-source connections.' : 'Wormholes are disabled. Local and stellar reference-pair budgets remain available, with explicit allowances for missing-source connections. No interstellar transfer between Kerbol and Kcalbeloh is supplied.'}`,
     transferHubBodyId: base.transferHubBodyId,
     sources: [...base.sources.map(source => ({ ...source })), { ...kcalbelohMapSource }, { ...kcalbelohConfigSource }],
     assumptions: [
       ...base.assumptions.map(note => `${base.shortName ?? base.name} base: ${note}`),
-      'Kcalbeloh source configuration: v1.1.8, stock-sized 1× scale, HomeSwitch disabled, Wormholes enabled. RSS/KSRSS rescaling, Principia, and alternate homeworld configurations are not included.',
+      `Kcalbeloh source configuration: v1.1.8, stock-sized 1× scale, HomeSwitch disabled, Wormholes ${wormholes ? 'enabled' : 'disabled'}. RSS/KSRSS rescaling, Principia, and alternate homeworld configurations are not included.`,
       mapEstimate,
       'Published pair costs connect explicit circular parking or central reference states. Each pair charges both printed burns once; reversed edges share the same nominal allowance. Shortest paths are only the lowest estimates in the supplied graph.',
       'Stellar and Simetra–Simeht circumbinary references are separate states, with their source distances in their labels. They are not landable surfaces or asserted low atmospheric orbits. No free links to nearby planet parking orbits are inferred.',
-      'Unpriced connections remain unavailable until their complete directional allowance is entered. Wormhole, reference-to-planet, and missing binary links are not assigned fabricated default fuel costs. Forward and return allowances are independent.',
-      `WH-3141-A orbits ${homeParentName} in this configuration, and WH-3141-B orbits Sera. The composite wormhole allowance includes approach, crossing, exit matching, and parking capture; timing, heat, and maneuver feasibility are not simulated.`,
+      `Unpriced connections remain unavailable until their complete directional allowance is entered. ${wormholes ? 'Wormhole, reference-to-planet, and missing binary links' : 'Reference-to-planet and missing binary links'} are not assigned fabricated default fuel costs. Forward and return allowances are independent.`,
+      wormholes
+        ? `WH-3141-A orbits ${homeParentName} in this configuration, and WH-3141-B orbits Sera. The composite wormhole allowance includes approach, crossing, exit matching, and parking capture; timing, heat, and maneuver feasibility are not simulated.`
+        : 'The official Wormholes=False setting omits WH-3141-A and WH-3141-B. Their composite crossing connection is absent. No direct interstellar transfer is supplied, so the Kerbol and Kcalbeloh portions of this maneuver graph remain disconnected even after all local link allowances are entered.',
       'Arorua transfer components marked N.A. in the official map remain user-priced; their values are not zero. Its published surface budget remains available locally.',
       'Noi, individual Simetra/Simeht low orbits, and Aralc-B stellar parking lack priced source states and remain catalog metadata. The Simetra–Simeht combined reference and its mapped families remain selectable.',
       'Atmospheric descent uses an explicitly labeled ascent-sized placeholder until replaced by the optional landing allowance. No automatic capture discount is applied to bundled complete-transfer pairs.',
@@ -159,12 +165,14 @@ function createKcalbelohPack(base: PlanetPack, opm: boolean): PlanetPack {
     maneuvers,
     unpricedConnections,
     mapRegions: [
-      { id: 'kerbol', label: 'Kerbol system', bodyIds: [...base.bodies.map(body => body.id), 'kcalbeloh:wh3141a'] },
-      ...kcalbelohRegions.map(region => ({ ...region, bodyIds: [...region.bodyIds] })),
+      { id: 'kerbol', label: 'Kerbol system', bodyIds: [...base.bodies.map(body => body.id), ...(wormholes ? ['kcalbeloh:wh3141a'] : [])] },
+      ...kcalbelohRegions.map(region => ({ ...region, bodyIds: region.bodyIds.filter(id => existingBodyIds.has(id)) })),
     ],
   }
 }
 
 export const stockKcalbelohPack = createKcalbelohPack(stockPack, false)
 export const opmKcalbelohPack = createKcalbelohPack(opmPack, true)
+export const stockKcalbelohNoWormholesPack = createKcalbelohPack(stockPack, false, false)
+export const opmKcalbelohNoWormholesPack = createKcalbelohPack(opmPack, true, false)
 export const kcalbelohPacks: readonly PlanetPack[] = [stockKcalbelohPack, opmKcalbelohPack]
