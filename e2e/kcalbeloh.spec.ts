@@ -1,7 +1,10 @@
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import type { PlanetPack } from '../src/types/planner'
-import { stockKcalbelohPack } from '../src/data/kcalbeloh'
+import { opmKcalbelohPack, stockKcalbelohPack } from '../src/data/kcalbeloh'
+import { buildGraph } from '../src/utils/buildGraph'
+import { applyConnectionAllowances } from '../src/utils/connectionAllowances'
+import { expectedMission, expectBreakdownPages } from './helpers/breakdownPages'
 import { missionModeButton } from './helpers/missionMode'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
@@ -296,19 +299,18 @@ test('paginates a long built-in journey without dropping maneuvers', async ({ pa
     { label: maelgLink, forward: '400' },
   ])
   await plan(page, 'opm:tal:surface', 'kcalbeloh:mehtna:surface')
-  await expect(total(page)).toHaveText('28,293 m/s')
+  // Explicit components: 126+160+366+489+845+2494+1000+2680+300+12180+400+1960.
+  await expect(total(page)).toHaveText('23,000 m/s')
   await page.getByLabel('Show breakdown', { exact: true }).check()
-  const rows = page.getByRole('list', { name: 'Maneuver breakdown', exact: true }).getByRole('listitem')
-  await expect(rows).toHaveCount(8)
-  await expect(page.getByTestId('maneuver-position')).toHaveText('1–8 of 19')
-  await button(page, 'Next maneuvers').click()
-  await expect(rows).toHaveCount(8)
-  await expect(page.getByTestId('maneuver-position')).toHaveText('9–16 of 19')
-  await button(page, 'Next maneuvers').click()
-  await expect(rows).toHaveCount(3)
-  await expect(page.getByTestId('maneuver-position')).toHaveText('17–19 of 19')
-  await expect(rows.last()).toContainText('Mehtna surface')
-  await expect(button(page, 'Next maneuvers')).toBeDisabled()
+  const { edges } = applyConnectionAllowances(buildGraph(opmKcalbelohPack), opmKcalbelohPack, [
+    { connectionId: 'kcalbeloh:wormhole', forward: 1000, reverse: null },
+    { connectionId: 'kcalbeloh:connect-sunorc', forward: 300, reverse: 300 },
+    { connectionId: 'kcalbeloh:connect-maelg', forward: 400, reverse: null },
+  ])
+  const pack = { ...opmKcalbelohPack, maneuvers: [...opmKcalbelohPack.maneuvers, ...edges] }
+  const journey = expectedMission(pack, 'opm:tal:surface', 'kcalbeloh:mehtna:surface', 'one-way')
+  expect(journey.legs).toHaveLength(12)
+  await expectBreakdownPages(page, pack, journey)
 })
 
 test('limits relay planning to physical planets and moons and preserves the Delta-V mission', async ({ page }) => {

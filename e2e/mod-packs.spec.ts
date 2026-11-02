@@ -191,11 +191,11 @@ for (const viewport of [
   { width: 700, height: 651 }, { width: 700, height: 749 },
   { width: 900, height: 750 }, { width: 1280, height: 751 },
 ]) {
-  test(`fits the maximum 17-maneuver OPM return leg above usable controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+  test(`fits the maximum 15-maneuver OPM return leg above usable controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
     await packButton(page, 'OPM').click()
-    await node(page, 'opm:tal:surface').click()
     await node(page, 'stock:gilly:surface').click()
+    await node(page, 'opm:tal:surface').click()
     await missionModeButton(page, 'round-trip').click()
     const slider = page.getByRole('slider', { name: 'Redundancy', exact: true })
     await slider.focus()
@@ -204,9 +204,10 @@ for (const viewport of [
     await detailsToggle(page).check()
     await page.getByRole('tab', { name: 'Return', exact: true }).click()
 
-    const journey = expectedMission(opmPack, 'opm:tal:surface', 'stock:gilly:surface', 'round-trip').returnRoute!
-    expect(journey.legs).toHaveLength(17)
-    await expect(page.getByTestId('route-total')).toHaveText('34,492 m/s')
+    const journey = expectedMission(opmPack, 'stock:gilly:surface', 'opm:tal:surface', 'round-trip').returnRoute!
+    expect(journey.legs).toHaveLength(15)
+    // Each direction independently sums to 7,323 m/s; reserve doubles the round trip.
+    await expect(page.getByTestId('route-total')).toHaveText('29,292 m/s')
     const pageSize = viewport.width <= 699 || viewport.height <= 750 ? 8 : 17
     await expectBreakdownPages(page, opmPack, journey, pageSize)
     const panel = await page.getByRole('region', { name: 'Maneuver breakdown panel', exact: true }).boundingBox()
