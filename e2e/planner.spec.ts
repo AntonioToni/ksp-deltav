@@ -241,10 +241,10 @@ test('shows atmospheric braking opportunities independently of the selected rout
 })
 
 for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 390 }, { width: 667, height: 375 }]) {
-  test(`fits the longest supported 12-maneuver breakdown above controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+  test(`fits the longest supported 10-maneuver breakdown above controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
-    await state(page, 'gilly', 'surface').click()
-    await state(page, 'ike', 'surface').click()
+    await state(page, 'mun', 'surface').click()
+    await state(page, 'eeloo', 'surface').click()
     const slider = page.getByRole('slider', { name: 'Redundancy', exact: true })
     await slider.focus()
     await slider.press('End')
@@ -253,8 +253,9 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 390 }
 
     const list = breakdown(page)
     const panel = page.getByRole('region', { name: 'Maneuver breakdown panel', exact: true })
-    const journey = expectedMission(stockPack, 'stock:gilly:surface', 'stock:ike:surface', 'one-way').outbound!
-    expect(journey.legs).toHaveLength(12)
+    const journey = expectedMission(stockPack, 'stock:mun:surface', 'stock:eeloo:surface', 'one-way').outbound!
+    expect(journey.legs).toHaveLength(10)
+    await expect(page.getByTestId('route-total')).toHaveText('11,482 m/s')
     await expectBreakdownPages(page, stockPack, journey)
     await assertOnScreen(panel, page)
     const panelBounds = await panel.boundingBox()

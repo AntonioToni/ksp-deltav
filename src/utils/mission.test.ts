@@ -48,6 +48,37 @@ function encounterGraph(): PlannerGraph {
   ])
 }
 
+function completeHighArrivalGraph(): PlannerGraph {
+  return graphFrom([
+    { id: 'a:encounter', bodyId: 'a', kind: 'encounter', label: 'A encounter' },
+    { id: 'b:encounter', bodyId: 'b', kind: 'encounter', label: 'B encounter' },
+    { id: 'b:elliptical', bodyId: 'b', kind: 'elliptical', label: 'B high ellipse' },
+    { id: 'b:orbit', bodyId: 'b', kind: 'orbit', label: 'B low orbit' },
+    { id: 'c:elliptical', bodyId: 'c', kind: 'elliptical', label: 'C high ellipse' },
+    { id: 'c:orbit', bodyId: 'c', kind: 'orbit', label: 'C low orbit' },
+    { id: 'c:encounter', bodyId: 'c', kind: 'encounter', label: 'C encounter' },
+    { id: 'd:encounter', bodyId: 'd', kind: 'encounter', label: 'D encounter' },
+    { id: 'd:orbit', bodyId: 'd', kind: 'orbit', label: 'D low orbit' },
+  ], [
+    edge('a-to-b', 'a:encounter', 'b:encounter', 10),
+    edge('b-capture-high', 'b:encounter', 'b:elliptical', 2, 'capture'),
+    edge('b-capture-low', 'b:elliptical', 'b:orbit', 5, 'capture'),
+    edge('b-raise-high', 'b:orbit', 'b:elliptical', 7, 'escape'),
+    { ...edge('complete-b-to-c', 'b:elliptical', 'c:elliptical', 30), directTransfer: true },
+    edge('c-escape', 'c:elliptical', 'c:encounter', 3, 'escape'),
+    edge('c-to-d', 'c:encounter', 'd:encounter', 20),
+    edge('d-capture', 'd:encounter', 'd:orbit', 4, 'capture'),
+    edge('d-escape', 'd:orbit', 'd:encounter', 5, 'escape'),
+    edge('d-to-c', 'd:encounter', 'c:encounter', 21),
+    edge('c-capture-high', 'c:encounter', 'c:elliptical', 4, 'capture'),
+    edge('c-capture-low', 'c:elliptical', 'c:orbit', 6, 'capture'),
+    edge('c-raise-high', 'c:orbit', 'c:elliptical', 8, 'escape'),
+    { ...edge('complete-c-to-b', 'c:elliptical', 'b:elliptical', 31), directTransfer: true },
+    edge('b-escape', 'b:elliptical', 'b:encounter', 3, 'escape'),
+    edge('b-to-a', 'b:encounter', 'a:encounter', 11),
+  ])
+}
+
 describe('directed one-way and round-trip missions', () => {
   it('keeps a one-way mission identical to the existing route result', () => {
     const graph = asymmetricGraph()
@@ -164,6 +195,65 @@ describe('arrival context across the round-trip turnaround', () => {
   })
 })
 
+describe('complete transfers with bound high-orbit arrivals', () => {
+  it('requires the legacy arrival low-orbit reset before a complete high-orbit departure', () => {
+    const result = findMissionRoute(completeHighArrivalGraph(), 'a:encounter', 'd:orbit', 'one-way')
+    expect(result).toMatchObject({
+      status: 'success', totalDeltaV: 81,
+      nodeIds: ['a:encounter', 'b:encounter', 'b:elliptical', 'b:orbit', 'b:elliptical', 'c:elliptical', 'c:encounter', 'd:encounter', 'd:orbit'],
+    })
+    // Paying B's low reset is required; C's complete bound arrival needs no
+    // additional low capture before the independently priced departure to D.
+    if (result.status !== 'success') throw new Error('Expected a complete transfer')
+    expect(result.nodeIds).not.toContain('c:orbit')
+    const graph = completeHighArrivalGraph()
+    const adjacency = new Map(graph.adjacency)
+    adjacency.set('b:elliptical', adjacency.get('b:elliptical')!.filter(maneuver => maneuver.id !== 'b-capture-low'))
+    expect(findMissionRoute({ ...graph, adjacency }, 'a:encounter', 'd:orbit', 'one-way').status).toBe('unreachable')
+  })
+
+  it('can reverse a complete high-orbit pair at its paid bound arrival', () => {
+    expect(findMissionRoute(completeHighArrivalGraph(), 'b:elliptical', 'c:elliptical', 'round-trip')).toMatchObject({
+      status: 'success', totalDeltaV: 61, nodeIds: ['b:elliptical', 'c:elliptical', 'b:elliptical'],
+      outbound: { totalDeltaV: 30 }, returnRoute: { totalDeltaV: 31 },
+    })
+  })
+
+  it.each([
+    { mode: 'one-way', total: 81, outbound: [12, 42, 27], returning: [] },
+    { mode: 'round-trip', total: 170, outbound: [12, 42, 27], returning: [30, 45, 14] },
+    { mode: 'return-only', total: 89, outbound: [], returning: [30, 45, 14] },
+  ] as const)('preserves legacy and complete arrival conditions across ordered $mode stops', ({ mode, total, outbound, returning }) => {
+    const result = findMissionRoute(completeHighArrivalGraph(), 'a:encounter', 'd:orbit', mode, ['b:elliptical', 'c:elliptical'])
+    expect(result).toMatchObject({ status: 'success', totalDeltaV: total })
+    if (result.status !== 'success') throw new Error('Expected an ordered complete transfer')
+    expect(result.outboundStages.map(stage => stage.totalDeltaV)).toEqual(outbound)
+    expect(result.returnStages.map(stage => stage.totalDeltaV)).toEqual(returning)
+  })
+
+  it.each([
+    { directTransfer: undefined }, { directTransfer: false },
+    { directTransfer: 'true' as unknown as boolean },
+    { kind: 'capture' as const }, { fromKind: 'surface' as const },
+    { toKind: 'encounter' as const }, { sameBody: true },
+  ])('does not let malformed or unmarked complete-pair metadata reset a pending arrival: %j', changes => {
+    // The public route API can also receive a hand-built graph, so malformed
+    // flags must not grant capture semantics even before pack validation.
+    const nodes: RouteNode[] = [
+      { id: 'pending', bodyId: 'pending', kind: 'encounter', label: 'Pending arrival body' },
+      { id: 'from', bodyId: 'b', kind: ('fromKind' in changes ? changes.fromKind : undefined) ?? 'elliptical', label: 'From' },
+      { id: 'to', bodyId: 'sameBody' in changes ? 'b' : 'c', kind: ('toKind' in changes ? changes.toKind : undefined) ?? 'elliptical', label: 'To' },
+      { id: 'departure', bodyId: 'sameBody' in changes ? 'b' : 'c', kind: 'encounter', label: 'Departure' },
+      { id: 'goal', bodyId: 'd', kind: 'encounter', label: 'Goal' },
+    ]
+    const graph = graphFrom(nodes, [
+      { ...edge('incomplete', 'from', 'to', 30, 'kind' in changes ? changes.kind : 'transfer'), directTransfer: 'directTransfer' in changes ? changes.directTransfer : true },
+      edge('escape', 'to', 'departure', 3, 'escape'), edge('next-transfer', 'departure', 'goal', 20),
+    ])
+    expect(findLowestCostPath(graph, 'from', 'goal', { pendingParkingBodyId: 'pending' }).status).toBe('unreachable')
+  })
+})
+
 describe('return-only missions', () => {
   it('uses only the independent reverse maneuvers and their directed costs', () => {
     const mission = findMissionRoute(asymmetricGraph(), 'surface', 'orbit', 'return-only')
@@ -234,7 +324,7 @@ describe('return-only missions', () => {
 
   it.each([
     { pack: stockPack, home: 'stock:kerbin:surface', target: 'stock:mun:surface', expected: 5120 },
-    { pack: opmPack, home: 'stock:kerbin:surface', target: 'opm:tekto:surface', expected: 11927 },
+    { pack: opmPack, home: 'stock:kerbin:surface', target: 'opm:tekto:surface', expected: 11546 },
     { pack: rssPack, home: 'rss:earth:surface', target: 'rss:moon:surface', expected: 14660 },
   ])('supports $pack.id reference routes and applies reserve once to the return', ({ pack, home, target, expected }) => {
     const graph = buildGraph(pack)

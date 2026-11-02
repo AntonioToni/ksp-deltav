@@ -224,16 +224,16 @@ describe('ordered mission modes and stages', () => {
   })
 
   it.each([
-    { pack: stockPack, start: 'stock:kerbin:surface', goal: 'stock:mun:surface', stop: 'stock:kerbin:orbit', base: 5120 },
-    { pack: opmPack, start: 'stock:kerbin:surface', goal: 'opm:tekto:surface', stop: 'opm:sarnus:orbit', base: 11927 },
-    { pack: rssPack, start: 'rss:earth:surface', goal: 'rss:moon:surface', stop: 'rss:earth:orbit', base: 14660 },
-  ])('retains sourced $pack.shortName budgets through required reference-orbit stops', ({ pack, start, goal, stop, base }) => {
+    { pack: stockPack, start: 'stock:kerbin:surface', goal: 'stock:mun:surface', stop: 'stock:kerbin:orbit', outbound: 5120, inbound: 5120 },
+    { pack: opmPack, start: 'stock:kerbin:surface', goal: 'opm:tekto:surface', stop: 'opm:sarnus:orbit', outbound: 11927, inbound: 11546 },
+    { pack: rssPack, start: 'rss:earth:surface', goal: 'rss:moon:surface', stop: 'rss:earth:orbit', outbound: 14660, inbound: 14660 },
+  ])('prices both $pack.shortName directions through required reference-orbit stops', ({ pack, start, goal, stop, outbound, inbound }) => {
     const graph = buildGraph(pack)
     for (const mode of ['one-way', 'return-only', 'round-trip'] as const) {
       const result = findMissionRoute(graph, start, goal, mode, [stop])
       expect(result.status).toBe('success')
       if (result.status !== 'success') throw new Error('Expected a supported pack route')
-      const total = base * (mode === 'round-trip' ? 2 : 1)
+      const total = mode === 'round-trip' ? outbound + inbound : mode === 'return-only' ? inbound : outbound
       expect(result.totalDeltaV).toBe(total)
       expect(result.outboundStages).toHaveLength(mode === 'return-only' ? 0 : 2)
       expect(result.returnStages).toHaveLength(mode === 'one-way' ? 0 : 2)

@@ -18,9 +18,9 @@ describe('the reviewed stock reference pack', () => {
 
   it('has valid references and directed, sourced maneuvers', () => {
     expect(validatePlanetPack(stockPack)).toEqual([])
-    expect(stockPack.maneuvers).toHaveLength(128)
+    expect(stockPack.maneuvers).toHaveLength(164)
     expect(stockPack.maneuvers.filter(edge => edge.sourceId === 'kowgan-1.7.3')).toHaveLength(98)
-    expect(stockPack.maneuvers.filter(edge => edge.directTransfer)).toHaveLength(30)
+    expect(stockPack.maneuvers.filter(edge => edge.directTransfer)).toHaveLength(66)
     for (const maneuver of stockPack.maneuvers) {
       expect(maneuver.assumptions.length).toBeGreaterThan(0)
       expect(stockPack.sources.some((source) => source.id === maneuver.sourceId)).toBe(true)
@@ -55,7 +55,8 @@ describe('the reviewed stock reference pack', () => {
     ['pol', 6590],
     ['eeloo', 7480],
   ])('sums source map segments from Kerbin surface to %s surface as %i m/s', (body, expected) => {
-    const route = findLowestCostPath(buildGraph(stockPack), 'stock:kerbin:surface', `stock:${body}:surface`)
+    const sourceMap = { ...stockPack, maneuvers: stockPack.maneuvers.filter(edge => !edge.directTransfer) }
+    const route = findLowestCostPath(buildGraph(sourceMap), 'stock:kerbin:surface', `stock:${body}:surface`)
     expect(route.status).toBe('success')
     if (route.status !== 'success') throw new Error(route.message)
     expect(route.totalDeltaV).toBe(expected)

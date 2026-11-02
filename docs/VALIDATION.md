@@ -44,18 +44,20 @@ rescaling, HomeSwitch, Principia, or a new audit of their altered physics.
 
 ### Direct-transfer extension — 2 November 2026
 
-Stock and OPM now add complete low-parking-orbit transfers between non-home
-planets: 30 directed edges in Stock and 72 in OPM. Kcalbeloh compositions inherit
-their selected base's additions. No route states or original map-segment costs
-are replaced. The shared Stock physical table retains the pinned facts already
-used by relay presets; OPM uses its existing pinned configuration constants.
+The initial extension added complete low-parking-orbit transfers between
+non-home planets: 30 directed edges in Stock and 72 in OPM. Kcalbeloh compositions
+inherited their selected base's additions. No route states or original
+map-segment costs were replaced. The shared Stock physical table retained the
+pinned facts already used by relay presets; OPM used its existing pinned
+configuration constants.
 
 The circular, coplanar model was checked against explicit Hohmann/vis-viva
 fixtures, separate departure and capture burns, component-wise ceiling, and
 reversed pairs. Example complete totals are Duna → Dres **1,532 m/s**, Eve → Duna
 **2,728 m/s**, and Sarnus → Urlum **2,494 m/s** at the documented parking orbits.
-All 876 homeworld comparisons across Stock/OPM states, Kerbin surface/orbit
-origins, and mission modes retain their **atmosphere-off** budgets.
+At that low-only revision, all 876 homeworld comparisons across Stock/OPM states,
+Kerbin surface/orbit origins, and mission modes retained their **atmosphere-off**
+budgets.
 
 Atmospheric choices can still reoptimize a mission through an intermediate
 planet's low parking orbit; they are not covered by that unchanged-default
@@ -68,6 +70,49 @@ This extension does not solve eccentric or inclined transfer geometry, dates,
 travel times, parking-plane orientation, or vehicle losses. RSS retains its
 historical graph pending compatible reference orbits. It is a calculation and
 integration extension, not a new certification of physical flight feasibility.
+
+### High-orbit moon-route correction
+
+The low-only model exposed an unnecessary detour for moon journeys. Duna low
+orbit → Gilly low orbit chose a **3,280 m/s** Kerbin layover, because the
+alternative complete transfer captured into Eve's low orbit and then paid to
+raise back to the moon branch's high orbit (**4,498 m/s**). The shortest-path
+search was following its supplied costs; the missing reference-state connections
+caused the detour.
+
+The correction extends complete pairs to existing high elliptical states,
+giving **66 directed Stock pairs** and **226 in OPM**, with the same selectable
+states and original reference segments. Stock high-orbit energy is inferred
+from the rounded map circularization increments. Independent vis-viva checks
+place the implied apoapses inside their SOIs: **75.23 Mm at Eve**, **26.68 Mm at
+Duna**, and **2,127.74 Mm at Jool**. OPM high states use their explicit half-SOI
+apoapses and unrounded endpoint calculations before component-wise ceiling.
+
+The resulting Duna low orbit → Eve high orbit estimate is **1,428 m/s**, followed
+by the unchanged **60 + 410 m/s** Gilly transfer/capture segments, totaling
+**1,898 m/s**. Both direct endpoint burns remain priced, including powered high
+capture. This extends parent-reference routes for moons; it does not solve
+moon-to-moon flybys, dated geometry, or gravity assists. Low-to-low direct-pair
+figures retain their previous calculations.
+
+The guarded high-orbit extension was compared with the published low-only
+revision across the same **876 atmosphere-off homeworld missions**. **332**
+estimates decreased and none increased. All OPM outbound comparisons retained
+their prior totals; the four changed Stock outbound comparisons end at Eeloo's
+low orbit or surface. Kerbin surface → Eeloo surface is now **7,421 m/s** through
+paid Duna low and Jool high reference states, compared with the original
+**7,480 m/s** branch. Return-only and round-trip totals can also improve through
+these complete reference pairs. This is an expanded search over the stated
+models, not a claim of lower flight costs for arbitrary launch dates.
+
+Independent vis-viva calculations matched all **292** current directed Stock/OPM
+records and their reverse costs. All **102** directed low-to-low records from
+the initial extension retained their costs. Another **876** comparisons with all
+supported ideal captures and 100 m/s landing allowances showed **328** decreases
+and no increases. Legacy encounter arrivals still require their actual low-orbit
+reset before a new interplanetary departure; stopping at a high state or moon
+does not erase that context. A complete modeled high-orbit arrival already pays
+for its stated bound capture and can continue without a second circularization.
 
 ### Correction found
 

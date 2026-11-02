@@ -1,5 +1,5 @@
 import type { CelestialBody, DataSource, ManeuverEdge, PlanetPack, RouteNode } from '../types/planner'
-import { hohmannTransfer, parkingOrbitBurn } from '../utils/orbitalBudgets'
+import { hohmannTransfer, parkingOrbitBurn, splitCapture } from '../utils/orbitalBudgets'
 import type { StockPhysicalReference } from './stockPhysics'
 
 export const directTransferSource: DataSource = {
@@ -11,6 +11,8 @@ export const directTransferSource: DataSource = {
 
 interface DirectTransferReference extends StockPhysicalReference {
   sphereOfInfluenceM?: number
+  /** Explicit planner-selected high reference geometry, when separately known. */
+  ellipticalApoapsisRadiusM?: number
 }
 
 interface Endpoint {
@@ -18,12 +20,15 @@ interface Endpoint {
   node: RouteNode
   reference: DirectTransferReference
   parkingRadiusM: number
+  /** Unrounded speed difference between the reference ellipse and circular orbit at periapsis. */
+  circularizationDeltaV: number
+  referenceNote: string
 }
 
 const modelAssumptions = [
-  'Analytic complete parking-orbit-to-parking-orbit transfer. Each endpoint burn is rounded upward to a whole m/s, then the two rounded burns are summed once.',
+  'Analytic complete bound-orbit-to-bound-orbit transfer. Each endpoint burn is rounded upward to a whole m/s, then the two rounded burns are summed once.',
   'Circularized stellar orbits at the pinned semi-major axes are treated as coplanar. Inclination, eccentricity, changing phase, launch dates, node alignment, parking-plane orientation, gravity assists, and finite-thrust losses are not solved.',
-  'The complete pair includes powered departure and circular parking capture. Atmospheric assistance does not discount this bundled pair; atmospheric entry feasibility and cleanup burns are not simulated.',
+  'The complete pair includes powered departure and capture into the chosen circular or high elliptical reference orbit. Atmospheric assistance does not discount this bundled pair; atmospheric entry feasibility and cleanup burns are not simulated.',
   'The reverse direction reuses the same nominal summed cost with the endpoint burns exchanged. This is not a solved return transfer at a particular epoch.',
 ]
 
@@ -61,9 +66,40 @@ export function withDirectTransfers(
     // A historical or unknown parking label cannot silently become a new
     // modern physical reference. Only explicitly safe bound states are used.
     if (altitudeM <= reference.atmosphereHeightM || parkingRadiusM >= soiM) return []
-    return [{ body, node, reference, parkingRadiusM }]
+    const endpoints: Endpoint[] = [{
+      body, node, reference, parkingRadiusM, circularizationDeltaV: 0,
+      referenceNote: `${body.name} low orbit: circular parking altitude ${node.altitudeKm} km.`,
+    }]
+    const high = result.nodes.find(node => node.bodyId === body.id && node.kind === 'elliptical')
+    if (!high) return endpoints
+
+    const circularSpeed = Math.sqrt(reference.gravitationalParameter) / Math.sqrt(parkingRadiusM)
+    let circularizationDeltaV: number
+    let calibration: string
+    if (reference.ellipticalApoapsisRadiusM !== undefined) {
+      const apoapsis = reference.ellipticalApoapsisRadiusM
+      if (!Number.isFinite(apoapsis) || apoapsis <= parkingRadiusM || apoapsis >= soiM) return endpoints
+      circularizationDeltaV = splitCapture(reference.gravitationalParameter, parkingRadiusM, apoapsis, 0).circularization
+      calibration = `Explicit reference apoapsis radius ${apoapsis} m from the center${apoapsis === soiM / 2 ? ' (0.5 × the configured SOI)' : ''}. Reference ellipse speed is calculated before rounding; rounded local segment costs are not subtracted from rounded transfer burns.`
+    } else {
+      const raising = result.maneuvers.find(edge => edge.from === node.id && edge.to === high.id && edge.kind === 'escape' && !edge.directTransfer)
+      const lowering = result.maneuvers.find(edge => edge.from === high.id && edge.to === node.id && edge.kind === 'capture' && !edge.directTransfer)
+      if (!raising || !lowering || !Number.isFinite(raising.deltaV) || raising.deltaV <= 0 || raising.deltaV !== lowering.deltaV) return endpoints
+      circularizationDeltaV = raising.deltaV
+      calibration = `Map-calibrated high-orbit energy: reference periapsis speed is circular speed plus the published ${circularizationDeltaV} m/s low-to-high increment (${raising.sourceId}, ${raising.id}). This infers an equivalent reference ellipse from the map budget; no separately published high-orbit apoapsis is claimed.`
+    }
+    const ellipseSpeed = circularSpeed + circularizationDeltaV
+    if (!Number.isFinite(ellipseSpeed) || ellipseSpeed <= circularSpeed || ellipseSpeed >= Math.SQRT2 * circularSpeed) return endpoints
+    const semiMajorAxis = 1 / (2 / parkingRadiusM - ellipseSpeed ** 2 / reference.gravitationalParameter)
+    const apoapsisRadiusM = 2 * semiMajorAxis - parkingRadiusM
+    if (!Number.isFinite(apoapsisRadiusM) || apoapsisRadiusM <= parkingRadiusM || apoapsisRadiusM >= soiM) return endpoints
+    endpoints.push({
+      body, node: high, reference, parkingRadiusM, circularizationDeltaV,
+      referenceNote: `${body.name} high elliptical orbit: periapsis altitude ${node.altitudeKm} km. ${calibration} Parking-plane orientation and moon encounter timing are unconstrained.`,
+    })
+    return endpoints
   })
-  if (candidates.length < 2) return result
+  if (new Set(candidates.map(endpoint => endpoint.body.id)).size < 2) return result
 
   for (const source of [...physicalSources, directTransferSource]) {
     if (!result.sources.some(existing => existing.id === source.id)) result.sources.push({ ...source })
@@ -72,9 +108,12 @@ export function withDirectTransfers(
   for (let fromIndex = 0; fromIndex < candidates.length; fromIndex++) {
     const from = candidates[fromIndex]!
     for (const to of candidates.slice(fromIndex + 1)) {
+      if (from.body.id === to.body.id) continue
       const transfer = hohmannTransfer(centralMu, from.reference.semiMajorAxisM, to.reference.semiMajorAxisM)
-      const fromBurn = parkingOrbitBurn(from.reference.gravitationalParameter, from.parkingRadiusM, transfer.departureDeltaV)
-      const toBurn = parkingOrbitBurn(to.reference.gravitationalParameter, to.parkingRadiusM, transfer.arrivalDeltaV)
+      // Subtract the reference speed increment before rounding. This prices a
+      // direct high-orbit capture without circularizing and raising again.
+      const fromBurn = parkingOrbitBurn(from.reference.gravitationalParameter, from.parkingRadiusM, transfer.departureDeltaV) - from.circularizationDeltaV
+      const toBurn = parkingOrbitBurn(to.reference.gravitationalParameter, to.parkingRadiusM, transfer.arrivalDeltaV) - to.circularizationDeltaV
       const fromRounded = Math.ceil(fromBurn)
       const toRounded = Math.ceil(toBurn)
       for (const [departure, arrival, departureBurn, arrivalBurn, departureRaw, arrivalRaw] of [
@@ -91,12 +130,15 @@ export function withDirectTransfers(
         const edge: ManeuverEdge = {
           id, from: departure.node.id, to: arrival.node.id,
           deltaV, kind: 'transfer', directTransfer: true,
-          label: `${departure.body.name} → ${arrival.body.name} direct transfer`,
+          label: departure.node.kind === 'orbit' && arrival.node.kind === 'orbit'
+            ? `${departure.body.name} → ${arrival.body.name} direct transfer`
+            : `${departure.node.label} → ${arrival.node.label} direct transfer`,
           sourceId: directTransferSource.id,
           assumptions: [
             ...modelAssumptions,
             `${departureBurn} m/s departure at ${departure.body.name} (${departureRaw.toFixed(6)} m/s before rounding) plus ${arrivalBurn} m/s capture at ${arrival.body.name} (${arrivalRaw.toFixed(6)} m/s before rounding): ${deltaV} m/s total.`,
-            `Reference circular parking altitudes: ${departure.node.altitudeKm} km at ${departure.body.name}, ${arrival.node.altitudeKm} km at ${arrival.body.name}.`,
+            `Departure reference: ${departure.referenceNote}`,
+            `Arrival reference: ${arrival.referenceNote}`,
             `Stellar reference semi-major axes: ${departure.reference.semiMajorAxisM} m at ${departure.body.name}, ${arrival.reference.semiMajorAxisM} m at ${arrival.body.name}; central gravitational parameter ${centralMu} m³/s².`,
           ],
         }
@@ -105,7 +147,7 @@ export function withDirectTransfers(
       }
     }
   }
-  const note = 'Complete analytic direct transfers connect the explicit parking orbits of non-home planets. Homeworld encounter branches retain their source budgets; the route planner compares the supplied map and model edges without assuming free flybys.'
+  const note = 'Complete analytic direct transfers connect the reviewed circular and high elliptical reference orbits of non-home planets. High-orbit arrivals can continue along existing moon branches without an unnecessary low-orbit capture and re-raise. Homeworld encounter branches retain their source budgets; the route planner compares the supplied map and model edges without assuming free flybys.'
   if (!result.assumptions.includes(note)) result.assumptions.push(note)
   return result
 }

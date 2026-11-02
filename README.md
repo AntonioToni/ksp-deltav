@@ -16,8 +16,9 @@ return-only budgets, and add a reserve for your mission.
 - **Config-based OPM estimates** using official 2.2.12 constants, explicit parking
   orbits, and analytic transfer, capture, and vacuum surface budgets.
 - **Direct transfers between non-home planets in Stock and OPM**, with complete
-  low-orbit departure and capture estimates. Extra connections appear when they
-  belong to the selected route, including its animated direction of travel.
+  departure and capture estimates for low circular and supported high elliptical
+  orbits. Moon journeys can join their parent's high-orbit branch without an
+  unnecessary low-orbit capture. Extra connections appear when selected.
 - **Stock + Kcalbeloh and OPM + Kcalbeloh configurations**, with official map
   budgets, regional views, wormholes on/off, and explicit allowances for
   unpriced links.
@@ -74,9 +75,10 @@ only starts at the selected destination state without including an outbound
 flight or its arrival conditions. The reserve applies once to the full budget.
 
 Stock and OPM automatically consider direct transfers between non-home planets'
-low orbits. For example, **Duna low orbit → Dres low orbit** is an analytic
-**1,532 m/s** estimate. Open **Budget assumptions** to distinguish these modeled
-transfers from the published map figures used elsewhere in the mission.
+low or supported high elliptical orbits. For example, **Duna low orbit → Dres
+low orbit** is an analytic **1,532 m/s** estimate. **Duna low orbit → Gilly low
+orbit** can use Eve's high orbit, avoiding a Kerbin layover. Open **Budget
+assumptions** to distinguish modeled transfers from published map figures.
 
 **Swap** reverses both the endpoints and the stop order. Changing systems keeps
 states available in the new pack and removes unsupported stops. **Clear** removes
@@ -138,19 +140,23 @@ remain author-supplied even when their source metadata names a map or model.
 
 These are schematic planning estimates within the supplied maneuver graph,
 rather than simulated trajectories. Stock/OPM retain their Kerbin-centered
-reference branches and add modeled direct low-orbit links between other planets.
-Encounter and high-ellipse references can still require parking-orbit layovers.
+reference branches and add modeled direct bound-orbit links between other planets.
+The direct links reach low circular and supported high elliptical orbits used by
+moon branches. Original encounter references can still require parking-orbit layovers.
 RSS interplanetary branches remain Earth-centered, with an Earth parking-orbit
 layover between other planetary systems. Kcalbeloh adds complete reference-pair
 transfers; custom pack estimates depend on their supplied data.
 Flight dates, plane-change optimization, gravity assists, and vehicle performance
 are not modeled.
 
-**Direct transfers use circular, coplanar reference orbits.** Each complete pair
-includes a powered departure and arrival capture, rounded separately before
-adding them. Eccentricity, inclination, and dated encounter geometry are omitted.
-The same nominal pair reverses its two components for the return. These figures
-are analytic estimates, rather than new published map budgets.
+**Direct transfers use circular, coplanar planetary orbits.** Spacecraft endpoints
+can be low circular or supported high elliptical reference orbits. Stock high-orbit
+energy is inferred from the map's rounded circularization increment; OPM high
+orbits use their explicit reference geometry. Each pair includes powered departure
+and arrival capture, rounded separately. Planetary eccentricity, inclination, and
+dated encounter geometry are omitted. The same nominal pair reverses its two
+components for the return. These are analytic estimates, rather than new
+published map budgets.
 
 **Atmospheric choices are estimates, not entry simulations.** Ideal capture
 uses a zero-powered-burn lower bound for separate capture and circularization

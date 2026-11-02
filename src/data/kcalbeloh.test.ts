@@ -26,11 +26,11 @@ describe('the two Kcalbeloh add-on configurations', () => {
     expect(opmKcalbelohPack.bodies).toHaveLength(65)
     expect(stockKcalbelohPack.nodes).toHaveLength(97)
     expect(opmKcalbelohPack.nodes).toHaveLength(143)
-    expect(stockKcalbelohPack.maneuvers).toHaveLength(234)
-    expect(opmKcalbelohPack.maneuvers).toHaveLength(368)
+    expect(stockKcalbelohPack.maneuvers).toHaveLength(270)
+    expect(opmKcalbelohPack.maneuvers).toHaveLength(522)
     for (const pack of kcalbelohPacks) {
       expect(validatePlanetPack(pack), pack.id).toEqual([])
-      expect(pack.version).toBe('1.1.8-map.2')
+      expect(pack.version).toBe('1.1.8-map.3')
       expect(pack.shortName!.length).toBeLessThanOrEqual(12)
       expect(pack.unpricedConnections).toHaveLength(10)
     }

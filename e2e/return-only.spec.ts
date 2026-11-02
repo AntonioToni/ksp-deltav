@@ -11,9 +11,9 @@ const highlightedEdges = (page: Page) => page.locator('[data-route-edge="true"]'
 const packButton = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 
 const missions = [
-  { pack: 'Stock', home: 'stock:kerbin:surface', target: 'stock:mun:surface', homeName: 'Kerbin surface', targetName: 'Mun surface', base: '5,120', reserve: '1,024', total: '6,144' },
-  { pack: 'OPM', home: 'stock:kerbin:surface', target: 'opm:tekto:surface', homeName: 'Kerbin surface', targetName: 'Tekto surface', base: '11,927', reserve: '2,386', total: '14,313' },
-  { pack: 'RSS', home: 'rss:earth:surface', target: 'rss:moon:surface', homeName: 'Earth surface', targetName: 'Moon surface', base: '14,660', reserve: '2,932', total: '17,592' },
+  { pack: 'Stock', home: 'stock:kerbin:surface', target: 'stock:mun:surface', homeName: 'Kerbin surface', targetName: 'Mun surface', base: '5,120', returnBase: '5,120', reserve: '1,024', total: '6,144' },
+  { pack: 'OPM', home: 'stock:kerbin:surface', target: 'opm:tekto:surface', homeName: 'Kerbin surface', targetName: 'Tekto surface', base: '11,927', returnBase: '11,546', reserve: '2,310', total: '13,856' },
+  { pack: 'RSS', home: 'rss:earth:surface', target: 'rss:moon:surface', homeName: 'Earth surface', targetName: 'Moon surface', base: '14,660', returnBase: '14,660', reserve: '2,932', total: '17,592' },
 ] as const
 
 let browserErrors: string[]
@@ -151,17 +151,31 @@ for (const mission of missions) {
     await expect(origin(page)).toContainText(mission.homeName)
     await expect(destination(page)).toContainText(mission.targetName)
     await expect(detailsToggle(page)).not.toBeChecked()
-    await expect(page.getByTestId('route-total')).toHaveText(`${mission.base} m/s`)
+    await expect(page.getByTestId('route-total')).toHaveText(`${mission.returnBase} m/s`)
     const returnEdges = await edgeIds(page)
     expect(returnEdges).not.toEqual(outboundEdges)
-    expect(returnEdges).toEqual(outboundEdges.map(id => {
-      if (id === null) throw new Error('A highlighted maneuver is missing its directed ID')
-      const [from, to] = id.split('->')
-      return `${to}->${from}`
-    }).sort())
+    if (mission.pack === 'OPM') {
+      // The independently budgeted return uses a powered Sarnus → Jool high arrival.
+      expect(returnEdges).toEqual([
+        'opm:tekto:surface->opm:tekto:orbit',
+        'opm:tekto:orbit->opm:tekto:encounter',
+        'opm:tekto:encounter->opm:sarnus:orbit',
+        'direct:opm:sarnus:orbit->stock:jool:elliptical',
+        'stock:jool:elliptical->stock:jool:encounter',
+        'stock:jool:encounter->stock:kerbin:encounter',
+        'stock:kerbin:encounter->stock:kerbin:orbit',
+        'stock:kerbin:orbit->stock:kerbin:surface',
+      ].sort())
+    } else {
+      expect(returnEdges).toEqual(outboundEdges.map(id => {
+        if (id === null) throw new Error('A highlighted maneuver is missing its directed ID')
+        const [from, to] = id.split('->')
+        return `${to}->${from}`
+      }).sort())
+    }
 
     await addTwentyPercentReserve(page)
-    await expect(page.getByTestId('route-base')).toHaveText(`${mission.base} m/s`)
+    await expect(page.getByTestId('route-base')).toHaveText(`${mission.returnBase} m/s`)
     await expect(page.getByTestId('route-margin')).toHaveText(`+${mission.reserve} m/s`)
     await expect(page.getByTestId('route-total')).toHaveText(`${mission.total} m/s`)
     expect(await edgeIds(page)).toEqual(returnEdges)

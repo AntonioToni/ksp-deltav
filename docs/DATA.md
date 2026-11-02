@@ -18,11 +18,13 @@ constants with the analytic direct-transfer model documented below.
 The pack describes all 17 stock bodies: Kerbol, seven planets, and nine moons.
 There are no Kerbol route states and no Jool surface state. Every other body has
 surface, low orbit, and encounter states; Eve, Duna, and Jool additionally have a
-high elliptical orbit reaching the sphere-of-influence boundary.
+high elliptical reference orbit. Its
+modeled energy uses the map's rounded circularization increment, as described
+under [direct transfers](#high-elliptical-endpoints).
 
-The pack retains all **98 source-map maneuvers** and adds **30 modeled direct
-transfers**, for **128 directed maneuvers** over the same 50 selectable states.
-Pack version `1.7.3-map.2` identifies this extension; the source map remains the
+The pack retains all **98 source-map maneuvers** and adds **66 modeled direct
+transfers**, for **164 directed maneuvers** over the same 50 selectable states.
+Pack version `1.7.3-map.3` identifies this extension; the source map remains the
 pinned KSP 1.7.3 reference.
 
 All maneuver budgets use **m/s**. Low-orbit altitudes use **km above the body**,
@@ -53,12 +55,15 @@ orbit and an elliptical orbit are different states.
   atmospheric choices can replace eligible costs as described below;
   vehicle-dependent descent modeling is outside the supplied model.
 - The published interplanetary branches connect to/from Kerbin. Additional
-  [direct low-orbit pairs](#direct-interplanetary-transfers) connect the other
-  planets using a separate analytic model. A route using the original encounter
-  branches can still include a Kerbin parking-orbit layover. The search tracks
+  [direct bound-orbit pairs](#direct-interplanetary-transfers) connect the other
+  planets' low and supported high orbits using a separate analytic model. A route
+  using the original encounter branches can still include a Kerbin parking-orbit
+  layover. The search tracks
   whether a low-orbit reset at the arrival planet is required before another
-  transfer; it does not chain incompatible encounter energies into a free flyby.
-  High elliptical orbit does not count as a parking-orbit reset.
+  interplanetary departure, including a direct pair; it does not chain
+  incompatible encounter energies into a free flyby.
+  A high elliptical state does not grant a free encounter reset. Complete direct
+  pairs instead charge the departure and capture needed for their stated orbits.
 - Add a mission margin. A shortest path is the lowest estimate in this dataset,
   not a universal minimum over all possible KSP trajectories.
 
@@ -214,30 +219,40 @@ and excluding reserves and plane changes:
 | Tylo | 9,210 |
 | Bop | 6,830 |
 | Pol | 6,590 |
-| Eeloo | 7,480 |
+| Eeloo | 7,421 |
 
 Some printed body totals in the source map differ from the sum of their revised
-segments. The planner always sums the individually transcribed segment values;
-it does not add a second table of competing totals. Historical map revisions
-also differ (for example, the old Mun capture figure was 310 m/s; this pinned
-source uses 280 m/s).
+segments. The planner sums selected directed maneuver costs rather than
+substituting printed body totals. Original source-segment values remain intact.
+Historical map revisions also differ (for example, the old Mun capture figure
+was 310 m/s; this pinned source uses 280 m/s).
+
+The Eeloo figure includes modeled transfers through Duna low orbit and Jool high
+orbit. The unchanged original source branch sums to **7,480 m/s**. The optimizer
+can select a lower estimate using paid intermediate reference orbits, so retaining
+source segments does not guarantee that every complete mission keeps its old
+total. The [validation record](VALIDATION.md#high-orbit-moon-route-correction)
+summarizes these changes.
 
 ## Direct interplanetary transfers
 
-Stock and OPM automatically consider complete low-parking-orbit transfers
-between their non-home planets. Stock has **30 directed edges** among Moho, Eve,
-Duna, Dres, Jool, and Eeloo: 15 reversible planet pairs. OPM has **72 directed
-edges**: Eeloo becomes a Sarnus moon and leaves that list, while Sarnus, Urlum,
-Neidon, and Plock join it, giving 36 reversible pairs. Kerbin retains its original
-reference branches. No new route states are added.
+Stock and OPM automatically consider complete transfers between their non-home
+planets' low circular and supported high elliptical orbits. Stock has **66
+directed edges** among Moho, Eve, Duna, Dres, Jool, and Eeloo, including the high
+states at Eve, Duna, and Jool. OPM has **226 directed edges**: Eeloo becomes a
+Sarnus moon and leaves that list, while Sarnus, Urlum, Neidon, and Plock join it
+with their own high states. Kerbin retains its original reference branches.
+No new route states are added.
 
 Each pair is a `transfer` edge marked `directTransfer: true`. Its price includes
-both departure from the first planet's circular parking orbit and powered
-capture into the second planet's circular parking orbit. The solver charges
+both departure from the first planet's stated bound orbit and powered capture
+into the second planet's stated bound orbit. The solver charges
 that complete edge once, including when it belongs to a multi-stop or return
-journey. A route can use several pairs, with each intermediate parking arrival
-and departure charged. An encounter or high ellipse is not substituted for the
-required low-orbit endpoint.
+journey. A route can use several pairs, with each intermediate arrival and
+departure charged. Endpoint kinds are explicit: a high-orbit arrival does not
+silently include low-orbit circularization, and an encounter is not a substitute
+for either bound state. Moon journeys can follow the existing branch from a
+parent's high orbit without an unnecessary low capture and re-raise.
 
 These records use source ID **`direct-interplanetary-model`**, classified as
 **Analytic model** in Budget assumptions. They are computed planning estimates,
@@ -272,6 +287,52 @@ added. The nominal reverse pair swaps those components and has the same total;
 it does not solve a dated return trajectory. Reserves apply afterward to the
 complete mission as usual.
 
+### High elliptical endpoints
+
+The stellar Hohmann calculation still supplies each planet's arrival/departure
+excess speed. At a spacecraft orbit's periapsis radius `rp`, the complete endpoint
+burn is instead:
+
+```text
+vHyperbolic = sqrt(vInfinity² + 2mu / rp)
+endpointBurn = vHyperbolic - vReferenceAtPeriapsis
+```
+
+For a low circular endpoint, `vReferenceAtPeriapsis = sqrt(mu / rp)`, reproducing
+the formula above. For a high elliptical endpoint, its bound periapsis speed is
+higher, so establishing that high state avoids the low circularization burn.
+
+Stock infers the reference speed from the map's same-body low-to-high increment:
+`vReferenceAtPeriapsis = sqrt(mu / rp) + circularizationIncrement`. The increments
+are **1,300 m/s at Eve**, **360 at Duna**, and **2,780 at Jool**. This calibrates
+the high-state energy to rounded map figures; it does not claim precise orbital
+elements from the source map. The implied ellipse must be bound, with apoapsis
+above periapsis and inside the nominal SOI. Approximate implied apoapsis radii
+are **75.23 Mm**, **26.68 Mm**, and **2,127.74 Mm** respectively.
+
+OPM's Sarnus, Urlum, Neidon, and Plock high states already have explicit geometry:
+periapsis at the selected low-orbit radius and apoapsis at **0.5 × SOI**. Their
+reference speed follows vis-viva from that geometry. The endpoint burn is
+calculated before rounding; subtracting two already-rounded segment costs would
+introduce a possible 1 m/s error. Both endpoints still round upward separately.
+
+For **Duna low orbit → Gilly low orbit**, the direct approach is **Duna low orbit
+→ Eve high elliptical orbit → Gilly encounter → Gilly low orbit**. The estimate
+is **1,428 + 60 + 410 = 1,898 m/s**. The first complete pair includes Duna
+departure and Eve high-orbit capture; it does not include Eve low circularization.
+The previous low-only extension offered a **3,280 m/s** Kerbin layover or a
+**4,498 m/s** journey that captured low at Eve and then raised back to high orbit.
+
+Original encounter-to-encounter arrivals still carry their pending low-orbit
+requirement. That context survives a high-orbit visit, moon branch, stop, or
+turnaround and prevents another interplanetary departure until the arrival
+planet's low orbit is reached. A new direct pair cannot erase it. In contrast,
+a complete modeled pair establishes its stated bound destination orbit, so its
+high-state arrival can use the local moon branch or another fully priced direct
+pair. These are distinct reference assumptions, not a solved trajectory history.
+
+### Worked examples
+
 | Parking-orbit pair | Rounded departure (m/s) | Rounded capture (m/s) | Complete pair (m/s) |
 | --- | ---: | ---: | ---: |
 | Duna 60 km → Dres 12 km | 810 | 722 | 1,532 |
@@ -285,7 +346,9 @@ surface-to-surface route before reserve.
 
 ### Scope and assumptions
 
-This is a nominal circular, coplanar model. It omits eccentricity, inclination,
+This is a nominal circular, coplanar model of the planets' stellar orbits;
+spacecraft reference endpoints can be low circular or high elliptical. It omits
+planetary eccentricity, inclination,
 orbital-plane orientation, departure dates, transfer-window optimization,
 flight duration, gravity assists, finite-thrust losses, and vehicle performance.
 The result is not a verified flight cost or a universal physical lower bound.
@@ -298,9 +361,9 @@ and descents. A direct pair retains its full departure and powered-capture
 estimate, even if a braking marker indicates an opportunity at arrival.
 A separate destination landing allowance can still change an eligible descent.
 Selected atmospheric choices can also make another complete route cheaper,
-including one through an intermediate planet's low parking orbit. Preserving
-the default homeworld benchmarks does not imply identical mission totals after
-those choices are enabled.
+including one through an intermediate planet's low parking orbit. Whole-mission
+totals reflect the available reference links and the selected assumptions;
+unchanged map segments do not imply unchanged optimized totals.
 
 For example, enabling **Ideal capture at Duna** changes Kerbin surface → Dres
 low orbit from **6,260** to **6,012 m/s**. That route pays **4,480 m/s** to reach
@@ -309,9 +372,10 @@ Duna's low orbit under the selected capture assumption, then the unchanged
 **6,442 m/s** to its surface. The intermediate low-orbit visit remains part of
 the route; it is not a free flyby.
 
-Kcalbeloh compositions inherit the selected base system's direct links. These
-do not add Kerbol–Kcalbeloh interstellar trajectories, new wormhole budgets,
-direct moon transfers, or new Kcalbeloh reference pairs.
+Kcalbeloh compositions inherit the selected base system's direct links. Moons
+use their parent's existing reference branches; this is not a direct
+moon-to-moon flyby solver. The added links do not supply Kerbol–Kcalbeloh
+interstellar trajectories, new wormhole budgets, or new Kcalbeloh reference pairs.
 
 RSS retains its Earth-centered source graph. Some historical low-orbit
 references, including Saturn, Uranus, Neptune, and Pluto, are incompatible with
@@ -322,7 +386,7 @@ coverage there requires compatible orbit references first.
 ## Outer Planets Mod pack
 
 `src/data/opm.ts` provides the selectable **OPM** pack: 32 bodies, 96 selectable
-states, and 262 directed maneuvers, including 72 direct planet-pair estimates.
+states, and 416 directed maneuvers, including 226 direct planet-pair estimates.
 Shared Stock IDs are retained, Eeloo becomes
 a Sarnus moon, Tal orbits Wal, and Karen orbits Plock. Jool, Sarnus, Urlum, and
 Neidon have no surface states. Original Stock map costs and the RSS pack are
@@ -334,7 +398,7 @@ figures. **Tekto and Thatmo atmospheric ascent/landing allowances remain
 historical**, with their own source and limitations. The visible **Analytic
 estimates** notice opens the assumptions and sources.
 
-Pack version `2.2.12-analytic.2` identifies this model revision. Derived OPM
+Pack version `2.2.12-analytic.3` identifies this model revision. Derived OPM
 maneuvers use source tag `opm-analytic-2.2.12`; only the four retained atmospheric
 surface edges use `kowgan-opm-1.8.1`. Complete direct pairs use the separate
 `direct-interplanetary-model` source described above.
@@ -523,10 +587,11 @@ It does not simulate optional SigmaBinary behavior or other compatibility
 patches. A mission reserve cannot supply those missing dynamics.
 
 The original encounter branches remain centered on Kerbin. The additional
-coplanar direct pairs connect non-home planets at their low-orbit states.
-Arrivals from another planetary system still require a low-parking-orbit reset
-before another supplied departure; an encounter or high ellipse cannot erase
-arrival conditions.
+coplanar direct pairs connect non-home planets at their low and supported high
+states, with complete powered departure and capture costs. Original
+encounter-to-encounter branches still require a low-parking-orbit reset before
+another interplanetary departure, including a direct pair. An encounter or high
+ellipse cannot erase those arrival conditions for free.
 
 Tests audit the following Kerbin-surface one-way sums before reserves and with
 atmospheric assistance disabled. Tekto and Thatmo totals include their retained
@@ -568,10 +633,10 @@ pack.
 
 | Configuration | Wormholes | Cataloged bodies/contexts | Selectable states | Priced directed maneuvers | Unpriced links |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Stock + Kcalbeloh | On | 50 | 97 | 234 | 10 |
-| OPM + Kcalbeloh | On | 65 | 143 | 368 | 10 |
-| Stock + Kcalbeloh (wormholes off) | Off | 48 | 97 | 234 | 9 |
-| OPM + Kcalbeloh (wormholes off) | Off | 63 | 143 | 368 | 9 |
+| Stock + Kcalbeloh | On | 50 | 97 | 270 | 10 |
+| OPM + Kcalbeloh | On | 65 | 143 | 522 | 10 |
+| Stock + Kcalbeloh (wormholes off) | Off | 48 | 97 | 270 | 9 |
+| OPM + Kcalbeloh (wormholes off) | Off | 63 | 143 | 522 | 9 |
 
 With wormholes on, each adds **33 contexts**: the 30 physical mod bodies, the
 invisible SimeSystem barycenter, and two wormholes. With wormholes off, only
@@ -579,7 +644,7 @@ the two portal bodies and their unpriced connector are omitted. All four
 configurations add the same **47 states** and **106 priced directed maneuvers**.
 Shared base IDs and costs are preserved; the composer clones records instead of
 changing Stock or OPM. The base pack's direct-transfer estimates are inherited
-alongside its reference branches. All use pack version `1.1.8-map.2`.
+alongside its reference branches. All use pack version `1.1.8-map.3`.
 
 ### Sources, attribution, and supported settings
 

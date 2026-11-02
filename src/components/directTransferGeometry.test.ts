@@ -58,8 +58,9 @@ describe.each([stockPack, opmPack])('$name selected direct paths', pack => {
   const stars = new Set(pack.bodies.filter(body => body.kind === 'star').map(body => body.id))
   const planets = pack.bodies.filter(body => body.kind === 'planet' && body.id !== pack.transferHubBodyId
     && body.parentId !== null && stars.has(body.parentId))
-  const pairs = planets.flatMap((from, index) => planets.slice(index + 1).map(to =>
-    directEdge(pack, `${from.id}:orbit`, `${to.id}:orbit`)))
+  const endpoints = planets.flatMap(body => pack.nodes.filter(node => node.bodyId === body.id && (node.kind === 'orbit' || node.kind === 'elliptical')))
+  const pairs = endpoints.flatMap((from, index) => endpoints.slice(index + 1).filter(to => to.bodyId !== from.bodyId).map(to =>
+    directEdge(pack, from.id, to.id)))
 
   it.each<MapMode>(['wide', 'portrait', 'short'])('keeps every non-home pair clear of states and labels in %s mode', mode => {
     const layout = createMapLayout(pack, mode)
@@ -79,6 +80,8 @@ it.each([stockKcalbelohPack, opmKcalbelohPack])('uses the same safe direct geome
   const layout = createMapLayout(pack)
   expect(layout.presentation).toBe('overview')
   assertClear(pack, layout, directEdge(pack, 'stock:duna:orbit', 'stock:dres:orbit'))
+  assertClear(pack, layout, directEdge(pack, 'stock:duna:orbit', 'stock:eve:elliptical'))
+  assertClear(pack, layout, directEdge(pack, 'stock:duna:elliptical', 'stock:eve:elliptical'))
   const from = pack.id.startsWith('opm') ? 'opm:sarnus:orbit' : 'stock:eve:orbit'
   const to = pack.id.startsWith('opm') ? 'opm:urlum:orbit' : 'stock:jool:orbit'
   assertClear(pack, layout, directEdge(pack, from, to))

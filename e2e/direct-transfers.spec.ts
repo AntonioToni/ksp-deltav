@@ -118,6 +118,57 @@ test('shows only a chosen direct transfer and identifies its analytic source', a
   await expect(rows(page).first()).toContainText('1,532 m/s')
 })
 
+for (const pack of ['Stock', 'OPM']) {
+  test(`routes Duna to Gilly through Eve high orbit without a Kerbin layover in ${pack}`, async ({ page }) => {
+    await button(page, pack).click()
+    await plan(page, 'stock:duna:orbit', 'stock:gilly:orbit')
+    // Complete Duna departure + Eve high capture, then the two published moon segments.
+    await expect(total(page)).toHaveText('1,898 m/s')
+    await expect(selected(page)).toHaveCount(3)
+    await expect(direct(page)).toHaveAttribute('data-edge-id', 'direct:stock:duna:orbit->stock:eve:elliptical')
+    await expect(page.locator('[data-route-edge][data-edge-id*="stock:kerbin:"]')).toHaveCount(0)
+    await expect(page.getByTestId('route-status')).not.toContainText('Kerbin parking-orbit layover')
+    const outward = await expectDirection(page, 'stock:duna:orbit', 'stock:gilly:orbit')
+    const { points } = await geometry(page, ['stock:eve:elliptical'])
+    expect(outward.vertices.some(point => Math.hypot(point.x - points['stock:eve:elliptical'].x, point.y - points['stock:eve:elliptical'].y) < .01)).toBe(true)
+    await page.getByLabel('Show breakdown', { exact: true }).check()
+    await expect(rows(page)).toHaveCount(3)
+    await expect(rows(page)).toContainText(['Eve elliptical orbit', 'Gilly encounter', 'Gilly low orbit'])
+    await expect(rows(page).first()).toContainText('1,428 m/s')
+    await expect(rows(page).first()).toHaveAttribute('data-budget-basis', 'model')
+
+    await missionModeButton(page, 'return-only').click()
+    await expect(total(page)).toHaveText('1,898 m/s')
+    await expectDirection(page, 'stock:gilly:orbit', 'stock:duna:orbit')
+    await missionModeButton(page, 'round-trip').click()
+    await expect(total(page)).toHaveText('3,796 m/s')
+    await expectDirection(page, 'stock:duna:orbit', 'stock:duna:orbit')
+    await pageFits(page)
+  })
+}
+
+test('keeps moon-to-moon transfers and their ordered high-orbit stop in every mission mode', async ({ page }) => {
+  await plan(page, 'stock:ike:orbit', 'stock:gilly:orbit')
+  await expect(total(page)).toHaveText('1,718 m/s')
+  await addStop(page, 'Eve elliptical orbit')
+  await expect(total(page)).toHaveText('1,718 m/s')
+  await expect(node(page, 'stock:eve:elliptical')).toHaveAttribute('data-waypoint-indexes', '1')
+  await expect(direct(page)).toHaveAttribute('data-edge-id', 'direct:stock:duna:elliptical->stock:eve:elliptical')
+  await expect(page.locator('[data-route-edge][data-edge-id*="stock:kerbin:"]')).toHaveCount(0)
+  await expectDirection(page, 'stock:ike:orbit', 'stock:gilly:orbit')
+  await page.getByLabel('Show breakdown', { exact: true }).check()
+  await expect(page.getByTestId('stage-total')).toHaveText('1,248 m/s')
+  await button(page, 'Next stage').click()
+  await expect(page.getByTestId('stage-total')).toHaveText('470 m/s')
+  await missionModeButton(page, 'round-trip').click()
+  await expect(total(page)).toHaveText('3,436 m/s')
+  await expectDirection(page, 'stock:ike:orbit', 'stock:ike:orbit')
+  await missionModeButton(page, 'return-only').click()
+  await expect(total(page)).toHaveText('1,718 m/s')
+  await expectDirection(page, 'stock:gilly:orbit', 'stock:ike:orbit')
+  await pageFits(page)
+})
+
 test('reverses the same band for return-only and budgets a round trip and reserve once', async ({ page }) => {
   await plan(page, 'stock:duna:orbit', 'stock:dres:orbit')
   const outward = await direct(page).evaluate(element => {
@@ -193,7 +244,7 @@ test('keeps an ordered direct multi-stop route and its animation through the cho
   await expectDirection(page, 'stock:duna:orbit', 'stock:duna:orbit')
 })
 
-test('marks possible arrival braking without discounting a bundled direct pair', async ({ page }) => {
+test('retains bundled high-orbit capture while applying ideal local circularization', async ({ page }) => {
   await plan(page, 'stock:eve:orbit', 'stock:duna:orbit')
   await expect(total(page)).toHaveText('2,728 m/s')
   const marker = page.locator('[data-aerobraking-edge][data-from="stock:eve:orbit"][data-to="stock:duna:orbit"]')
@@ -202,16 +253,20 @@ test('marks possible arrival braking without discounting a bundled direct pair',
   await button(page, 'Atmospheric assistance').click()
   await atmosphere(page).getByRole('checkbox', { name: 'Ideal capture at Duna', exact: true }).check()
   await atmosphere(page).getByRole('button', { name: 'Apply', exact: true }).click()
-  await expect(total(page)).toHaveText('2,728 m/s')
+  // The optimizer can choose the cheaper high arrival plus standalone ideal
+  // circularization; the complete 2,368 m/s high-arrival pair stays intact.
+  await expect(total(page)).toHaveText('2,368 m/s')
   await expect(direct(page)).toHaveCount(1)
+  await expect(direct(page)).toHaveAttribute('data-edge-id', 'direct:stock:eve:orbit->stock:duna:elliptical')
+  await expect(page.locator('[data-route-edge="true"][data-edge-id="stock:duna:elliptical->stock:duna:orbit"]')).toHaveAttribute('data-assisted', 'true')
   await button(page, 'Choose destination').click()
   await node(page, 'stock:duna:surface').click()
-  await expect(total(page)).toHaveText('4,178 m/s')
+  await expect(total(page)).toHaveText('3,818 m/s')
   await button(page, 'Atmospheric assistance').click()
   await atmosphere(page).getByRole('checkbox', { name: 'Atmospheric landing at Duna', exact: true }).check()
   await atmosphere(page).getByRole('spinbutton', { name: 'Landing allowance at Duna', exact: true }).fill('100')
   await atmosphere(page).getByRole('button', { name: 'Apply', exact: true }).click()
-  await expect(total(page)).toHaveText('2,828 m/s')
+  await expect(total(page)).toHaveText('2,468 m/s')
   await expect(direct(page)).toHaveCount(1)
 })
 
@@ -247,6 +302,22 @@ test('inherits selected direct links in both Kcalbeloh compositions and the all-
   }
 })
 
+test('inherits moon approaches through high reference orbits in both Kcalbeloh overviews', async ({ page }) => {
+  await button(page, 'Custom planet packs').click()
+  const manager = page.getByRole('dialog', { name: 'Planet packs', exact: true })
+  await manager.getByRole('tab', { name: 'Add-ons', exact: true }).click()
+  await manager.getByRole('button', { name: 'Use Stock + Kcalbeloh', exact: true }).click()
+  await plan(page, 'stock:duna:orbit', 'stock:gilly:orbit')
+  for (const baseName of ['Stock', 'OPM']) {
+    if (baseName === 'OPM') await button(page, 'OPM').click()
+    await view(page, 'All systems')
+    await expect(total(page)).toHaveText('1,898 m/s')
+    await expect(direct(page)).toHaveAttribute('data-edge-id', 'direct:stock:duna:orbit->stock:eve:elliptical')
+    await expectDirection(page, 'stock:duna:orbit', 'stock:gilly:orbit')
+    await pageFits(page)
+  }
+})
+
 test('keeps direct paths and their moving highlight within narrow and desktop map layouts', async ({ page }) => {
   for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(viewport)
@@ -271,5 +342,12 @@ test('keeps direct paths and their moving highlight within narrow and desktop ma
     await expect(flow(page)).toBeHidden()
     await expect(direct(page)).toBeVisible()
     await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await reset(page)
+    await plan(page, 'stock:duna:orbit', 'stock:gilly:orbit')
+    await expect(total(page)).toHaveText('1,898 m/s')
+    await expectDirection(page, 'stock:duna:orbit', 'stock:gilly:orbit')
+    await page.getByLabel('Show breakdown', { exact: true }).check()
+    await expect(rows(page)).toHaveCount(3)
+    await pageFits(page)
   }
 })

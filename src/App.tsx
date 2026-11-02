@@ -159,7 +159,7 @@ export default function App() {
     ...(directTransferCount > 0 ? [
       isCustomPack
         ? 'Direct transfers use complete pair budgets supplied by the pack author. Atmospheric options keep these bundled transfer budgets unchanged.'
-        : 'Direct transfers are analytic estimates between circular parking orbits in a common plane. They include departure and powered arrival; atmospheric options keep these bundled transfer budgets unchanged.',
+        : 'Direct transfers are analytic estimates using coplanar circular stellar orbits and the selected low or high reference orbits. They include departure and powered arrival; atmospheric options keep these bundled transfer budgets unchanged.',
     ] : []),
     'Stops retain arrival conditions. Return only starts at the destination; the reserve applies once to the complete selected mission.',
   ]

@@ -26,7 +26,9 @@ export function getAerobrakingEdges(pack: PlanetPack): ManeuverEdge[] {
 
     // A complete direct pair includes a powered arrival burn. The marker is
     // informational; assistance only replaces standalone local maneuvers.
-    if (edge.directTransfer && edge.kind === 'transfer' && from.kind === 'orbit' && to.kind === 'orbit') return true
+    if (edge.directTransfer && edge.kind === 'transfer'
+      && (from.kind === 'orbit' || from.kind === 'elliptical')
+      && (to.kind === 'orbit' || to.kind === 'elliptical')) return true
 
     // A moon return to its parent's low orbit includes the arrival maneuver.
     // Returns to a high elliptical reference orbit are not marked as entry.

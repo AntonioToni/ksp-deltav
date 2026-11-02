@@ -164,8 +164,8 @@ export const opmPack: PlanetPack = withDirectTransfers({
   name: 'Outer Planets Mod',
   shortName: 'OPM',
   dataNotice: 'Analytic estimates',
-  version: '2.2.12-analytic.2',
-  description: 'Stock plus Outer Planets Mod 2.2.12: config-based analytical orbital and vacuum estimates, direct coplanar transfers between non-home planets, and explicitly retained historical atmospheric surface allowances for Tekto and Thatmo.',
+  version: '2.2.12-analytic.3',
+  description: 'Stock plus Outer Planets Mod 2.2.12: config-based analytical orbital and vacuum estimates, direct coplanar transfers between circular and high elliptical states of non-home planets, and explicitly retained historical atmospheric surface allowances for Tekto and Thatmo.',
   transferHubBodyId: 'stock:kerbin',
   sources: [
     ...stockPack.sources.map(source => ({ ...source })),
@@ -202,4 +202,6 @@ export const opmPack: PlanetPack = withDirectTransfers({
   bodies,
   nodes,
   maneuvers,
-}, [...stockPhysicalReferences, ...opmReferences], opmCentralMu)
+}, [...stockPhysicalReferences, ...opmReferences.map(reference => ({
+  ...reference, ellipticalApoapsisRadiusM: reference.sphereOfInfluenceM / 2,
+}))], opmCentralMu)

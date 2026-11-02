@@ -97,6 +97,10 @@ describe('custom planet pack JSON', () => {
 
   it('keeps legacy maneuver data without direct-transfer metadata unchanged', () => {
     const legacy = pack()
+    // Earlier exports could contain ordinary complete low-orbit pairs, but
+    // high-state pairs require the new explicit complete-transfer metadata.
+    legacy.maneuvers = legacy.maneuvers.filter(edge => !edge.directTransfer ||
+      [edge.from, edge.to].every(id => legacy.nodes.find(node => node.id === id)?.kind === 'orbit'))
     for (const edge of legacy.maneuvers) delete edge.directTransfer
     expect(parse(legacy)).toEqual({ status: 'success', pack: legacy })
   })
@@ -111,13 +115,39 @@ describe('custom planet pack JSON', () => {
   it.each([
     { kind: 'ascent' }, { kind: 'wormhole' },
     { from: 'stock:duna:surface' }, { to: 'stock:dres:encounter' },
-    { to: 'stock:duna:orbit' }, { from: 'custom:stellar-reference' },
+    { to: 'stock:duna:orbit' }, { to: 'stock:duna:elliptical' }, { from: 'custom:stellar-reference' },
     { from: 'unknown:state' },
-  ])('requires a complete low-orbit transfer for direct-transfer metadata: %j', changes => {
+  ])('requires complete bound-orbit endpoints on different bodies for direct-transfer metadata: %j', changes => {
     const { custom, edge } = directPack()
     custom.nodes.push({ id: 'custom:stellar-reference', bodyId: 'stock:kerbol', kind: 'reference', label: 'Stellar reference' })
     const malformed = { ...custom, maneuvers: custom.maneuvers.map(item => item.id === edge.id ? { ...item, ...changes } : item) }
-    expect(errors(malformed).join(' ')).toContain('directTransfer requires a transfer between low-orbit states on different bodies')
+    expect(errors(malformed).join(' ')).toContain('directTransfer requires a transfer between low-orbit or high-ellipse states on different bodies')
+  })
+
+  it.each([
+    ['stock:duna:orbit', 'stock:eve:elliptical'],
+    ['stock:eve:elliptical', 'stock:duna:orbit'],
+    ['stock:duna:elliptical', 'stock:eve:elliptical'],
+  ])('imports and stores a complete author-supplied transfer from %s to %s', (from, to) => {
+    const { custom, edge } = directPack()
+    Object.assign(edge, { from, to })
+    const imported = parse(custom)
+    expect(imported).toEqual({ status: 'success', pack: custom })
+    if (imported.status !== 'success') throw new Error(imported.errors.join('\n'))
+    const store = storage()
+    expect(saveCustomPacks(store, [imported.pack])).toBeNull()
+    const restored = readCustomPacks(store).packs[0]!
+    const restoredEdge = restored.maneuvers.find(item => item.id === edge.id)!
+    expect(restoredEdge).toEqual(edge)
+    expect(parse(restored)).toEqual(imported)
+    expect(describeManeuverBasis(restoredEdge, restored, { customPack: true })).toMatchObject({ kind: 'imported' })
+  })
+
+  it('does not infer complete high-orbit transfer semantics from an unmarked edge', () => {
+    const { custom, edge } = directPack()
+    Object.assign(edge, { from: 'stock:duna:elliptical', to: 'stock:eve:elliptical' })
+    delete edge.directTransfer
+    expect(errors(custom).join(' ')).toContain('unsupported transfer transition')
   })
 
   it('does not treat direct-transfer metadata or declared model sources as verification of imported costs', () => {

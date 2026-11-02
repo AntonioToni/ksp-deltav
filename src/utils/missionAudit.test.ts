@@ -27,8 +27,13 @@ function exhaustiveMinimum(nodes: RouteNode[], edges: ManeuverEdge[], itinerary:
       const to = byId.get(edge.to)!
       const arrivesAtAnotherEncounter = edge.kind === 'transfer'
         && from.kind === 'encounter' && to.kind === 'encounter' && from.bodyId !== to.bodyId
-      if (arrivesAtAnotherEncounter && waitingForOrbit !== null) continue
-      const nextContext = arrivesAtAnotherEncounter ? to.bodyId
+      // Independently specified complete pairs end in a paid bound orbit;
+      // ordinary captures and moon visits keep the legacy arrival context.
+      const completeBoundArrival = edge.directTransfer === true && edge.kind === 'transfer'
+        && from.bodyId !== to.bodyId
+        && ['orbit', 'elliptical'].includes(from.kind) && ['orbit', 'elliptical'].includes(to.kind)
+      if (waitingForOrbit !== null && (arrivesAtAnotherEncounter || completeBoundArrival)) continue
+      const nextContext = completeBoundArrival ? null : arrivesAtAnotherEncounter ? to.bodyId
         : to.kind === 'orbit' && to.bodyId === waitingForOrbit ? null : waitingForOrbit
       arcs.push([key(from.id, waitingForOrbit, visit), key(to.id, nextContext, consumeVisits(to.id, visit)), edge.deltaV])
     }
@@ -59,12 +64,14 @@ function auditCases() {
   const random = seededRandom(0x654abc)
   return Array.from({ length: 120 }, (_, trial) => {
     const nodes: RouteNode[] = ['a', 'b', 'c'].flatMap(bodyId =>
-      (['encounter', 'orbit', 'surface'] as const).map(kind => ({ id: `${bodyId}:${kind}`, bodyId, kind, label: `${bodyId} ${kind}` })))
+      (['encounter', 'orbit', 'elliptical', 'surface'] as const).map(kind => ({ id: `${bodyId}:${kind}`, bodyId, kind, label: `${bodyId} ${kind}` })))
     const edges: ManeuverEdge[] = []
     for (const from of nodes) for (const to of nodes) if (from !== to && random(5) === 0) {
       edges.push({
         id: `${from.id}->${to.id}`, from: from.id, to: to.id, kind: 'transfer',
         deltaV: random(21), label: 'Independent audit arc', sourceId: 'fixture', assumptions: [],
+        ...(from.bodyId !== to.bodyId && ['orbit', 'elliptical'].includes(from.kind) && ['orbit', 'elliptical'].includes(to.kind)
+          && random(2) === 0 ? { directTransfer: true } : {}),
       })
     }
     const graph: PlannerGraph = {
@@ -122,6 +129,7 @@ describe('independent mission calculation audit', () => {
     expect(reachable).toBeGreaterThan(0)
     expect(unreachable).toBeGreaterThan(0)
     expect(cases.some(({ edges }) => edges.some(edge => edge.deltaV === 0))).toBe(true)
+    expect(cases.some(({ edges }) => edges.some(edge => edge.directTransfer && (edge.from.endsWith(':elliptical') || edge.to.endsWith(':elliptical'))))).toBe(true)
   })
 
   it('matches exact-rational ceiling arithmetic for fractional budgets and reserve percentages', () => {

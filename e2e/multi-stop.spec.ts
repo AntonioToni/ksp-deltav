@@ -129,8 +129,8 @@ test('visits the Mun before Minmus and budgets each stage and the complete round
 })
 
 for (const mission of [
-  { pack: 'OPM', start: 'stock:kerbin:surface', end: 'opm:tekto:surface', home: 'Kerbin surface', stop: 'Kerbin low orbit', target: 'Tekto surface', base: '11,927', first: '3,400', second: '8,527', reserved: '14,313' },
-  { pack: 'RSS', start: 'rss:earth:surface', end: 'rss:moon:surface', home: 'Earth surface', stop: 'Earth low orbit', target: 'Moon surface', base: '14,660', first: '9,000', second: '5,660', reserved: '17,592' },
+  { pack: 'OPM', start: 'stock:kerbin:surface', end: 'opm:tekto:surface', home: 'Kerbin surface', stop: 'Kerbin low orbit', target: 'Tekto surface', base: '11,927', first: '3,400', second: '8,527', returnSecond: '8,146', reserved: '13,856' },
+  { pack: 'RSS', start: 'rss:earth:surface', end: 'rss:moon:surface', home: 'Earth surface', stop: 'Earth low orbit', target: 'Moon surface', base: '14,660', first: '9,000', second: '5,660', returnSecond: '5,660', reserved: '17,592' },
 ]) {
   test(`splits the sourced ${mission.pack} budget at a stop and reverses its stage order`, async ({ page }) => {
     await pack(page, mission.pack).click()
@@ -144,7 +144,7 @@ for (const mission of [
     await nextStage(page).click()
     await expectStage(page, '2 / 2', mission.stop, mission.target, mission.second)
     await missionModeButton(page, 'return-only').click()
-    await expectStage(page, '1 / 2', mission.target, mission.stop, mission.second)
+    await expectStage(page, '1 / 2', mission.target, mission.stop, mission.returnSecond)
     await nextStage(page).click()
     await expectStage(page, '2 / 2', mission.stop, mission.home, mission.first)
     await reserve(page, 20)
@@ -296,32 +296,32 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
   test(`pages a long OPM journey separately from a zero-length stop at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
     await pack(page, 'OPM').click()
-    await plan(page, 'stock:gilly:surface', 'opm:tal:surface')
+    await plan(page, 'stock:mun:surface', 'opm:tal:surface')
     await openEditor(page)
-    await addStop(page, 'Gilly surface')
+    await addStop(page, 'Mun surface')
     await finishEditing(page)
     await missionModeButton(page, 'round-trip').click()
     await reserve(page, 100)
-    // Nominal round trip: 14,646 m/s, doubled by the 100% reserve.
-    await expect(page.getByTestId('route-total')).toHaveText('29,292 m/s')
+    // Nominal round trip: 7,423 outward + 6,821 return, doubled by the 100% reserve.
+    await expect(page.getByTestId('route-total')).toHaveText('28,488 m/s')
     await details(page).check()
     await page.getByRole('tab', { name: 'Return', exact: true }).click()
-    await expectStage(page, '1 / 2', 'Tal surface', 'Gilly surface')
-    const journey = expectedMission(opmPack, 'stock:gilly:surface', 'opm:tal:surface', 'round-trip', ['stock:gilly:surface']).returnStages[0]!
-    expect(journey.legs).toHaveLength(15)
+    await expectStage(page, '1 / 2', 'Tal surface', 'Mun surface')
+    const journey = expectedMission(opmPack, 'stock:mun:surface', 'opm:tal:surface', 'round-trip', ['stock:mun:surface']).returnStages[0]!
+    expect(journey.legs).toHaveLength(13)
     await expectBreakdownPages(page, opmPack, journey)
     await expectDetailsAboveControls(page)
     await page.getByRole('button', { name: 'Next maneuvers', exact: true }).click()
-    await expect(page.getByTestId('maneuver-position')).toHaveText('9–15 of 15')
+    await expect(page.getByTestId('maneuver-position')).toHaveText('9–13 of 13')
     await nextStage(page).click()
-    await expectStage(page, '2 / 2', 'Gilly surface', 'Gilly surface', '0')
+    await expectStage(page, '2 / 2', 'Mun surface', 'Mun surface', '0')
     await expect(maneuvers(page)).toHaveCount(0)
     await expect(page.getByTestId('maneuver-position')).toHaveCount(0)
     await expectDetailsAboveControls(page)
     await previousStage(page).click()
-    await expectStage(page, '1 / 2', 'Tal surface', 'Gilly surface')
-    await expect(page.getByTestId('maneuver-position')).toHaveText('1–8 of 15')
-    await expect(page.getByTestId('route-total')).toHaveText('29,292 m/s')
+    await expectStage(page, '1 / 2', 'Tal surface', 'Mun surface')
+    await expect(page.getByTestId('maneuver-position')).toHaveText('1–8 of 13')
+    await expect(page.getByTestId('route-total')).toHaveText('28,488 m/s')
     await expectOnScreen(editStops(page), page)
     await expectPageFits(page)
   })

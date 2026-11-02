@@ -137,7 +137,7 @@ export function validatePlanetPack(pack: unknown): string[] {
     if (node.altitudeKm !== undefined && (typeof node.altitudeKm !== 'number' || !Number.isFinite(node.altitudeKm) || node.altitudeKm < 0)) errors.push(`${label} altitude must be finite and nonnegative.`)
   }
 
-  function transition(fromId: unknown, toId: unknown, kind: unknown, label: string) {
+  function transition(fromId: unknown, toId: unknown, kind: unknown, label: string, directTransfer = false) {
     if (typeof kind !== 'string' || !maneuverKinds.has(kind)) errors.push(`${label} has an unsupported kind.`)
     const from = typeof fromId === 'string' ? nodeById.get(fromId) : undefined
     const to = typeof toId === 'string' ? nodeById.get(toId) : undefined
@@ -163,7 +163,9 @@ export function validatePlanetPack(pack: unknown): string[] {
         const betweenPlanets = from.kind === 'encounter' && to.kind === 'encounter' && fromBody.kind === 'planet' && toBody.kind === 'planet' && fromBody.parentId === toBody.parentId
         // A published pair may specify a complete two-burn journey between
         // reference orbits. No encounter energy is silently discarded here.
-        allowed = !sameBody && (toChild || fromChild || betweenPlanets || fromBound && toBound)
+        const completeDirectPair = directTransfer && (from.kind === 'orbit' || from.kind === 'elliptical')
+          && (to.kind === 'orbit' || to.kind === 'elliptical')
+        allowed = !sameBody && (toChild || fromChild || betweenPlanets || fromBound && toBound || completeDirectPair)
         break
       }
       case 'wormhole': allowed = !sameBody && from.kind === 'orbit' && to.kind === 'orbit' && fromBody.kind === 'planet' && toBody.kind === 'planet'; break
@@ -183,11 +185,13 @@ export function validatePlanetPack(pack: unknown): string[] {
     if (edge.directTransfer === true) {
       const from = typeof edge.from === 'string' ? nodeById.get(edge.from) : undefined
       const to = typeof edge.to === 'string' ? nodeById.get(edge.to) : undefined
-      if (edge.kind !== 'transfer' || from?.kind !== 'orbit' || to?.kind !== 'orbit' || from.bodyId === to.bodyId) {
-        errors.push(`${label} directTransfer requires a transfer between low-orbit states on different bodies.`)
+      if (edge.kind !== 'transfer' || !from || !to
+        || (from.kind !== 'orbit' && from.kind !== 'elliptical') || (to.kind !== 'orbit' && to.kind !== 'elliptical')
+        || from.bodyId === to.bodyId) {
+        errors.push(`${label} directTransfer requires a transfer between low-orbit or high-ellipse states on different bodies.`)
       }
     }
-    transition(edge.from, edge.to, edge.kind, label)
+    transition(edge.from, edge.to, edge.kind, label, edge.directTransfer === true)
   }
   for (const connection of connections) {
     const label = `Unpriced connection ${display(connection.id)}`

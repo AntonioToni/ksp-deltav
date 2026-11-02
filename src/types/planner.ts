@@ -39,7 +39,7 @@ export interface ManeuverEdge {
   label: string
   sourceId: string
   assumptions: string[]
-  /** Complete parking-orbit transfer; show its connection only when selected. */
+  /** Complete transfer between low or high reference orbits; draw only when selected. */
   directTransfer?: boolean
 }
 

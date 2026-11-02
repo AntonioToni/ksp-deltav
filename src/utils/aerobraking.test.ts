@@ -22,7 +22,7 @@ describe('potential atmospheric braking markers', () => {
     for (const edge of getAerobrakingEdges(stockPack).filter(edge => !edge.directTransfer)) {
       expect(marked.has(`${edge.to}->${edge.from}`)).toBe(false)
     }
-    for (const edge of stockPack.maneuvers.filter(edge => edge.kind === 'transfer')) {
+    for (const edge of stockPack.maneuvers.filter(edge => edge.kind === 'transfer' && !edge.directTransfer)) {
       if (edge.to.endsWith(':encounter') || edge.to.endsWith(':elliptical')) {
         expect(marked.has(edge.id), edge.id).toBe(false)
       }
@@ -56,10 +56,13 @@ describe('potential atmospheric braking markers', () => {
 
   it('marks the atmospheric arrival of complete direct pairs without marking airless arrivals', () => {
     const marked = getAerobrakingEdges(stockPack).filter(edge => edge.directTransfer)
-    expect(marked).toHaveLength(15)
+    expect(marked).toHaveLength(42)
     expect(marked.some(edge => edge.from === 'stock:eve:orbit' && edge.to === 'stock:duna:orbit')).toBe(true)
     expect(marked.some(edge => edge.from === 'stock:duna:orbit' && edge.to === 'stock:eve:orbit')).toBe(true)
     expect(marked.some(edge => edge.from === 'stock:dres:orbit' && edge.to === 'stock:duna:orbit')).toBe(true)
+    expect(marked.some(edge => edge.from === 'stock:duna:orbit' && edge.to === 'stock:eve:elliptical')).toBe(true)
+    expect(marked.some(edge => edge.from === 'stock:eve:elliptical' && edge.to === 'stock:duna:orbit')).toBe(true)
+    expect(marked.some(edge => edge.from === 'stock:eve:elliptical' && edge.to === 'stock:duna:elliptical')).toBe(true)
     expect(marked.some(edge => edge.to === 'stock:dres:orbit')).toBe(false)
   })
 })

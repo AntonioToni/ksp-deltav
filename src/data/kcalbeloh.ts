@@ -141,7 +141,7 @@ function createKcalbelohPack(base: PlanetPack, opm: boolean, wormholes = true): 
     name: wormholes ? baseName : `${baseName} (wormholes off)`,
     shortName: opm ? 'OPM + Kcal' : 'Stock + Kcal',
     dataNotice: wormholes ? 'Map + user allowances' : 'Wormholes off',
-    version: '1.1.8-map.2',
+    version: '1.1.8-map.3',
     description: `${opm ? 'Outer Planets Mod' : 'Stock Kerbol system'} plus the Kcalbeloh 1.1.8 default-size add-on. ${wormholes ? 'Published local and stellar reference-pair budgets are separate from explicitly user-priced wormhole and missing-source connections.' : 'Wormholes are disabled. Local and stellar reference-pair budgets remain available, with explicit allowances for missing-source connections. No interstellar transfer between Kerbol and Kcalbeloh is supplied.'}`,
     transferHubBodyId: base.transferHubBodyId,
     sources: [...base.sources.map(source => ({ ...source })), { ...kcalbelohMapSource }, { ...kcalbelohConfigSource }],

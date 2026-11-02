@@ -27,7 +27,9 @@ const stateKey = ({ nodeId, pendingParkingBodyId, nextStopIndex }: SearchState) 
 /**
  * Dijkstra over directed maneuvers and arrival/departure context.
  * A map encounter is not a universal zero-cost gravity assist: after an
- * interplanetary arrival, a low parking orbit at that arrival planet is required before a new transfer.
+ * interplanetary encounter arrival, a low parking orbit at that planet is
+ * required before another interplanetary departure. Complete pairs include
+ * their specified low/high bound capture instead of an encounter arrival.
  */
 export function findLowestCostPath(graph: PlannerGraph, start: string, goal: string, options: RouteSearchOptions = {}): RouteResult {
   if (!graph.nodes.has(start) || !graph.nodes.has(goal)) {
@@ -152,10 +154,17 @@ function searchOrderedPath(graph: PlannerGraph, itinerary: readonly string[], op
       const toNode = graph.nodes.get(edge.to)
       if (!fromNode || !toNode) continue
       const isInterplanetary = edge.kind === 'transfer' && fromNode.kind === 'encounter' && toNode.kind === 'encounter' && fromNode.bodyId !== toNode.bodyId
-      if (isInterplanetary && current.pendingParkingBodyId) continue
+      // A complete pair pays for departure and bound capture at its destination,
+      // establishing the specified low/high reference orbit for the next stage.
+      const isCompleteBoundTransfer = edge.directTransfer === true && edge.kind === 'transfer'
+        && (fromNode.kind === 'orbit' || fromNode.kind === 'elliptical')
+        && (toNode.kind === 'orbit' || toNode.kind === 'elliptical') && fromNode.bodyId !== toNode.bodyId
+      // A reference high ellipse reached through an old encounter branch is
+      // not interchangeable with a separately paid complete-pair arrival.
+      if ((isInterplanetary || isCompleteBoundTransfer) && current.pendingParkingBodyId) continue
       const next: SearchState = {
         nodeId: edge.to,
-        pendingParkingBodyId: isInterplanetary
+        pendingParkingBodyId: isCompleteBoundTransfer ? null : isInterplanetary
           ? toNode.bodyId
           : toNode.kind === 'orbit' && toNode.bodyId === current.pendingParkingBodyId ? null : current.pendingParkingBodyId,
         nextStopIndex: advance(edge.to, current.nextStopIndex),

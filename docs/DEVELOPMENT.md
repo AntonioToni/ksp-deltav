@@ -172,7 +172,7 @@ changing reference figures.
 
 ## Direct interplanetary estimates
 
-`directTransfers.ts` augments Stock and OPM with complete parking-orbit pairs
+`directTransfers.ts` augments Stock and OPM with complete low/high-orbit pairs
 between non-home sibling planets. `stockPhysics.ts` holds the pinned Stock
 physical and semi-major-axis facts shared with the relay catalog;
 `opmReference.ts` supplies the OPM contexts. Actual body parentage controls
@@ -182,15 +182,24 @@ Kcalbeloh composer inherits the selected base pack's added edges and sources.
 
 Each modeled edge has kind `transfer`, `directTransfer: true`, and source
 `direct-interplanetary-model` with `budgetType: 'model'`. Its cost is the sum of
-separately rounded departure and arrival parking burns. The circular, coplanar
-Hohmann model does not propagate dated trajectories, eccentricity, inclination,
-or parking-plane orientation. Reverse pairs swap the same nominal components.
+separately rounded departure and arrival burns. The circular, coplanar Hohmann
+model describes the planets' stellar orbits; spacecraft endpoints may be low
+circular or supported high elliptical references. Stock high-state periapsis
+energy is inferred from the published circularization increment and checked for
+a bound ellipse inside the SOI. OPM high states use the explicit half-SOI
+apoapsis before rounding. It does not propagate dated trajectories, planetary
+eccentricity, inclination, or parking-plane orientation. Reverse pairs swap the
+same nominal components.
 See the [data guide](DATA.md#direct-interplanetary-transfers) for formulas,
 reference conditions, and numerical fixtures.
 
-These pairs end at real low-orbit states, preserving the solver's arrival
-requirements and allowing ordinary ordered-stop and return planning. They do
-not create free encounter-to-encounter flybys. Atmospheric assistance leaves
+These pairs establish their complete low or high destination state. This allows
+moon branches to join a parent's high orbit without first circularizing low and
+raising the orbit again. Ordinary ordered-stop and return planning still apply;
+the added edges do not create free encounter-to-encounter flybys. Legacy
+encounter-arrival context blocks a direct departure until the required low orbit
+is reached; a complete direct arrival establishes its own bound reference state.
+Atmospheric assistance leaves
 their bundled departure-plus-capture price intact, while separate eligible
 captures or landing allowances can change the globally cheapest itinerary.
 
@@ -201,10 +210,9 @@ travel uses the same band in the opposite direction. Imported packs can retain
 the optional flag through canonical JSON storage/export; it neither generates
 new physics nor verifies their author-supplied budgets.
 
-The extension adds 30 directed Stock pairs and 72 in OPM while preserving
-atmosphere-off homeworld regression totals. RSS remains unchanged until its
-historical low-orbit states have compatible physical references for direct
-estimates.
+The extension adds 66 directed Stock pairs and 226 in OPM. RSS remains unchanged
+until its historical low-orbit states have compatible physical references for
+direct estimates.
 
 ## OPM reference estimates
 

@@ -147,7 +147,7 @@ infer reverse edges or reverse costs**. Add an explicit maneuver for each suppor
 | `descent` | Low orbit → surface on the same body. |
 | `escape` | Low orbit/reference → high ellipse or encounter; high ellipse → encounter, on the same body. |
 | `capture` | Encounter → high ellipse or low orbit/reference; high ellipse → low orbit/reference, on the same body. |
-| `transfer` | Parent low/reference/high orbit ↔ child encounter; encounter ↔ encounter between planets with the same parent; or a complete orbit/reference ↔ orbit/reference transfer between different bodies. |
+| `transfer` | Parent low/reference/high orbit ↔ child encounter; encounter ↔ encounter between planets with the same parent; a complete low/reference orbit ↔ low/reference orbit transfer between different bodies; or a low/high orbit pair marked `directTransfer: true` as described below. |
 | `wormhole` | A complete low-orbit ↔ low-orbit journey between physical planets, including approach and exit matching. |
 
 For a moon of a moon, the parent in a transfer may itself be a moon. A direct
@@ -157,8 +157,10 @@ planner adds no hidden capture or circularization cost to such a pair. A
 `wormhole` edge is likewise a complete explicitly priced journey, not an
 automatically free plugin jump.
 
-Optional `directTransfer: true` marks a complete low-orbit → low-orbit transfer
-between different bodies. Its `kind` must be `transfer`, and its supplied
+Optional `directTransfer: true` marks a complete transfer between low circular
+or high elliptical orbits on different bodies. Both endpoints must have kind
+`orbit` or `elliptical`; encounter, surface, and reference nodes do not qualify
+for this optional flag. Its maneuver `kind` must be `transfer`, and its supplied
 `deltaV` must include both departure and establishment of the destination orbit.
 The map draws this connection only when it belongs to the selected route, keeping
 the background map readable. The flag adds no calculated costs or reverse edge,
@@ -171,9 +173,11 @@ data or verify its figures; costs remain author-supplied **Imported budget**.
 
 Disconnected states are allowed, but routes requiring missing connections are
 reported as unreachable. Encounter-to-encounter planetary arrivals retain their
-arrival context across stops: before another such departure, a route must reach
-the arrival planet's actual low orbit. An encounter, high ellipse, or central
-reference does not clear that requirement.
+arrival context across stops: before another encounter-to-encounter departure or
+a marked direct pair, a route must reach the arrival planet's actual low orbit. An
+encounter, high ellipse, moon branch, or central reference does not clear that
+requirement. A complete bound-orbit pair establishes its stated destination
+state without introducing a new encounter context.
 
 ### Unpriced connections and regional views
 
