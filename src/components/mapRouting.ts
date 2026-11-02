@@ -2,14 +2,35 @@ import type { Point } from './mapLayout'
 
 /** Shortest orthogonal path through obstacle-edge lanes to a horizontal gutter. */
 export function routeToGutter(start: Point, gutterY: number, xs: number[], ys: number[], clear: (points: Point[]) => boolean): Point[] | undefined {
+  return routeOnGrid(start, gutterY, xs, ys, clear)
+}
+
+/** Orthogonal path that balances distance with a small cost for each elbow. */
+export function routeBetweenPoints(start: Point, end: Point, xs: number[], ys: number[], clear: (points: Point[]) => boolean): Point[] | undefined {
+  return routeOnGrid(start, end.y, xs, ys, clear, end.x)
+}
+
+function routeOnGrid(start: Point, targetY: number, xs: number[], ys: number[], clear: (points: Point[]) => boolean, targetX?: number): Point[] | undefined {
   const width = xs.length
-  const startIndex = ys.indexOf(start.y) * width + xs.indexOf(start.x)
-  const targetRow = ys.indexOf(gutterY)
-  const distances = new Float64Array(width * ys.length).fill(Infinity)
+  const startColumn = xs.indexOf(start.x)
+  const startRow = ys.indexOf(start.y)
+  const targetRow = ys.indexOf(targetY)
+  const targetColumn = targetX === undefined ? undefined : xs.indexOf(targetX)
+  if (!width || startColumn < 0 || startRow < 0 || targetRow < 0 || targetColumn === -1) return
+  // Direct links prefer a few clear elbows over equal-length staircases. Keep
+  // both incoming axes in the search state: the next turn's cost depends on it.
+  // Existing gutter routing retains its distance-only behavior.
+  const axes = targetColumn === undefined ? 1 : 3
+  const startIndex = (startRow * width + startColumn) * axes
+  const distances = new Float64Array(width * ys.length * axes).fill(Infinity)
   const previous = new Int32Array(distances.length).fill(-1)
   const closed = new Uint8Array(distances.length)
   const queue: { index: number; score: number }[] = []
-  const point = (index: number): Point => ({ x: xs[index % width]!, y: ys[Math.floor(index / width)]! })
+  const point = (index: number): Point => {
+    const cell = Math.floor(index / axes)
+    return { x: xs[cell % width]!, y: ys[Math.floor(cell / width)]! }
+  }
+  const remaining = (point: Point) => Math.abs(point.y - targetY) + (targetX === undefined ? 0 : Math.abs(point.x - targetX))
   const push = (entry: { index: number; score: number }) => {
     queue.push(entry)
     let index = queue.length - 1
@@ -38,14 +59,16 @@ export function routeToGutter(start: Point, gutterY: number, xs: number[], ys: n
     return first.index
   }
   distances[startIndex] = 0
-  push({ index: startIndex, score: Math.abs(start.y - gutterY) })
+  push({ index: startIndex, score: remaining(start) })
   while (queue.length) {
     const current = pop()
     if (closed[current]) continue
     closed[current] = 1
-    const row = Math.floor(current / width)
-    const column = current % width
-    if (row === targetRow) {
+    const cell = Math.floor(current / axes)
+    const row = Math.floor(cell / width)
+    const column = cell % width
+    const incomingAxis = current % axes
+    if (row === targetRow && (targetColumn === undefined || column === targetColumn)) {
       const path: Point[] = []
       for (let index = current; index !== -1; index = previous[index]!) path.push(point(index))
       path.reverse()
@@ -57,16 +80,20 @@ export function routeToGutter(start: Point, gutterY: number, xs: number[], ys: n
       })
     }
     const from = point(current)
-    const neighbors = [column > 0 ? current - 1 : -1, column + 1 < width ? current + 1 : -1,
-      row > 0 ? current - width : -1, row + 1 < ys.length ? current + width : -1]
-    for (const next of neighbors) {
-      if (next < 0 || closed[next]) continue
+    const neighbors = [column > 0 ? cell - 1 : -1, column + 1 < width ? cell + 1 : -1,
+      row > 0 ? cell - width : -1, row + 1 < ys.length ? cell + width : -1]
+    for (const neighbor of neighbors) {
+      if (neighbor < 0) continue
+      const nextAxis = axes === 1 ? 0 : Math.floor(neighbor / width) === row ? 1 : 2
+      const next = neighbor * axes + nextAxis
+      if (closed[next]) continue
       const to = point(next)
-      const distance = distances[current]! + Math.abs(to.x - from.x) + Math.abs(to.y - from.y)
+      const turnCost = incomingAxis !== 0 && incomingAxis !== nextAxis ? 12 : 0
+      const distance = distances[current]! + Math.abs(to.x - from.x) + Math.abs(to.y - from.y) + turnCost
       if (distance >= distances[next]! || !clear([from, to])) continue
       distances[next] = distance
       previous[next] = current
-      push({ index: next, score: distance + Math.abs(to.y - gutterY) })
+      push({ index: next, score: distance + remaining(to) })
     }
   }
 }

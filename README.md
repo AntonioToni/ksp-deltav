@@ -15,6 +15,9 @@ return-only budgets, and add a reserve for your mission.
   elliptical-orbit states. OPM includes Eeloo under Sarnus and Tal under Wal.
 - **Config-based OPM estimates** using official 2.2.12 constants, explicit parking
   orbits, and analytic transfer, capture, and vacuum surface budgets.
+- **Direct transfers between non-home planets in Stock and OPM**, with complete
+  low-orbit departure and capture estimates. Extra connections appear when they
+  belong to the selected route, including its animated direction of travel.
 - **Stock + Kcalbeloh and OPM + Kcalbeloh configurations**, with official map
   budgets, regional views, wormholes on/off, and explicit allowances for
   unpriced links.
@@ -69,6 +72,11 @@ With stops, One way follows origin → stops → destination. Return only revers
 that itinerary, and Round trip follows it outward and then in reverse. Return
 only starts at the selected destination state without including an outbound
 flight or its arrival conditions. The reserve applies once to the full budget.
+
+Stock and OPM automatically consider direct transfers between non-home planets'
+low orbits. For example, **Duna low orbit → Dres low orbit** is an analytic
+**1,532 m/s** estimate. Open **Budget assumptions** to distinguish these modeled
+transfers from the published map figures used elsewhere in the mission.
 
 **Swap** reverses both the endpoints and the stop order. Changing systems keeps
 states available in the new pack and removes unsupported stops. **Clear** removes
@@ -129,13 +137,20 @@ separately. **Sources & assumptions** explains the active pack. Imported budgets
 remain author-supplied even when their source metadata names a map or model.
 
 These are schematic planning estimates within the supplied maneuver graph,
-rather than simulated trajectories. The supplied interplanetary branches are
-centered on the base pack's homeworld: Kerbin for Stock/OPM or Earth for RSS.
-Routes between other planetary systems in those base packs include a parking-orbit
-layover at that homeworld. Kcalbeloh adds complete reference-pair transfers;
-custom pack estimates depend on their supplied data.
+rather than simulated trajectories. Stock/OPM retain their Kerbin-centered
+reference branches and add modeled direct low-orbit links between other planets.
+Encounter and high-ellipse references can still require parking-orbit layovers.
+RSS interplanetary branches remain Earth-centered, with an Earth parking-orbit
+layover between other planetary systems. Kcalbeloh adds complete reference-pair
+transfers; custom pack estimates depend on their supplied data.
 Flight dates, plane-change optimization, gravity assists, and vehicle performance
 are not modeled.
+
+**Direct transfers use circular, coplanar reference orbits.** Each complete pair
+includes a powered departure and arrival capture, rounded separately before
+adding them. Eccentricity, inclination, and dated encounter geometry are omitted.
+The same nominal pair reverses its two components for the return. These figures
+are analytic estimates, rather than new published map budgets.
 
 **Atmospheric choices are estimates, not entry simulations.** Ideal capture
 uses a zero-powered-burn lower bound for separate capture and circularization
@@ -149,9 +164,10 @@ example and the exact scope of the adjustments.
 
 **OPM uses analytic reference estimates.** Orbital and airless-body budgets use
 pinned official 2.2.12 constants and parking orbits above current atmospheres.
-The model circularizes orbital distances and uses inclination at a nominal
-encounter; it does not simulate a dated trajectory. Tekto and Thatmo retain
-historical atmospheric ascent allowances, also used as landing placeholders.
+The original encounter branches use inclination at a nominal orbital-node
+encounter; direct planet-pair links use the coplanar model described above.
+Neither simulates a dated trajectory. Tekto and Thatmo retain historical
+atmospheric ascent allowances, also used as landing placeholders.
 See the [data guide](docs/DATA.md) for the calculations and limitations.
 
 **Kcalbeloh uses its official 1.1.8 reference map.** Missing stellar-connector and
@@ -197,7 +213,7 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 - Additional planet packs, rescaled systems, and alternative starting-homeworld
   configurations.
-- Additional direct interplanetary transfers in the supplied packs.
+- Direct transfer estimates for RSS and additional reference orbits.
 - Interplanetary signal planning: antenna pairs, changing planet-to-planet
   distances, best/worst-case signal strength, and occlusion checks.
 - Advanced relay planning: inclined and polar constellations for coverage beyond

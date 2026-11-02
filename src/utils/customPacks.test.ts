@@ -3,10 +3,11 @@ import { stockPack } from '../data/stock'
 import { opmPack } from '../data/opm'
 import { rssPack } from '../data/rss'
 import examplePackJson from '../../docs/examples/custom-pack.json?raw'
-import type { PlanetPack } from '../types/planner'
+import type { ManeuverEdge, PlanetPack } from '../types/planner'
 import { buildGraph } from './buildGraph'
 import { findMissionRoute } from './mission'
 import { validatePlanetPack } from './validatePlanetPack'
+import { describeManeuverBasis } from './estimateBasis'
 import {
   CUSTOM_PACK_STORAGE_KEY, MAX_CUSTOM_PACKS, MAX_PACK_BYTES,
   parsePlanetPackJson, readCustomPacks, saveCustomPacks, validateCustomPackAddition,
@@ -14,6 +15,18 @@ import {
 
 function pack(id = 'community-test'): PlanetPack {
   return structuredClone({ ...stockPack, id, name: 'Community system', shortName: 'Community' })
+}
+
+function directPack() {
+  const custom = pack()
+  const edge: ManeuverEdge = {
+    id: 'custom:complete-transfer', from: 'stock:duna:orbit', to: 'stock:dres:orbit',
+    deltaV: 1234, kind: 'transfer', label: 'Author-supplied complete transfer',
+    sourceId: custom.sources[0]!.id, assumptions: ['Includes departure and arrival.'],
+    directTransfer: true,
+  }
+  custom.maneuvers.push(edge)
+  return { custom, edge }
 }
 
 const parse = (value: unknown) => parsePlanetPackJson(JSON.stringify(value))
@@ -64,6 +77,58 @@ describe('custom planet pack JSON', () => {
     const malformed = { ...custom, sources: custom.sources.map(source => ({ ...source, budgetType })) }
     expect(errors(malformed).join(' ')).toContain('budgetType must be reference or model')
     expect(validatePlanetPack(malformed).join(' ')).toContain('budgetType must be reference or model')
+  })
+
+  it('preserves explicit direct-transfer flags through canonical import, browser storage, and JSON export', () => {
+    const { custom, edge } = directPack()
+    custom.maneuvers[0]!.directTransfer = false
+    const imported = parse(custom)
+    expect(imported).toEqual({ status: 'success', pack: custom })
+    if (imported.status !== 'success') throw new Error(imported.errors.join('\n'))
+    const browserStorage = storage()
+    expect(saveCustomPacks(browserStorage, [imported.pack])).toBeNull()
+    const restored = readCustomPacks(browserStorage).packs[0]!
+    expect(restored.maneuvers.find(item => item.id === edge.id)?.directTransfer).toBe(true)
+    expect(restored.maneuvers[0]!.directTransfer).toBe(false)
+    expect(parsePlanetPackJson(JSON.stringify(restored))).toEqual(imported)
+    expect(findMissionRoute(buildGraph(restored), edge.from, edge.to, 'one-way'))
+      .toMatchObject({ status: 'success', totalDeltaV: 1234 })
+  })
+
+  it('keeps legacy maneuver data without direct-transfer metadata unchanged', () => {
+    const legacy = pack()
+    for (const edge of legacy.maneuvers) delete edge.directTransfer
+    expect(parse(legacy)).toEqual({ status: 'success', pack: legacy })
+  })
+
+  it.each(['true', 'false', 0, 1, null, {}, []])('rejects nonboolean direct-transfer metadata %j', directTransfer => {
+    const { custom, edge } = directPack()
+    const malformed = { ...custom, maneuvers: custom.maneuvers.map(item => item.id === edge.id ? { ...item, directTransfer } : item) }
+    expect(errors(malformed).join(' ')).toContain('directTransfer must be a boolean')
+    expect(validatePlanetPack(malformed).join(' ')).toContain('directTransfer must be a boolean')
+  })
+
+  it.each([
+    { kind: 'ascent' }, { kind: 'wormhole' },
+    { from: 'stock:duna:surface' }, { to: 'stock:dres:encounter' },
+    { to: 'stock:duna:orbit' }, { from: 'custom:stellar-reference' },
+    { from: 'unknown:state' },
+  ])('requires a complete low-orbit transfer for direct-transfer metadata: %j', changes => {
+    const { custom, edge } = directPack()
+    custom.nodes.push({ id: 'custom:stellar-reference', bodyId: 'stock:kerbol', kind: 'reference', label: 'Stellar reference' })
+    const malformed = { ...custom, maneuvers: custom.maneuvers.map(item => item.id === edge.id ? { ...item, ...changes } : item) }
+    expect(errors(malformed).join(' ')).toContain('directTransfer requires a transfer between low-orbit states on different bodies')
+  })
+
+  it('does not treat direct-transfer metadata or declared model sources as verification of imported costs', () => {
+    const { custom, edge } = directPack()
+    custom.sources[0]!.budgetType = 'model'
+    const imported = parse(custom)
+    expect(imported.status).toBe('success')
+    if (imported.status !== 'success') throw new Error(imported.errors.join('\n'))
+    const importedEdge = imported.pack.maneuvers.find(item => item.id === edge.id)!
+    expect(describeManeuverBasis(importedEdge, imported.pack, { customPack: true }))
+      .toMatchObject({ kind: 'imported', label: 'Imported budget' })
   })
 
   it('round-trips stellar hierarchy, published references, unpriced connections, and overlapping map regions without adding prices', () => {

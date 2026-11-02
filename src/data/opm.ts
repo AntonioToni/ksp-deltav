@@ -2,6 +2,8 @@ import type { CelestialBody, ManeuverEdge, ManeuverKind, NodeKind, PlanetPack, R
 import { stockPack } from './stock'
 import { opmCentralMu, opmConfigBase, opmConfigSource, opmHomeReference, opmReferences } from './opmReference'
 import { hohmannArrivalSpeed, hohmannTransfer, parkingOrbitBurn, splitCapture, surfaceOrbitBudget } from '../utils/orbitalBudgets'
+import { withDirectTransfers } from './directTransfers'
+import { stockPhysicalReferences } from './stockPhysics'
 
 const mapSourceId = 'kowgan-opm-1.8.1'
 const analyticSourceId = 'opm-analytic-2.2.12'
@@ -157,13 +159,13 @@ for (const reference of opmReferences) {
   }
 }
 
-export const opmPack: PlanetPack = {
+export const opmPack: PlanetPack = withDirectTransfers({
   id: 'opm',
   name: 'Outer Planets Mod',
   shortName: 'OPM',
   dataNotice: 'Analytic estimates',
-  version: '2.2.12-analytic.1',
-  description: 'Stock plus Outer Planets Mod 2.2.12: config-based analytical orbital and vacuum estimates, with explicitly retained historical atmospheric surface allowances for Tekto and Thatmo.',
+  version: '2.2.12-analytic.2',
+  description: 'Stock plus Outer Planets Mod 2.2.12: config-based analytical orbital and vacuum estimates, direct coplanar transfers between non-home planets, and explicitly retained historical atmospheric surface allowances for Tekto and Thatmo.',
   transferHubBodyId: 'stock:kerbin',
   sources: [
     ...stockPack.sources.map(source => ({ ...source })),
@@ -194,10 +196,10 @@ export const opmPack: PlanetPack = {
     'Modern parking altitudes include Sarnus 600 km, Urlum 350 km, Neidon 280 km, Thatmo 50 km, and Tekto 120 km. These are selected reference orbits, not terrain clearance guarantees.',
     'Sarnus, Urlum, Neidon, and Plock high ellipses have periapsis at their selected parking altitude and apoapsis radius 0.5 × nominal SOI. Moon branches leave parent low orbit, including Tal from Wal and Karen from Plock.',
     'Inclination affects relative speed at an assumed orbital-node encounter, including retrograde Thatmo. Eccentricity and changing orbital distances are not propagated; Plock (e = 0.26) and Nissee (e = 0.72) can differ substantially from these nominal costs.',
-    'Tekto and Thatmo retain historical atmospheric ascent/descent allowances of 2600 and 950 m/s. They are not recalibrated for the modern reference orbits or a particular vehicle, are not verified landing costs, and are not upper bounds. Atmospheric flight modeling remains future work.',
+    'Tekto and Thatmo retain historical atmospheric ascent/descent allowances of 2600 and 950 m/s. They are not recalibrated for the modern reference orbits or a particular vehicle, are not verified landing costs, and are not upper bounds. Vehicle performance and atmospheric entry are not modeled.',
     'Kerbol has no selectable states. Jool, Sarnus, Urlum, and Neidon have no landable surface states. Third-body effects and optional SigmaBinary patches are excluded.',
   ],
   bodies,
   nodes,
   maneuvers,
-}
+}, [...stockPhysicalReferences, ...opmReferences], opmCentralMu)

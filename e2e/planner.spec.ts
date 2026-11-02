@@ -159,17 +159,16 @@ test('handles an identical origin and destination as a zero-maneuver mission', a
   await expect(breakdown(page).getByRole('listitem')).toHaveCount(0)
 })
 
-test('retains the paid parking-orbit layover in compact route details', async ({ page }) => {
+test('shows the complete modeled direct transfer in compact route details', async ({ page }) => {
   await state(page, 'moho', 'orbit').click()
   await state(page, 'eve', 'orbit').click()
-  await expect(page.getByTestId('route-total')).toHaveText('6,530 m/s')
+  await expect(page.getByTestId('route-total')).toHaveText('3,268 m/s')
   await breakdownToggle(page).check()
   const legs = breakdown(page).getByRole('listitem')
-  await expect(legs).toHaveCount(7)
-  await expect(legs.nth(2)).toContainText('Kerbin')
-  await expect(legs.nth(2)).toContainText('950 m/s')
-  await expect(legs.nth(3)).toContainText('Kerbin')
-  await expect(legs.nth(3)).toContainText('950 m/s')
+  await expect(legs).toHaveCount(1)
+  await expect(legs.first()).toContainText('Eve low orbit')
+  await expect(legs.first()).toContainText('3,268 m/s')
+  await expect(legs.first()).toContainText('Model')
 })
 
 test('keeps the atmospheric landing assumption available as a compact note', async ({ page }) => {

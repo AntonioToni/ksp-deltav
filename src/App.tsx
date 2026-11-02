@@ -129,6 +129,7 @@ export default function App() {
   const hasAtmosphericLanding = route?.status === 'success' && route.legs.some(({ edge }) =>
     edge.kind === 'descent' && bodiesById.get(nodesById.get(edge.to)?.bodyId ?? '')?.hasAtmosphere,
   )
+  const directTransferCount = route?.status === 'success' ? route.legs.filter(({ edge }) => edge.directTransfer).length : 0
   const hubName = bodiesById.get(pack.transferHubBodyId ?? '')?.name ?? 'the reference planet'
   const hasLayover = route?.status === 'success' && [...route.outboundStages, ...route.returnStages].some(leg => leg.legs.filter(({ edge }) =>
     edge.kind === 'transfer' && nodesById.get(edge.from)?.kind === 'encounter' && nodesById.get(edge.to)?.kind === 'encounter',
@@ -155,6 +156,11 @@ export default function App() {
   const estimateNotices = [
     ...(unavailableInterstellarNotice ? [unavailableInterstellarNotice] : []),
     ...(hasLayover ? [layoverNotice] : []),
+    ...(directTransferCount > 0 ? [
+      isCustomPack
+        ? 'Direct transfers use complete pair budgets supplied by the pack author. Atmospheric options keep these bundled transfer budgets unchanged.'
+        : 'Direct transfers are analytic estimates between circular parking orbits in a common plane. They include departure and powered arrival; atmospheric options keep these bundled transfer budgets unchanged.',
+    ] : []),
     'Stops retain arrival conditions. Return only starts at the destination; the reserve applies once to the complete selected mission.',
   ]
 
@@ -291,12 +297,16 @@ export default function App() {
   const personalLanding = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && !allowanceEdgeIds.has(edge.id) && basisByEdge.get(edge.id)?.kind === 'user')
   const landingNotice = basisGroups.some(group => group.kind === 'placeholder') ? 'Atmospheric landing uses a default Delta-V allowance. Open budget info for details.'
     : personalLanding ? 'Atmospheric landing includes your powered allowance.' : "Atmospheric landing follows the pack's supplied budget."
+  const routeFeatures = [
+    ...(directTransferCount > 0 ? [`${directTransferCount} ${isCustomPack ? 'supplied' : 'analytic'} direct transfer${directTransferCount === 1 ? '' : 's'}.`] : []),
+    ...(usesLinkAllowances ? ['Includes user link allowances.'] : []),
+  ].join(' ')
   const routeStatus = unavailableInterstellarNotice ?? (needsLinkAllowances ? 'Some route links are unpriced. Open Link allowances to enter your estimates.'
     : route?.status === 'invalid' || route?.status === 'unreachable' ? route.message
     : route?.status === 'success' && route.legs.length === 0 ? 'No maneuvers required.'
-      : hasAtmosphericLanding ? `${landingNotice}${hasLayover ? ` ${layoverNotice}` : ''}`
-        : hasLayover ? layoverNotice
-          : route?.status === 'success' ? usesLinkAllowances ? `${route.legs.length} maneuvers · Includes user link allowances.` : `${route.legs.length} maneuvers · Select a state to update your ${selection === 'start' ? 'origin' : 'destination'}.`
+      : hasAtmosphericLanding ? `${landingNotice}${routeFeatures ? ` ${routeFeatures}` : ''}${hasLayover ? ` ${layoverNotice}` : ''}`
+        : hasLayover ? `${layoverNotice}${routeFeatures ? ` ${routeFeatures}` : ''}`
+          : route?.status === 'success' ? `${route.legs.length} maneuver${route.legs.length === 1 ? '' : 's'} · ${routeFeatures || `Select a state to update your ${selection === 'start' ? 'origin' : 'destination'}.`}`
             : `Select ${selection === 'start' ? 'an origin' : 'a destination'} on the map.`)
   const status = selection === 'stop' ? `Select stop ${waypointIds.length + 1} on the map. Escape cancels.`
     : returnOnly && route?.status === 'success'

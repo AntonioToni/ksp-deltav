@@ -6,6 +6,8 @@ import type {
   PlanetPack,
   RouteNode,
 } from '../types/planner'
+import { withDirectTransfers } from './directTransfers'
+import { stockCentralMu, stockPhysicalReferences, stockPhysicsSource } from './stockPhysics'
 
 const sourceId = 'kowgan-1.7.3'
 const id = (body: string, kind: NodeKind) => `stock:${body}:${kind}`
@@ -194,13 +196,13 @@ interplanetaryTransfer('dres', 610)
 interplanetaryTransfer('jool', 980)
 interplanetaryTransfer('eeloo', 1140)
 
-export const stockPack: PlanetPack = {
+export const stockPack: PlanetPack = withDirectTransfers({
   id: 'stock',
   name: 'Stock Kerbol system',
   shortName: 'Stock',
   transferHubBodyId: 'stock:kerbin',
-  version: '1.7.3-map.1',
-  description: 'An idealized stock-system Delta-V budget map with directed maneuvers and explicit reference orbits.',
+  version: '1.7.3-map.2',
+  description: 'Stock reference-map budgets with directed maneuvers, explicit reference orbits, and coplanar analytic direct transfers between non-home planets.',
   sources: [{
     id: sourceId,
     budgetType: 'reference',
@@ -211,11 +213,11 @@ export const stockPack: PlanetPack = {
     'All budgets are in m/s and use the source map reference orbits. These are schematic estimates, not a trajectory simulation.',
     'Favorable launch windows and idealized transfers. Plane-change allowances, launch dates, travel time, gravity assists, and spacecraft performance are excluded; add a mission margin.',
     'No atmospheric assistance is credited. Atmospheric powered-descent budgets are placeholders equal to the ascent map budget, not verified landing calculations or upper bounds.',
-    'Only Kerbin-centered interplanetary transfer segments are provided. Routes between other planetary systems require capture into a low parking orbit before the next interplanetary departure; direct transfers and encounter-to-encounter flyby chaining are not modeled.',
+    'Kerbin-centered encounter branches retain the source map budgets. Non-home planets also have complete analytic direct transfers between their explicit parking orbits. Encounter-to-encounter flyby chaining is not modeled.',
     'Eve, Duna, and Jool moon transfers branch from high elliptical orbit. Low-orbit capture and moon transfer costs must not be conflated.',
     'Kerbol has no selectable mission states; Jool has no surface. Surface states are omitted where landing is unsupported.',
   ],
   bodies,
   nodes,
   maneuvers,
-}
+}, stockPhysicalReferences, stockCentralMu, [stockPhysicsSource])

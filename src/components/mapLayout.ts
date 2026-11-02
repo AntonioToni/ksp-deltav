@@ -1,5 +1,5 @@
-import type { CelestialBody, NodeKind, PlanetPack, RouteNode } from '../types/planner'
-import { routeToGutter } from './mapRouting'
+import type { CelestialBody, ManeuverEdge, NodeKind, PlanetPack, RouteNode } from '../types/planner'
+import { routeBetweenPoints, routeToGutter } from './mapRouting'
 
 export interface Point { x: number; y: number }
 export type MapMode = 'wide' | 'portrait' | 'short'
@@ -563,6 +563,94 @@ function createGeneratedLayout(pack: PlanetPack, mode: MapMode): MapLayout {
     hubId: findHub(pack), nodeFontSize: mode === 'wide' ? 21 : 22,
     labelFontSize: mode === 'wide' ? 25 : 22, presentation: 'generated', bodyRails,
   }
+}
+
+interface TransferLabelBounds { left: number; right: number; top: number; bottom: number }
+interface TransferRoutingLanes {
+  xs: number[]
+  ys: number[]
+  labels: TransferLabelBounds[]
+  states: { id: string; point: Point; radius: number }[]
+}
+const transferLanes = new WeakMap<MapLayout, TransferRoutingLanes>()
+const transferPaths = new WeakMap<MapLayout, Map<string, Point[]>>()
+
+function directRoutingLanes(layout: MapLayout): TransferRoutingLanes {
+  const cached = transferLanes.get(layout)
+  if (cached) return cached
+  const halfBand = layout.mode === 'portrait' ? 6 : 9.5
+  const padding = halfBand + 2
+  const states = [...layout.nodePositions].map(([id, point]) => ({
+    id, point, radius: layout.radius + (id === layout.hubId && layout.mode !== 'portrait' ? 9 : 0) + padding,
+  }))
+  const labels = layout.labels.map(label => {
+    const width = Math.min(label.maxWidth ?? Infinity, label.body.name.length * layout.labelFontSize * .6)
+    const left = label.anchor === 'middle' ? label.x - width / 2 : label.anchor === 'end' ? label.x - width : label.x
+    return { left: left - padding, right: left + width + padding,
+      top: label.y - layout.labelFontSize * .85 - padding, bottom: label.y + layout.labelFontSize * .25 + padding }
+  })
+  const lanes = (values: number[], maximum: number) => [...new Set(values.filter(value => value >= padding && value <= maximum - padding))].sort((a, b) => a - b)
+  const result = {
+    states, labels,
+    xs: lanes([padding, layout.width - padding, ...states.flatMap(({ point, radius }) => [point.x, point.x - radius - 1, point.x + radius + 1]),
+      ...labels.flatMap(label => [label.left - 1, label.right + 1])], layout.width),
+    ys: lanes([padding, layout.height - padding, ...states.flatMap(({ point, radius }) => [point.y, point.y - radius - 1, point.y + radius + 1]),
+      ...labels.flatMap(label => [label.top - 1, label.bottom + 1])], layout.height),
+  }
+  transferLanes.set(layout, result)
+  return result
+}
+
+/** Full maneuver geometry shared by the selected line and its moving highlight. */
+export function maneuverPoints(edge: ManeuverEdge, layout: MapLayout, pack: PlanetPack): Point[] {
+  const from = pack.nodes.find(node => node.id === edge.from)
+  const to = pack.nodes.find(node => node.id === edge.to)
+  if (!from || !to) return []
+  if (!edge.directTransfer) return connectionPoints(from, to, layout, pack)
+  const a = layout.nodePositions.get(from.id)
+  const b = layout.nodePositions.get(to.id)
+  if (!a || !b) return []
+  if (layout.presentation === 'overview') {
+    const fromPanel = layout.nodePanels!.get(from.id)
+    const toPanel = layout.nodePanels!.get(to.id)
+    if (fromPanel === toPanel && fromPanel !== undefined) {
+      const content = layout.panelContents!.get(fromPanel)!
+      return maneuverPoints(edge, content.layout, content.pack).map(point => p(content.offset.x + point.x * content.scaleX, content.offset.y + point.y * content.scaleY))
+    }
+    return connectionPoints(from, to, layout, pack)
+  }
+
+  // Opposite traversals share one canonical route, even on a generated map.
+  const forward = from.id.localeCompare(to.id) <= 0
+  const first = forward ? from : to
+  const last = forward ? to : from
+  const start = forward ? a : b
+  const end = forward ? b : a
+  let paths = transferPaths.get(layout)
+  if (!paths) {
+    paths = new Map()
+    transferPaths.set(layout, paths)
+  }
+  const key = JSON.stringify([first.id, last.id])
+  const cached = paths.get(key)
+  if (cached) return forward ? cached : [...cached].reverse()
+  const grid = directRoutingLanes(layout)
+  const obstacles = grid.states.filter(state => state.id !== first.id && state.id !== last.id)
+  const clear = (points: Point[]) => points.slice(1).every((to, index) => {
+    const from = points[index]!
+    const left = Math.min(from.x, to.x)
+    const right = Math.max(from.x, to.x)
+    const top = Math.min(from.y, to.y)
+    const bottom = Math.max(from.y, to.y)
+    return obstacles.every(({ point, radius }) => {
+      const dx = Math.max(left - point.x, point.x - right, 0)
+      const dy = Math.max(top - point.y, point.y - bottom, 0)
+      return dx * dx + dy * dy >= radius * radius
+    }) && grid.labels.every(label => right < label.left || left > label.right || bottom < label.top || top > label.bottom)
+  })
+  const points = routeBetweenPoints(start, end, grid.xs, grid.ys, clear) ?? [start, end]
+  paths.set(key, points)
+  return forward ? points : [...points].reverse()
 }
 
 export function connectionPoints(from: RouteNode, to: RouteNode, layout: MapLayout, pack: PlanetPack): Point[] {

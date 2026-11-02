@@ -42,6 +42,33 @@ With every remaining local allowance supplied, Kerbol and Kcalbeloh still have
 no connecting route in the wormholes-off graph. This extension does not add
 rescaling, HomeSwitch, Principia, or a new audit of their altered physics.
 
+### Direct-transfer extension — 2 November 2026
+
+Stock and OPM now add complete low-parking-orbit transfers between non-home
+planets: 30 directed edges in Stock and 72 in OPM. Kcalbeloh compositions inherit
+their selected base's additions. No route states or original map-segment costs
+are replaced. The shared Stock physical table retains the pinned facts already
+used by relay presets; OPM uses its existing pinned configuration constants.
+
+The circular, coplanar model was checked against explicit Hohmann/vis-viva
+fixtures, separate departure and capture burns, component-wise ceiling, and
+reversed pairs. Example complete totals are Duna → Dres **1,532 m/s**, Eve → Duna
+**2,728 m/s**, and Sarnus → Urlum **2,494 m/s** at the documented parking orbits.
+All 876 homeworld comparisons across Stock/OPM states, Kerbin surface/orbit
+origins, and mission modes retain their **atmosphere-off** budgets.
+
+Atmospheric choices can still reoptimize a mission through an intermediate
+planet's low parking orbit; they are not covered by that unchanged-default
+claim. Complete direct pairs retain both modeled burns. Ordered stops and
+arrival rules remain active, so added links do not create free encounter
+chaining. Presentation checks cover selected-only connections, shared static
+and animated geometry, reverse direction, and the optional JSON metadata.
+
+This extension does not solve eccentric or inclined transfer geometry, dates,
+travel times, parking-plane orientation, or vehicle losses. RSS retains its
+historical graph pending compatible reference orbits. It is a calculation and
+integration extension, not a new certification of physical flight feasibility.
+
 ### Correction found
 
 RSS relay presets used the raw Laplace SOI for two small moons. Default

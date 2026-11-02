@@ -72,11 +72,13 @@ On Linux CI machines that also need browser system dependencies, use
 | --- | --- |
 | Body hierarchy, states, maneuvers, and pack types | `src/types/planner.ts` |
 | Stock reference data | `src/data/stock.ts` |
+| Shared Stock physical and orbital facts | `src/data/stockPhysics.ts` |
 | OPM and RSS packs, and pack registry | `src/data/opm.ts`, `src/data/rss.ts`, `src/data/planetPacks.ts` |
 | Composed Kcalbeloh packs and pinned hierarchy facts | `src/data/kcalbeloh.ts`, `src/data/kcalbelohReference.ts` |
 | Directional budgets for documented unpriced links | `src/utils/connectionAllowances.ts`, `src/components/ConnectionAllowancesDialog.tsx` |
 | Pinned OPM physical/orbital reference data | `src/data/opmReference.ts` |
 | Analytic orbital and vacuum surface estimates | `src/utils/orbitalBudgets.ts` |
+| Complete direct planet-pair estimates | `src/data/directTransfers.ts` |
 | Pack and topology validation | `src/utils/validatePlanetPack.ts` |
 | Custom JSON imports and browser storage | `src/utils/customPacks.ts` |
 | Graph construction and ordered contextual route search | `src/utils/buildGraph.ts`, `src/utils/findRoute.ts` |
@@ -141,8 +143,8 @@ allowance, which may be higher than the source figure. The source pack and base
 graph stay unchanged, so export and attribution retain the original data.
 Comparison uses the selected mission's original powered budget, and reserves
 apply to its adjusted total. Atmospheric arrows themselves remain informational:
-bundled moon-return transfer edges are not discounted. Arrival-context and
-parking-orbit rules remain part of the same global search.
+bundled moon-return and direct planet-pair edges keep their complete costs.
+Arrival-context and parking-orbit rules remain part of the same global search.
 
 The Stops editor stores visits in outbound order. Pack changes filter out
 unsupported stops, swapping reverses their order, and reset empties the list.
@@ -168,6 +170,42 @@ moon systems; optional presets can refine presentation. Add data, topology,
 routing, and layout checks for the new pack. See the [data guide](DATA.md) before
 changing reference figures.
 
+## Direct interplanetary estimates
+
+`directTransfers.ts` augments Stock and OPM with complete parking-orbit pairs
+between non-home sibling planets. `stockPhysics.ts` holds the pinned Stock
+physical and semi-major-axis facts shared with the relay catalog;
+`opmReference.ts` supplies the OPM contexts. Actual body parentage controls
+eligibility, so Eeloo participates as a Stock planet and is excluded when OPM
+makes it a Sarnus moon. Kerbin retains its existing homeworld branches. The
+Kcalbeloh composer inherits the selected base pack's added edges and sources.
+
+Each modeled edge has kind `transfer`, `directTransfer: true`, and source
+`direct-interplanetary-model` with `budgetType: 'model'`. Its cost is the sum of
+separately rounded departure and arrival parking burns. The circular, coplanar
+Hohmann model does not propagate dated trajectories, eccentricity, inclination,
+or parking-plane orientation. Reverse pairs swap the same nominal components.
+See the [data guide](DATA.md#direct-interplanetary-transfers) for formulas,
+reference conditions, and numerical fixtures.
+
+These pairs end at real low-orbit states, preserving the solver's arrival
+requirements and allowing ordinary ordered-stop and return planning. They do
+not create free encounter-to-encounter flybys. Atmospheric assistance leaves
+their bundled departure-plus-capture price intact, while separate eligible
+captures or landing allowances can change the globally cheapest itinerary.
+
+The map hides direct connections until they belong to the selected route.
+`maneuverPoints` supplies their canonical obstacle-aware geometry, shared by
+the static highlight, direction animation, and any braking marker. Reversed
+travel uses the same band in the opposite direction. Imported packs can retain
+the optional flag through canonical JSON storage/export; it neither generates
+new physics nor verifies their author-supplied budgets.
+
+The extension adds 30 directed Stock pairs and 72 in OPM while preserving
+atmosphere-off homeworld regression totals. RSS remains unchanged until its
+historical low-orbit states have compatible physical references for direct
+estimates.
+
 ## OPM reference estimates
 
 `opmReference.ts` is the shared source of pinned OPM 2.2.12 physical and orbital
@@ -175,7 +213,8 @@ constants for both maneuver estimates and relay body presets. Parking altitudes
 are explicit planner choices. The OPM pack derives orbital transfers, captures,
 and vacuum surface budgets with the pure functions in `orbitalBudgets.ts`, then
 rounds each directed segment upward to whole m/s. This does not change Stock or
-RSS costs.
+RSS source costs. Complete non-home planet pairs use the separate coplanar
+direct-transfer model described above.
 
 The nominal transfer departs in the parent's reference plane and meets a
 circularized target orbit at a node. Arrival relative speed includes the source

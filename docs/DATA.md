@@ -1,4 +1,4 @@
-# Stock-system reference data
+# Reference data and calculation assumptions
 
 The stock pack in `src/data/stock.ts` transcribes numerical budgets from the
 [Kowgan / WAC community stock Delta-V map for KSP 1.7.3](https://github.com/Kowgan/ksp_cheat_sheets/blob/ca2d4910dd98e5fd14277b04ec686e61cd6967ce/delta_v_map_vanilla/DvMap_A4.svg).
@@ -10,8 +10,8 @@ reference figures have been reorganized into named, directed maneuver records.
 
 The separate [CommNet relay guide](RELAYS.md) documents relay body constants,
 antenna presets, coverage geometry, and deployment estimates. Relay calculations
-remain separate from maneuver budgets. OPM shares its pinned physical constants
-with the analytic maneuver model documented below.
+remain separate from maneuver budgets. Stock and OPM share their pinned physical
+constants with the analytic direct-transfer model documented below.
 
 ## Coverage and units
 
@@ -19,6 +19,11 @@ The pack describes all 17 stock bodies: Kerbol, seven planets, and nine moons.
 There are no Kerbol route states and no Jool surface state. Every other body has
 surface, low orbit, and encounter states; Eve, Duna, and Jool additionally have a
 high elliptical orbit reaching the sphere-of-influence boundary.
+
+The pack retains all **98 source-map maneuvers** and adds **30 modeled direct
+transfers**, for **128 directed maneuvers** over the same 50 selectable states.
+Pack version `1.7.3-map.2` identifies this extension; the source map remains the
+pinned KSP 1.7.3 reference.
 
 All maneuver budgets use **m/s**. Low-orbit altitudes use **km above the body**,
 following the source map labels. An encounter is the source map's intercept
@@ -46,15 +51,14 @@ orbit and an elliptical orbit are different states.
   ascent budget** in the source dataset and default planner configuration.
   This is not a verified landing calculation or an upper bound. Optional
   atmospheric choices can replace eligible costs as described below;
-  vehicle-dependent descent modeling remains future work.
-- Only interplanetary branches to/from Kerbin are supplied by this pack. A
-  route between two other planetary systems must capture into a low parking
-  orbit at Kerbin before escaping for the next transfer. The routing search
-  tracks whether a low-orbit reset at the arrival planet is required after an interplanetary arrival;
-  it does not permit chaining incompatible encounter energies as a free flyby.
-  High elliptical orbit does not count as a parking-orbit reset. These are
-  separate idealized transfer legs, not a direct transfer or a flight-ready
-  trajectory. The app exposes this limitation beside the estimate.
+  vehicle-dependent descent modeling is outside the supplied model.
+- The published interplanetary branches connect to/from Kerbin. Additional
+  [direct low-orbit pairs](#direct-interplanetary-transfers) connect the other
+  planets using a separate analytic model. A route using the original encounter
+  branches can still include a Kerbin parking-orbit layover. The search tracks
+  whether a low-orbit reset at the arrival planet is required before another
+  transfer; it does not chain incompatible encounter energies into a free flyby.
+  High elliptical orbit does not count as a parking-orbit reset.
 - Add a mission margin. A shortest path is the lowest estimate in this dataset,
   not a universal minimum over all possible KSP trajectories.
 
@@ -101,9 +105,15 @@ limitations apply to multi-stop missions as well as routes without stops.
 Small arrows point inward on atmospheric capture and descent segments. These
 are informational opportunities, covering aerocapture, aerobraking, and entry or
 landing assistance; the markers alone do not change costs or calculate a trajectory.
-The stock map shows 14 directed markers: eight local captures, four atmospheric
-descents, and the Mun/Minmus returns to Kerbin low orbit. Outbound maneuvers and
-airless-body captures and landings have no atmospheric-braking arrow.
+The underlying stock reference map has 14 directed markers: eight local
+captures, four atmospheric descents, and the Mun/Minmus returns to Kerbin low
+orbit. Outbound maneuvers and airless-body captures and landings have no
+atmospheric-braking arrow.
+
+A selected direct transfer to an atmospheric planet can also show an arrival
+marker. Its complete departure-plus-capture estimate remains charged; the marker
+does not turn either burn into a free maneuver. Unselected direct connections
+and their markers stay hidden.
 
 Moon returns ending at a parent's high elliptical reference orbit remain
 unmarked. Interplanetary encounter-to-encounter increments also remain unmarked;
@@ -137,7 +147,8 @@ are session settings and do not modify or export with source data.
   maneuver. `supportsAtmosphericBraking: false` excludes a body, including RSS
   Pluto and Triton. Gas giants can have capture options but no landing option.
 - Ascent, escape, airless-body maneuvers, and interplanetary increments retain
-  their source costs. A moon encounter → parent orbit `transfer` can combine
+  their source costs. Complete direct planet-pair estimates also retain both
+  modeled burns. A moon encounter → parent orbit `transfer` can combine
   departure and arrival costs. Its entire cost is retained because the dataset
   does not isolate a trustworthy atmospheric discount. For example, Mun and
   Minmus returns to Kerbin low orbit remain **860 and 930 m/s** respectively,
@@ -185,7 +196,8 @@ take precedence over the original source label; the source remains available
 as context. Atmospheric descent placeholders are identified separately.
 
 `src/data/stock.test.ts` checks coverage, references, topology, and landmark totals.
-Useful source-map landmarks from Kerbin surface, excluding plane changes:
+Useful default landmarks from Kerbin surface, with atmospheric assistance off
+and excluding reserves and plane changes:
 
 | Destination surface | Budget (m/s) |
 | --- | ---: |
@@ -210,12 +222,111 @@ it does not add a second table of competing totals. Historical map revisions
 also differ (for example, the old Mun capture figure was 310 m/s; this pinned
 source uses 280 m/s).
 
+## Direct interplanetary transfers
+
+Stock and OPM automatically consider complete low-parking-orbit transfers
+between their non-home planets. Stock has **30 directed edges** among Moho, Eve,
+Duna, Dres, Jool, and Eeloo: 15 reversible planet pairs. OPM has **72 directed
+edges**: Eeloo becomes a Sarnus moon and leaves that list, while Sarnus, Urlum,
+Neidon, and Plock join it, giving 36 reversible pairs. Kerbin retains its original
+reference branches. No new route states are added.
+
+Each pair is a `transfer` edge marked `directTransfer: true`. Its price includes
+both departure from the first planet's circular parking orbit and powered
+capture into the second planet's circular parking orbit. The solver charges
+that complete edge once, including when it belongs to a multi-stop or return
+journey. A route can use several pairs, with each intermediate parking arrival
+and departure charged. An encounter or high ellipse is not substituted for the
+required low-orbit endpoint.
+
+These records use source ID **`direct-interplanetary-model`**, classified as
+**Analytic model** in Budget assumptions. They are computed planning estimates,
+separate from the published map figures. Only selected direct connections are
+drawn, and the route animation uses the same geometry and maneuver order.
+
+### Reference data and calculation
+
+Stock physical and semi-major-axis facts in `src/data/stockPhysics.ts` are shared
+with the relay catalog. They use the pinned
+[KSPTOT body reference](https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini).
+OPM uses the pinned [official 2.2.12 constants](https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs)
+from `opmReference.ts`. The model uses each selected node's existing parking
+altitude: Stock map references for Stock bodies and the explicit OPM choices
+listed below. Adding these links does not reprice the original map segments.
+
+The pure functions in `src/utils/orbitalBudgets.ts` calculate a circular,
+coplanar Hohmann reference. For planets A and B with stellar semi-major axes
+`aA` and `aB`, stellar gravity `muStar`, and parking radii `rpA` and `rpB`:
+
+```text
+aTransfer = (aA + aB) / 2
+vInfinityA = abs(sqrt(muStar × (2/aA - 1/aTransfer)) - sqrt(muStar / aA))
+vInfinityB = abs(sqrt(muStar / aB) - sqrt(muStar × (2/aB - 1/aTransfer)))
+departure = sqrt(vInfinityA² + 2muA / rpA) - sqrt(muA / rpA)
+capture   = sqrt(vInfinityB² + 2muB / rpB) - sqrt(muB / rpB)
+pairBudget = ceil(departure) + ceil(capture)
+```
+
+Both component burns round upward separately to whole m/s before they are
+added. The nominal reverse pair swaps those components and has the same total;
+it does not solve a dated return trajectory. Reserves apply afterward to the
+complete mission as usual.
+
+| Parking-orbit pair | Rounded departure (m/s) | Rounded capture (m/s) | Complete pair (m/s) |
+| --- | ---: | ---: | ---: |
+| Duna 60 km → Dres 12 km | 810 | 722 | 1,532 |
+| Eve 100 km → Duna 60 km | 1,669 | 1,059 | 2,728 |
+| Sarnus 600 km → Urlum 350 km | 1,567 | 927 | 2,494 |
+
+Duna low orbit → Dres low orbit previously used a **4,550 m/s** route through
+Kerbin. Its new direct estimate is **1,532 m/s**. Adding the unchanged Duna ascent
+and Dres powered descent gives **1,450 + 1,532 + 430 = 3,412 m/s** for the
+surface-to-surface route before reserve.
+
+### Scope and assumptions
+
+This is a nominal circular, coplanar model. It omits eccentricity, inclination,
+orbital-plane orientation, departure dates, transfer-window optimization,
+flight duration, gravity assists, finite-thrust losses, and vehicle performance.
+The result is not a verified flight cost or a universal physical lower bound.
+The original OPM encounter branches use a different nominal inclination
+calculation, documented below; their figures are not silently substituted into
+the new coplanar pairs.
+
+Atmospheric assistance still adjusts only supported standalone inward captures
+and descents. A direct pair retains its full departure and powered-capture
+estimate, even if a braking marker indicates an opportunity at arrival.
+A separate destination landing allowance can still change an eligible descent.
+Selected atmospheric choices can also make another complete route cheaper,
+including one through an intermediate planet's low parking orbit. Preserving
+the default homeworld benchmarks does not imply identical mission totals after
+those choices are enabled.
+
+For example, enabling **Ideal capture at Duna** changes Kerbin surface → Dres
+low orbit from **6,260** to **6,012 m/s**. That route pays **4,480 m/s** to reach
+Duna's low orbit under the selected capture assumption, then the unchanged
+**1,532 m/s** direct transfer to Dres. Adding Dres powered descent gives
+**6,442 m/s** to its surface. The intermediate low-orbit visit remains part of
+the route; it is not a free flyby.
+
+Kcalbeloh compositions inherit the selected base system's direct links. These
+do not add Kerbol–Kcalbeloh interstellar trajectories, new wormhole budgets,
+direct moon transfers, or new Kcalbeloh reference pairs.
+
+RSS retains its Earth-centered source graph. Some historical low-orbit
+references, including Saturn, Uranus, Neptune, and Pluto, are incompatible with
+the modern atmospheres. Attaching modern modeled burns to those same historical
+states would imply unsupported reference conditions; extending direct transfer
+coverage there requires compatible orbit references first.
+
 ## Outer Planets Mod pack
 
 `src/data/opm.ts` provides the selectable **OPM** pack: 32 bodies, 96 selectable
-states, and 190 directed maneuvers. Shared Stock IDs are retained, Eeloo becomes
+states, and 262 directed maneuvers, including 72 direct planet-pair estimates.
+Shared Stock IDs are retained, Eeloo becomes
 a Sarnus moon, Tal orbits Wal, and Karen orbits Plock. Jool, Sarnus, Urlum, and
-Neidon have no surface states. Stock and RSS costs are unchanged.
+Neidon have no surface states. Original Stock map costs and the RSS pack are
+retained.
 
 The pack uses **config-based analytic reference estimates** for the OPM orbital
 and vacuum segments. They replace the historical OPM 1.8.1 map's corresponding
@@ -223,9 +334,10 @@ figures. **Tekto and Thatmo atmospheric ascent/landing allowances remain
 historical**, with their own source and limitations. The visible **Analytic
 estimates** notice opens the assumptions and sources.
 
-Pack version `2.2.12-analytic.1` identifies this model revision. Derived OPM
+Pack version `2.2.12-analytic.2` identifies this model revision. Derived OPM
 maneuvers use source tag `opm-analytic-2.2.12`; only the four retained atmospheric
-surface edges use `kowgan-opm-1.8.1`.
+surface edges use `kowgan-opm-1.8.1`. Complete direct pairs use the separate
+`direct-interplanetary-model` source described above.
 
 ### Sources and physical inputs
 
@@ -410,10 +522,11 @@ and finite-thrust effects. Chained graph states do not track orbital planes.
 It does not simulate optional SigmaBinary behavior or other compatibility
 patches. A mission reserve cannot supply those missing dynamics.
 
-Interplanetary branches remain centered on Kerbin. Arrivals from another
-planetary system still require a low-parking-orbit reset before another supplied
-interplanetary departure; an encounter or high ellipse cannot erase arrival
-conditions. This calibration does not add direct planet-to-planet transfers.
+The original encounter branches remain centered on Kerbin. The additional
+coplanar direct pairs connect non-home planets at their low-orbit states.
+Arrivals from another planetary system still require a low-parking-orbit reset
+before another supplied departure; an encounter or high ellipse cannot erase
+arrival conditions.
 
 Tests audit the following Kerbin-surface one-way sums before reserves and with
 atmospheric assistance disabled. Tekto and Thatmo totals include their retained
@@ -455,17 +568,18 @@ pack.
 
 | Configuration | Wormholes | Cataloged bodies/contexts | Selectable states | Priced directed maneuvers | Unpriced links |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Stock + Kcalbeloh | On | 50 | 97 | 204 | 10 |
-| OPM + Kcalbeloh | On | 65 | 143 | 296 | 10 |
-| Stock + Kcalbeloh (wormholes off) | Off | 48 | 97 | 204 | 9 |
-| OPM + Kcalbeloh (wormholes off) | Off | 63 | 143 | 296 | 9 |
+| Stock + Kcalbeloh | On | 50 | 97 | 234 | 10 |
+| OPM + Kcalbeloh | On | 65 | 143 | 368 | 10 |
+| Stock + Kcalbeloh (wormholes off) | Off | 48 | 97 | 234 | 9 |
+| OPM + Kcalbeloh (wormholes off) | Off | 63 | 143 | 368 | 9 |
 
 With wormholes on, each adds **33 contexts**: the 30 physical mod bodies, the
 invisible SimeSystem barycenter, and two wormholes. With wormholes off, only
 the two portal bodies and their unpriced connector are omitted. All four
 configurations add the same **47 states** and **106 priced directed maneuvers**.
 Shared base IDs and costs are preserved; the composer clones records instead of
-changing Stock or OPM. All use pack version `1.1.8-map.1`.
+changing Stock or OPM. The base pack's direct-transfer estimates are inherited
+alongside its reference branches. All use pack version `1.1.8-map.2`.
 
 ### Sources, attribution, and supported settings
 

@@ -18,7 +18,9 @@ describe('the reviewed stock reference pack', () => {
 
   it('has valid references and directed, sourced maneuvers', () => {
     expect(validatePlanetPack(stockPack)).toEqual([])
-    expect(stockPack.maneuvers).toHaveLength(98)
+    expect(stockPack.maneuvers).toHaveLength(128)
+    expect(stockPack.maneuvers.filter(edge => edge.sourceId === 'kowgan-1.7.3')).toHaveLength(98)
+    expect(stockPack.maneuvers.filter(edge => edge.directTransfer)).toHaveLength(30)
     for (const maneuver of stockPack.maneuvers) {
       expect(maneuver.assumptions.length).toBeGreaterThan(0)
       expect(stockPack.sources.some((source) => source.id === maneuver.sourceId)).toBe(true)
@@ -68,16 +70,15 @@ describe('the reviewed stock reference pack', () => {
     expect(stockPack.assumptions.join(' ')).toContain('Plane-change')
   })
 
-  it('includes a Kerbin parking-orbit layover between two non-Kerbin planetary systems', () => {
+  it('uses a complete direct estimate between non-Kerbin parking orbits without a homeworld layover', () => {
     const route = findLowestCostPath(buildGraph(stockPack), 'stock:moho:surface', 'stock:eve:surface')
     expect(route.status).toBe('success')
     if (route.status !== 'success') throw new Error(route.message)
     expect(route.nodeIds).toEqual([
-      'stock:moho:surface', 'stock:moho:orbit', 'stock:moho:encounter',
-      'stock:kerbin:encounter', 'stock:kerbin:orbit', 'stock:kerbin:encounter',
-      'stock:eve:encounter', 'stock:eve:elliptical', 'stock:eve:orbit', 'stock:eve:surface',
+      'stock:moho:surface', 'stock:moho:orbit', 'stock:eve:orbit', 'stock:eve:surface',
     ])
-    expect(route.totalDeltaV).toBe(15400)
+    expect(route.totalDeltaV).toBe(870 + 3268 + 8000)
+    expect(route.legs[1]?.edge).toMatchObject({ directTransfer: true, kind: 'transfer', deltaV: 3268 })
   })
 
   it('finds a finite route to every supported state from Kerbin surface', () => {

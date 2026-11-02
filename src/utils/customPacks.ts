@@ -134,8 +134,9 @@ function canonicalPack(pack: PlanetPack): PlanetPack {
       id, label, from, to, forwardKind, reverseKind, sourceId, assumptions: [...assumptions],
     })) } : {}),
     ...(pack.mapRegions !== undefined ? { mapRegions: pack.mapRegions.map(({ id, label, bodyIds }) => ({ id, label, bodyIds: [...bodyIds] })) } : {}),
-    maneuvers: pack.maneuvers.map(({ id, from, to, deltaV, kind, label, sourceId, assumptions }) => ({
+    maneuvers: pack.maneuvers.map(({ id, from, to, deltaV, kind, label, sourceId, assumptions, directTransfer }) => ({
       id, from, to, deltaV, kind, label, sourceId, assumptions: [...assumptions],
+      ...(directTransfer !== undefined ? { directTransfer } : {}),
     })),
   }
 }

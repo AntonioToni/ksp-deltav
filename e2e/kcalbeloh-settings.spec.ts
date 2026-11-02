@@ -223,7 +223,7 @@ test('exports the portal-free topology and imports it only after choosing a cust
   expect(exported.id).toBe('stock-kcalbeloh-no-wormholes')
   expect(exported.bodies).toHaveLength(48)
   expect(exported.nodes).toHaveLength(97)
-  expect(exported.maneuvers).toHaveLength(204)
+  expect(exported.maneuvers).toHaveLength(234)
   expect(exported.unpricedConnections).toHaveLength(9)
   expect(exported.bodies.some(body => body.kind === 'wormhole')).toBe(false)
   expect(exported.mapRegions!.flatMap(region => region.bodyIds).some(id => id.startsWith('kcalbeloh:wh'))).toBe(false)

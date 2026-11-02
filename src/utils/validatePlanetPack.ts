@@ -177,6 +177,16 @@ export function validatePlanetPack(pack: unknown): string[] {
     texts(edge.assumptions, `${label} assumptions`)
     if (typeof edge.deltaV !== 'number' || !Number.isFinite(edge.deltaV) || edge.deltaV < 0) errors.push(`${label} Delta-V must be finite and nonnegative.`)
     if (typeof edge.sourceId !== 'string' || !sourceById.has(edge.sourceId)) errors.push(`${label} references unknown source ${display(edge.sourceId)}.`)
+    if (edge.directTransfer !== undefined && typeof edge.directTransfer !== 'boolean') {
+      errors.push(`${label} directTransfer must be a boolean when supplied.`)
+    }
+    if (edge.directTransfer === true) {
+      const from = typeof edge.from === 'string' ? nodeById.get(edge.from) : undefined
+      const to = typeof edge.to === 'string' ? nodeById.get(edge.to) : undefined
+      if (edge.kind !== 'transfer' || from?.kind !== 'orbit' || to?.kind !== 'orbit' || from.bodyId === to.bodyId) {
+        errors.push(`${label} directTransfer requires a transfer between low-orbit states on different bodies.`)
+      }
+    }
     transition(edge.from, edge.to, edge.kind, label)
   }
   for (const connection of connections) {

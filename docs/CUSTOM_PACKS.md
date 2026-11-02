@@ -157,6 +157,18 @@ planner adds no hidden capture or circularization cost to such a pair. A
 `wormhole` edge is likewise a complete explicitly priced journey, not an
 automatically free plugin jump.
 
+Optional `directTransfer: true` marks a complete low-orbit → low-orbit transfer
+between different bodies. Its `kind` must be `transfer`, and its supplied
+`deltaV` must include both departure and establishment of the destination orbit.
+The map draws this connection only when it belongs to the selected route, keeping
+the background map readable. The flag adds no calculated costs or reverse edge,
+and bundled transfer costs retain the atmospheric-assistance policy above.
+
+Omitting `directTransfer`, or setting it to `false`, keeps the normal connection
+display. Only booleans are accepted. Import, browser storage, and export preserve
+both explicit values. The flag does not generate an orbital model for imported
+data or verify its figures; costs remain author-supplied **Imported budget**.
+
 Disconnected states are allowed, but routes requiring missing connections are
 reported as unreachable. Encounter-to-encounter planetary arrivals retain their
 arrival context across stops: before another such departure, a route must reach
@@ -172,7 +184,7 @@ existing states and both directional kinds must follow the topology rules above.
 The descriptor contains **no `deltaV`** and does not add a zero-cost edge.
 
 Open **Link allowances** from the manager's **Add-ons** tab, or from the route
-status when a route is unavailable in a pack with unpriced links. **Forward**
+status when missing allowances can complete the selected itinerary. **Forward**
 follows the descriptor's `from` → `to` endpoints; **Reverse** follows `to` → `from`.
 Read the endpoint arrows under each field. These directions are independent of
 the selected mission mode. Enter the whole cost independently in each direction.

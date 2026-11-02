@@ -3,7 +3,7 @@ import { keyframes } from '@emotion/react'
 import { Box, MenuItem, TextField, Typography } from '@mui/material'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import type { ManeuverEdge, NodeKind, PlanetPack, RouteResult } from '../types/planner'
-import { arrowPosition, connectionPoints, createMapLayout, packForMapRegion, pathFromPoints } from './mapLayout'
+import { arrowPosition, connectionPoints, createMapLayout, maneuverPoints, packForMapRegion, pathFromPoints } from './mapLayout'
 import type { MapMode } from './mapLayout'
 import { getAerobrakingEdges } from '../utils/aerobraking'
 import type { AtmosphericAdjustment } from '../utils/atmosphericAssistance'
@@ -79,13 +79,14 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   const connectionGroups = useMemo(() => {
     const groups = new Map<string, ManeuverEdge[]>()
     for (const edge of visiblePack.maneuvers) {
+      if (edge.directTransfer && !routeEdges.has(edge.id)) continue
       const pair = JSON.stringify([edge.from, edge.to].sort())
       const group = groups.get(pair) ?? []
       group.push(edge)
       groups.set(pair, group)
     }
     return [...groups.values()]
-  }, [visiblePack])
+  }, [visiblePack, routeEdges])
   // Preserve the flown order and repeated traversals. A set of selected edges
   // cannot distinguish a visit to a stop from the subsequent flight back.
   const routeFlow = useMemo(() => {
@@ -93,11 +94,9 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
     const visibleEdges = new Set(visiblePack.maneuvers.map(edge => edge.id))
     return createRouteFlow(route.legs.map(({ edge }) => {
       if (!visibleEdges.has(edge.id)) return []
-      const from = nodeById.get(edge.from)
-      const to = nodeById.get(edge.to)
-      return from && to ? connectionPoints(from, to, layout, visiblePack) : []
+      return maneuverPoints(edge, layout, visiblePack)
     }))
-  }, [route, visiblePack, nodeById, layout])
+  }, [route, visiblePack, layout])
   const flowKey = JSON.stringify([mode, regionId, routeFlow.period, routeFlow.runs.map(run => [run.startDistance, run.path])])
   const unpricedConnections = (visiblePack.unpricedConnections ?? []).filter(connection => !visiblePack.maneuvers.some(edge =>
     edge.id === `allowance:${connection.id}:forward` || edge.id === `allowance:${connection.id}:reverse`))
@@ -129,9 +128,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   }
 
   function pointsFor(edge: ManeuverEdge) {
-    const from = nodeById.get(edge.from)
-    const to = nodeById.get(edge.to)
-    return from && to ? connectionPoints(from, to, layout, visiblePack) : []
+    return maneuverPoints(edge, layout, visiblePack)
   }
 
   function adjustmentDescription(adjustment: AtmosphericAdjustment) {
@@ -227,7 +224,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           const color = edgeColor(edge)
           return <g key={edge.id}>
             <path d={d} fill="none" stroke={color} strokeWidth={layout.presentation === 'overview' ? 19 : mode === 'portrait' ? 20 : 29} strokeOpacity={0.1} strokeLinejoin="round" strokeLinecap="round" pointerEvents="none" />
-            <path d={d} fill="none" stroke={color} strokeWidth={layout.presentation === 'overview' ? 11 : mode === 'portrait' ? 12 : 19} strokeOpacity={0.95} strokeLinejoin="round" strokeLinecap="round" data-edge-id={edge.id} data-route-edge="true" data-assisted={adjustments.has(edge.id) ? 'true' : undefined}><title>{edgeTitle(edge)}</title></path>
+            <path d={d} fill="none" stroke={color} strokeWidth={layout.presentation === 'overview' ? 11 : mode === 'portrait' ? 12 : 19} strokeOpacity={0.95} strokeLinejoin="round" strokeLinecap="round" data-edge-id={edge.id} data-route-edge="true" data-direct-transfer={edge.directTransfer ? 'true' : undefined} data-assisted={adjustments.has(edge.id) ? 'true' : undefined}><title>{edgeTitle(edge)}</title></path>
             <path d={d} fill="none" stroke="#ffffff" strokeWidth={1.5} strokeOpacity={0.16} strokeLinejoin="round" pointerEvents="none" />
           </g>
         })}
@@ -256,7 +253,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           </g>)}
         </g>}
 
-        {aerobrakingEdges.map(edge => {
+        {aerobrakingEdges.filter(edge => !edge.directTransfer || routeEdges.has(edge.id)).map(edge => {
           const arrow = arrowPosition(pointsFor(edge))
           if (!arrow) return null
           const label = `Atmospheric braking possible: ${nodeById.get(edge.from)?.label} → ${nodeById.get(edge.to)?.label}`
@@ -264,6 +261,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           const adjustment = adjustments.get(edge.id)
           const description = adjustment ? adjustmentDescription(adjustment) : undefined
           const tooltip = description ? `${label}. ${description}; this is a planning assumption, not a trajectory calculation.`
+            : edge.directTransfer ? `${label}. This complete direct-transfer estimate includes departure and arrival burns. Atmospheric options keep this bundled budget unchanged.`
             : adjustments.size > 0 && edge.kind === 'transfer' ? `${label}. This combined transfer keeps its reference cost; atmospheric savings are not separated from its other maneuvers.`
               : `${label}. ${edge.kind === 'descent' ? 'Atmospheric entry or landing assistance' : 'Aerocapture or aerobraking'}; savings are not included in the budget.`
           return <g key={`aero-${edge.id}`} role="img" aria-label={label}

@@ -5,7 +5,7 @@ import { getAerobrakingEdges } from './aerobraking'
 const edgeId = (body: string, from: string, to: string) => `stock:${body}:${from}->stock:${body}:${to}`
 
 describe('potential atmospheric braking markers', () => {
-  it('marks only inward atmospheric captures, descents and low-orbit moon returns', () => {
+  it('retains the reference-map atmospheric captures, descents and low-orbit moon returns', () => {
     const expected = [
       ...['kerbin', 'laythe'].map(body => edgeId(body, 'encounter', 'orbit')),
       ...['eve', 'duna', 'jool'].flatMap(body => [
@@ -14,12 +14,12 @@ describe('potential atmospheric braking markers', () => {
       ...['kerbin', 'eve', 'duna', 'laythe'].map(body => edgeId(body, 'orbit', 'surface')),
       ...['mun', 'minmus'].map(moon => `stock:${moon}:encounter->stock:kerbin:orbit`),
     ]
-    expect(getAerobrakingEdges(stockPack).map(edge => edge.id).sort()).toEqual(expected.sort())
+    expect(getAerobrakingEdges(stockPack).filter(edge => !edge.directTransfer).map(edge => edge.id).sort()).toEqual(expected.sort())
   })
 
   it('never marks the reverse departure or an interplanetary encounter increment', () => {
     const marked = new Set(getAerobrakingEdges(stockPack).map(edge => edge.id))
-    for (const edge of getAerobrakingEdges(stockPack)) {
+    for (const edge of getAerobrakingEdges(stockPack).filter(edge => !edge.directTransfer)) {
       expect(marked.has(`${edge.to}->${edge.from}`)).toBe(false)
     }
     for (const edge of stockPack.maneuvers.filter(edge => edge.kind === 'transfer')) {
@@ -35,7 +35,7 @@ describe('potential atmospheric braking markers', () => {
       bodies: stockPack.bodies.map(body => body.id === 'stock:kerbin' ? { ...body, hasAtmosphere: false } : body),
     }
     const marked = getAerobrakingEdges(pack)
-    expect(marked).toHaveLength(10)
+    expect(marked.filter(edge => !edge.directTransfer)).toHaveLength(10)
     expect(marked.some(edge => edge.to.startsWith('stock:kerbin:'))).toBe(false)
     expect(marked.some(edge => edge.id === edgeId('laythe', 'encounter', 'orbit'))).toBe(true)
   })
@@ -49,8 +49,17 @@ describe('potential atmospheric braking markers', () => {
     }
     expect(pack.bodies.find(body => body.id === 'stock:kerbin')?.hasAtmosphere).toBe(true)
     const marked = getAerobrakingEdges(pack)
-    expect(marked).toHaveLength(10)
+    expect(marked.filter(edge => !edge.directTransfer)).toHaveLength(10)
     expect(marked.some(edge => edge.to.startsWith('stock:kerbin:'))).toBe(false)
     expect(marked.some(edge => edge.id === edgeId('laythe', 'encounter', 'orbit'))).toBe(true)
+  })
+
+  it('marks the atmospheric arrival of complete direct pairs without marking airless arrivals', () => {
+    const marked = getAerobrakingEdges(stockPack).filter(edge => edge.directTransfer)
+    expect(marked).toHaveLength(15)
+    expect(marked.some(edge => edge.from === 'stock:eve:orbit' && edge.to === 'stock:duna:orbit')).toBe(true)
+    expect(marked.some(edge => edge.from === 'stock:duna:orbit' && edge.to === 'stock:eve:orbit')).toBe(true)
+    expect(marked.some(edge => edge.from === 'stock:dres:orbit' && edge.to === 'stock:duna:orbit')).toBe(true)
+    expect(marked.some(edge => edge.to === 'stock:dres:orbit')).toBe(false)
   })
 })

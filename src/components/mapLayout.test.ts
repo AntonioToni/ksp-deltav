@@ -3,7 +3,7 @@ import { opmPack } from '../data/opm'
 import { rssPack } from '../data/rss'
 import { stockPack } from '../data/stock'
 import type { ManeuverEdge, PlanetPack, RouteNode } from '../types/planner'
-import { arrowPosition, connectionPoints, createMapLayout, packForMapRegion, type MapMode, type Point } from './mapLayout'
+import { arrowPosition, connectionPoints, createMapLayout, maneuverPoints, packForMapRegion, type MapMode, type Point } from './mapLayout'
 
 // No familiar names or IDs: includes a selectable star, duplicate orbit kinds,
 // a moon of a moon, a long body name and a link between two non-home planets.
@@ -82,12 +82,10 @@ describe.each([stockPack, opmPack, rssPack, futurePack])('$name', (pack) => {
     it('draws opposite maneuvers on one reversible path between their real states', () => {
       const layout = createMapLayout(pack, mode)
       for (const edge of pack.maneuvers) {
-        const from = pack.nodes.find(node => node.id === edge.from)!
-        const to = pack.nodes.find(node => node.id === edge.to)!
-        const points = connectionPoints(from, to, layout, pack)
+        const points = maneuverPoints(edge, layout, pack)
         expect(points.at(0)).toEqual(layout.nodePositions.get(edge.from))
         expect(points.at(-1)).toEqual(layout.nodePositions.get(edge.to))
-        expect(connectionPoints(to, from, layout, pack)).toEqual([...points].reverse())
+        expect(maneuverPoints({ ...edge, from: edge.to, to: edge.from }, layout, pack)).toEqual([...points].reverse())
         for (const point of points) {
           expect(point.x).toBeGreaterThanOrEqual(0)
           expect(point.x).toBeLessThanOrEqual(layout.width)

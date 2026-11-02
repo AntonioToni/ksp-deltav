@@ -39,6 +39,8 @@ export interface ManeuverEdge {
   label: string
   sourceId: string
   assumptions: string[]
+  /** Complete parking-orbit transfer; show its connection only when selected. */
+  directTransfer?: boolean
 }
 
 /** A documented link whose fuel budget must be supplied explicitly by the user. */
