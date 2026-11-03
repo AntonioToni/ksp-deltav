@@ -42,7 +42,7 @@ function referenceSpeed(pack: PlanetPack, node: RouteNode) {
 describe('complete coplanar direct-transfer estimates', () => {
   it.each(configurations)('adds complete non-home planet bound-reference pairs in $pack.id', ({ pack, directed, planets, states }) => {
     expect(validatePlanetPack(pack)).toEqual([])
-    const edges = pack.maneuvers.filter(edge => edge.directTransfer)
+    const edges = pack.maneuvers.filter(edge => edge.directTransfer && edge.sourceId === directTransferSource.id)
     expect(edges).toHaveLength(directed)
     expect(new Set(edges.map(edge => edge.from)).size).toBe(states)
     expect(new Set(edges.map(edge => pack.nodes.find(node => node.id === edge.from)!.bodyId)).size).toBe(planets)
@@ -64,13 +64,13 @@ describe('complete coplanar direct-transfer estimates', () => {
       expect(pack.sources.find(source => source.id === edge.sourceId)?.budgetType).toBe('model')
       expect(edge.assumptions.join(' ')).toContain('Atmospheric assistance does not discount this bundled pair')
     }
-    expect(opmPack.maneuvers.filter(edge => edge.directTransfer).some(edge =>
+    expect(opmPack.maneuvers.filter(edge => edge.directTransfer && edge.sourceId === directTransferSource.id).some(edge =>
       edge.from.startsWith('stock:eeloo:') || edge.to.startsWith('stock:eeloo:'))).toBe(false)
   })
 
   it.each(configurations)('matches independent vis-viva endpoint calculations for every $pack.id pair', ({ pack, references }) => {
     const byId = new Map(references.map(reference => [reference.bodyId, reference]))
-    for (const edge of pack.maneuvers.filter(edge => edge.directTransfer)) {
+    for (const edge of pack.maneuvers.filter(edge => edge.directTransfer && edge.sourceId === directTransferSource.id)) {
       const from = pack.nodes.find(node => node.id === edge.from)!
       const to = pack.nodes.find(node => node.id === edge.to)!
       const departure = byId.get(from.bodyId)!

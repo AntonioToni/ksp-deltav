@@ -7,5 +7,9 @@ export function buildGraph(pack: PlanetPack): PlannerGraph {
   if (errors.length > 0) throw new Error(`Invalid planet pack:\n${errors.join('\n')}`)
   const graph = new Map<string, ManeuverEdge[]>(pack.nodes.map(node => [node.id, []]))
   for (const edge of pack.maneuvers) graph.get(edge.from)?.push(edge)
-  return { nodes: new Map(pack.nodes.map(node => [node.id, node])), adjacency: graph }
+  return {
+    nodes: new Map(pack.nodes.map(node => [node.id, node])),
+    adjacency: graph,
+    bodies: new Map(pack.bodies.map(body => [body.id, body])),
+  }
 }

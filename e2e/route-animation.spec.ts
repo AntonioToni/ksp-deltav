@@ -137,7 +137,8 @@ test('follows and reorders multiple stops, retaining outward and inward passes o
   await closeStops(page)
   const first = await expectOrderedVisits(page, ['stock:kerbin:surface', 'stock:mun:surface', 'stock:minmus:surface', 'stock:duna:surface'])
   const kerbinOrbit = (await geometry(page, ['stock:kerbin:orbit'])).points['stock:kerbin:orbit']
-  expect(first.vertices.filter(point => Math.hypot(point.x - kerbinOrbit.x, point.y - kerbinOrbit.y) < 0.01)).toHaveLength(3)
+  // The sibling segment links Mun and Minmus directly; Kerbin low orbit is only visited before and after the moon tour.
+  expect(first.vertices.filter(point => Math.hypot(point.x - kerbinOrbit.x, point.y - kerbinOrbit.y) < 0.01)).toHaveLength(2)
   await expect(page.locator('[data-route-edge="true"][data-edge-id="stock:mun:orbit->stock:mun:surface"]')).toHaveCount(1)
   await expect(page.locator('[data-route-edge="true"][data-edge-id="stock:mun:surface->stock:mun:orbit"]')).toHaveCount(1)
   const before = await total(page).textContent()

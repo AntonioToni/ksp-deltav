@@ -73,12 +73,14 @@ On Linux CI machines that also need browser system dependencies, use
 | Body hierarchy, states, maneuvers, and pack types | `src/types/planner.ts` |
 | Stock reference data | `src/data/stock.ts` |
 | Shared Stock physical and orbital facts | `src/data/stockPhysics.ts` |
+| Shared pinned RSS physical and orbital facts | `src/data/rssPhysics.ts` |
 | OPM and RSS packs, and pack registry | `src/data/opm.ts`, `src/data/rss.ts`, `src/data/planetPacks.ts` |
 | Composed Kcalbeloh packs and pinned hierarchy facts | `src/data/kcalbeloh.ts`, `src/data/kcalbelohReference.ts` |
 | Directional budgets for documented unpriced links | `src/utils/connectionAllowances.ts`, `src/components/ConnectionAllowancesDialog.tsx` |
 | Pinned OPM physical/orbital reference data | `src/data/opmReference.ts` |
 | Analytic orbital and vacuum surface estimates | `src/utils/orbitalBudgets.ts` |
 | Complete direct planet-pair estimates | `src/data/directTransfers.ts` |
+| Complete direct sibling-moon estimates | `src/data/siblingTransfers.ts` |
 | Pack and topology validation | `src/utils/validatePlanetPack.ts` |
 | Custom JSON imports and browser storage | `src/utils/customPacks.ts` |
 | Graph construction and ordered contextual route search | `src/utils/buildGraph.ts`, `src/utils/findRoute.ts` |
@@ -112,6 +114,13 @@ incompatible encounter chaining and avoids choosing a cheap stage that makes the
 remaining mission more expensive. Return-only mode reverses the itinerary and
 starts independently at the destination.
 
+Compiled graphs also retain body hierarchy. A complete sibling-moon pair stays
+inside one physical parent's system, so it may preserve a pending parent arrival
+while moving between moons. It never clears that context or creates a free
+interplanetary departure. Graph transformations for atmospheric choices and link
+allowances preserve the same hierarchy. Hand-built graphs without body metadata
+retain the conservative legacy rules.
+
 `findLowestCostPath` retains the single-route interface; `findOrderedPath` handles
 ordered visit sequences. `findMissionRoute` accepts up to four intermediate
 states and exposes aggregate outbound/return routes plus their stage slices.
@@ -143,7 +152,7 @@ allowance, which may be higher than the source figure. The source pack and base
 graph stay unchanged, so export and attribution retain the original data.
 Comparison uses the selected mission's original powered budget, and reserves
 apply to its adjusted total. Atmospheric arrows themselves remain informational:
-bundled moon-return and direct planet-pair edges keep their complete costs.
+bundled moon-return, planet-pair, and sibling-moon edges keep their complete costs.
 Arrival-context and parking-orbit rules remain part of the same global search.
 
 The Stops editor stores visits in outbound order. Pack changes filter out
@@ -210,9 +219,33 @@ travel uses the same band in the opposite direction. Imported packs can retain
 the optional flag through canonical JSON storage/export; it neither generates
 new physics nor verifies their author-supplied budgets.
 
-The extension adds 66 directed Stock pairs and 226 in OPM. RSS remains unchanged
-until its historical low-orbit states have compatible physical references for
-direct estimates.
+The planetary model adds 66 directed Stock pairs and 226 in OPM. RSS
+interplanetary branches retain their historical reference graph until their
+low-orbit states have compatible physical references for direct planetary
+estimates. This restriction does not prevent local sibling-moon estimates.
+
+## Sibling-moon reference estimates
+
+`siblingTransfers.ts` adds complete low-orbit pairs between supported moons of
+one physical parent. Stock has 22 directed sibling records, OPM 46, and RSS 76.
+The separate `sibling-moon-transfer-model` source identifies their calculation
+basis. Kcalbeloh compositions inherit the base's records while preserving the
+native mod's nine published complete sibling pairs.
+
+The parent-centered Hohmann ellipse uses circularized moon semi-major axes and
+the inner moon's orbital plane. The outer encounter's relative speed includes
+the mutual inclination calculated from both source inclinations and ascending
+nodes. Each moon's parking-orbit escape or capture is computed before upward
+whole-m/s rounding. This is an assumed favorable nodal encounter, not a dated
+trajectory or an eccentric-orbit/phasing solver. Unsupported retrograde,
+co-orbital, binary-parent, or unknown-plane cases are omitted from generation.
+
+The shared `rssPhysics.ts` table now serves both sibling estimates and relay
+presets; moving those existing physical facts did not change relay values.
+Graph hierarchy distinguishes local sibling moves from interplanetary resets.
+Reference-only escape branches can still introduce parent parking stops in
+other journeys; the route-status and budget-assumptions notices identify these
+as reference itinerary choices rather than universal physical requirements.
 
 ## OPM reference estimates
 

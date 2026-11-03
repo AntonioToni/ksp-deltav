@@ -30,6 +30,8 @@ const stateKey = ({ nodeId, pendingParkingBodyId, nextStopIndex }: SearchState) 
  * interplanetary encounter arrival, a low parking orbit at that planet is
  * required before another interplanetary departure. Complete pairs include
  * their specified low/high bound capture instead of an encounter arrival.
+ * A complete transfer between sibling moons remains inside their parent
+ * system, so it preserves any pending arrival at that parent planet.
  */
 export function findLowestCostPath(graph: PlannerGraph, start: string, goal: string, options: RouteSearchOptions = {}): RouteResult {
   if (!graph.nodes.has(start) || !graph.nodes.has(goal)) {
@@ -159,12 +161,24 @@ function searchOrderedPath(graph: PlannerGraph, itinerary: readonly string[], op
       const isCompleteBoundTransfer = edge.directTransfer === true && edge.kind === 'transfer'
         && (fromNode.kind === 'orbit' || fromNode.kind === 'elliptical')
         && (toNode.kind === 'orbit' || toNode.kind === 'elliptical') && fromNode.bodyId !== toNode.bodyId
+      const fromBody = graph.bodies?.get(fromNode.bodyId)
+      const toBody = graph.bodies?.get(toNode.bodyId)
+      const parent = fromBody?.parentId ? graph.bodies?.get(fromBody.parentId) : undefined
+      const isSiblingTransfer = isCompleteBoundTransfer
+        && fromBody?.id === fromNode.bodyId && toBody?.id === toNode.bodyId
+        && fromBody.kind === 'moon' && toBody.kind === 'moon'
+        && fromBody.parentId !== null && fromBody.parentId === toBody.parentId
+        && parent?.id === fromBody.parentId && (parent.kind === 'planet' || parent.kind === 'moon')
       // A reference high ellipse reached through an old encounter branch is
       // not interchangeable with a separately paid complete-pair arrival.
-      if ((isInterplanetary || isCompleteBoundTransfer) && current.pendingParkingBodyId) continue
+      // Local sibling pairs can continue within that same parent system, but
+      // cannot clear or bypass a different parent's unresolved arrival.
+      if (current.pendingParkingBodyId && (
+        isSiblingTransfer ? current.pendingParkingBodyId !== parent?.id : isInterplanetary || isCompleteBoundTransfer
+      )) continue
       const next: SearchState = {
         nodeId: edge.to,
-        pendingParkingBodyId: isCompleteBoundTransfer ? null : isInterplanetary
+        pendingParkingBodyId: isSiblingTransfer ? current.pendingParkingBodyId : isCompleteBoundTransfer ? null : isInterplanetary
           ? toNode.bodyId
           : toNode.kind === 'orbit' && toNode.bodyId === current.pendingParkingBodyId ? null : current.pendingParkingBodyId,
         nextStopIndex: advance(edge.to, current.nextStopIndex),

@@ -35,6 +35,7 @@ import { applyAtmosphericAssistance, getAtmosphericCapabilities, type Atmospheri
 import { applyConnectionAllowances, type ConnectionPlan } from './utils/connectionAllowances'
 import { hasPotentialConnectionRoute } from './utils/connectionAvailability'
 import { describeManeuverBasis, summarizeBudgetBasis } from './utils/estimateBasis'
+import { referenceParkingStops } from './utils/referenceParking'
 
 const format = new Intl.NumberFormat('en-US')
 const compactBreakdown = '@media (max-height: 500px), (max-width: 699px) and (max-height: 650px)'
@@ -131,10 +132,14 @@ export default function App() {
   )
   const directTransferCount = route?.status === 'success' ? route.legs.filter(({ edge }) => edge.directTransfer).length : 0
   const hubName = bodiesById.get(pack.transferHubBodyId ?? '')?.name ?? 'the reference planet'
-  const hasLayover = route?.status === 'success' && [...route.outboundStages, ...route.returnStages].some(leg => leg.legs.filter(({ edge }) =>
+  const referenceStops = route?.status === 'success'
+    ? referenceParkingStops(pack, route.legs, [startId, ...waypointIds, endId].filter((id): id is string => id !== null)) : []
+  const hasLayover = referenceStops.length > 0 || route?.status === 'success' && [...route.outboundStages, ...route.returnStages].some(leg => leg.legs.filter(({ edge }) =>
     edge.kind === 'transfer' && nodesById.get(edge.from)?.kind === 'encounter' && nodesById.get(edge.to)?.kind === 'encounter',
   ).length > 1)
-  const layoverNotice = isCustomPack || pack.mapRegions ? 'Includes intermediate parking orbits.' : `Includes a ${hubName} parking-orbit layover.`
+  const layoverNotice = referenceStops.length > 0
+    ? `Reference route via ${referenceStops.map(node => node.label).join(', ')}; other transfers may use less Δv.`
+    : isCustomPack || pack.mapRegions ? 'Includes intermediate parking orbits.' : `Includes a ${hubName} parking-orbit layover.`
   const hasUnpricedLinks = (pack.unpricedConnections?.length ?? 0) > 0
   const needsLinkAllowances = useMemo(() => hasUnpricedLinks && route?.status === 'unreachable'
     && startId !== null && endId !== null
@@ -156,10 +161,11 @@ export default function App() {
   const estimateNotices = [
     ...(unavailableInterstellarNotice ? [unavailableInterstellarNotice] : []),
     ...(hasLayover ? [layoverNotice] : []),
+    ...(referenceStops.length > 0 ? ['These parent parking stops belong to the supplied reference itinerary. Direct moon escapes across different parent systems, co-orbital rendezvous, and retrograde sibling transfers may require a different model. A parking stop here is not a physical requirement for every possible flight.'] : []),
     ...(directTransferCount > 0 ? [
       isCustomPack
         ? 'Direct transfers use complete pair budgets supplied by the pack author. Atmospheric options keep these bundled transfer budgets unchanged.'
-        : 'Direct transfers are analytic estimates using coplanar circular stellar orbits and the selected low or high reference orbits. They include departure and powered arrival; atmospheric options keep these bundled transfer budgets unchanged.',
+        : 'Direct transfers are analytic reference estimates. Each complete pair includes departure and powered arrival. The listed model source explains its orbital and plane assumptions; atmospheric options keep these bundled transfer budgets unchanged.',
     ] : []),
     'Stops retain arrival conditions. Return only starts at the destination; the reserve applies once to the complete selected mission.',
   ]

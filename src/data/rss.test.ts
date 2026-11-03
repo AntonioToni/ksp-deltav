@@ -26,15 +26,17 @@ describe('the reference-based RSS pack', () => {
       .toMatchObject({ parentId: 'opm:sarnus', kind: 'moon' })
   })
 
-  it('covers 33 reference-supported bodies, 102 states, and 202 directed maneuvers', () => {
+  it('covers 33 reference-supported bodies, 102 states, and 278 directed maneuvers', () => {
     expect(validatePlanetPack(rssPack)).toEqual([])
     expect(rssPack.bodies).toHaveLength(33)
     expect(rssPack.nodes).toHaveLength(102)
-    expect(rssPack.maneuvers).toHaveLength(202)
+    expect(rssPack.maneuvers).toHaveLength(278)
+    expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'rss-community-solar-system-map')).toHaveLength(202)
+    expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'sibling-moon-transfer-model')).toHaveLength(76)
     expect(rssPack.bodies.filter(body => body.kind === 'moon')).toHaveLength(21)
     expect(rssPack.bodies.filter(body => body.kind === 'planet')).toHaveLength(11)
     expect(rssPack.nodes.filter(node => node.kind === 'elliptical')).toHaveLength(10)
-    for (const edge of rssPack.maneuvers) {
+    for (const edge of rssPack.maneuvers.filter(edge => !edge.directTransfer)) {
       expect(Number.isInteger(edge.deltaV), edge.id).toBe(true)
       expect(edge.deltaV, edge.id).toBeGreaterThan(0)
       expect(edge.sourceId).toBe('rss-community-solar-system-map')
@@ -109,7 +111,8 @@ describe('the reference-based RSS pack', () => {
     ['pluto:surface', 21300],
     ['charon:surface', 20700],
   ])('sums the pinned diagram from Earth surface to %s as %i m/s', (destination, expected) => {
-    const route = findLowestCostPath(buildGraph(rssPack), 'rss:earth:surface', `rss:${destination}`)
+    const sourceMap = { ...rssPack, maneuvers: rssPack.maneuvers.filter(edge => !edge.directTransfer) }
+    const route = findLowestCostPath(buildGraph(sourceMap), 'rss:earth:surface', `rss:${destination}`)
     expect(route.status).toBe('success')
     if (route.status !== 'success') throw new Error(route.message)
     expect(route.totalDeltaV).toBe(expected)

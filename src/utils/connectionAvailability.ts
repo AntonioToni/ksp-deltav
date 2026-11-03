@@ -32,5 +32,5 @@ export function hasPotentialConnectionRoute(
       adjacency.set(from, [...(adjacency.get(from) ?? []), edge])
     }
   }
-  return findMissionRoute({ nodes: referenceGraph.nodes, adjacency }, start, end, mode, stops).status === 'success'
+  return findMissionRoute({ ...referenceGraph, adjacency }, start, end, mode, stops).status === 'success'
 }

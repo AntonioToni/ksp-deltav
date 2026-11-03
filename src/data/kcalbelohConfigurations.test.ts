@@ -12,8 +12,8 @@ import { kcalbelohBodies, kcalbelohRegions } from './kcalbelohReference'
 import { findRelayBodyPreset } from './commnet'
 
 const configurations = [
-  { enabled: stockKcalbelohPack, disabled: stockKcalbelohNoWormholesPack, bodies: 48, states: 97, maneuvers: 270 },
-  { enabled: opmKcalbelohPack, disabled: opmKcalbelohNoWormholesPack, bodies: 63, states: 143, maneuvers: 522 },
+  { enabled: stockKcalbelohPack, disabled: stockKcalbelohNoWormholesPack, bodies: 48, states: 97, maneuvers: 292 },
+  { enabled: opmKcalbelohPack, disabled: opmKcalbelohNoWormholesPack, bodies: 63, states: 143, maneuvers: 568 },
 ] as const
 const wormholeIds = ['kcalbeloh:wh3141a', 'kcalbeloh:wh3141b']
 

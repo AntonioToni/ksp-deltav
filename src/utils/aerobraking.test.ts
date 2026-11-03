@@ -54,8 +54,8 @@ describe('potential atmospheric braking markers', () => {
     expect(marked.some(edge => edge.id === edgeId('laythe', 'encounter', 'orbit'))).toBe(true)
   })
 
-  it('marks the atmospheric arrival of complete direct pairs without marking airless arrivals', () => {
-    const marked = getAerobrakingEdges(stockPack).filter(edge => edge.directTransfer)
+  it('marks the atmospheric arrival of complete planetary pairs without marking airless arrivals', () => {
+    const marked = getAerobrakingEdges(stockPack).filter(edge => edge.directTransfer && edge.sourceId === 'direct-interplanetary-model')
     expect(marked).toHaveLength(42)
     expect(marked.some(edge => edge.from === 'stock:eve:orbit' && edge.to === 'stock:duna:orbit')).toBe(true)
     expect(marked.some(edge => edge.from === 'stock:duna:orbit' && edge.to === 'stock:eve:orbit')).toBe(true)
@@ -64,5 +64,12 @@ describe('potential atmospheric braking markers', () => {
     expect(marked.some(edge => edge.from === 'stock:eve:elliptical' && edge.to === 'stock:duna:orbit')).toBe(true)
     expect(marked.some(edge => edge.from === 'stock:eve:elliptical' && edge.to === 'stock:duna:elliptical')).toBe(true)
     expect(marked.some(edge => edge.to === 'stock:dres:orbit')).toBe(false)
+  })
+
+  it('marks powered sibling arrivals at atmospheric moons without marking their airless reverse arrivals', () => {
+    const marked = getAerobrakingEdges(stockPack).filter(edge => edge.sourceId === 'sibling-moon-transfer-model')
+    expect(marked).toHaveLength(4)
+    expect(marked.every(edge => edge.to === 'stock:laythe:orbit')).toBe(true)
+    expect(marked.some(edge => edge.from === 'stock:vall:orbit')).toBe(true)
   })
 })

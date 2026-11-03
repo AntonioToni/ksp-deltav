@@ -60,5 +60,5 @@ export function applyConnectionAllowances(graph: PlannerGraph, pack: PlanetPack,
   if (edges.length === 0) return { graph, edges }
   const adjacency = new Map(graph.adjacency)
   for (const edge of edges) adjacency.set(edge.from, [...adjacency.get(edge.from)!, edge])
-  return { graph: { nodes: graph.nodes, adjacency }, edges }
+  return { graph: { ...graph, adjacency }, edges }
 }

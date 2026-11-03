@@ -1,6 +1,6 @@
 # Validation record
 
-Reviewed **28 October 2026** against the pinned sources below. This record
+Initial review: **28 October 2026**, with dated extensions below. This record
 distinguishes source transcription, calculation correctness, and physical
 feasibility. It does not certify flight-ready trajectories or compatibility
 with arbitrary mod patches.
@@ -80,9 +80,9 @@ raise back to the moon branch's high orbit (**4,498 m/s**). The shortest-path
 search was following its supplied costs; the missing reference-state connections
 caused the detour.
 
-The correction extends complete pairs to existing high elliptical states,
-giving **66 directed Stock pairs** and **226 in OPM**, with the same selectable
-states and original reference segments. Stock high-orbit energy is inferred
+At that revision, the correction extended complete pairs to existing high
+elliptical states, giving **66 directed Stock pairs** and **226 in OPM**, with the
+same selectable states and original reference segments. Stock high-orbit energy is inferred
 from the rounded map circularization increments. Independent vis-viva checks
 place the implied apoapses inside their SOIs: **75.23 Mm at Eve**, **26.68 Mm at
 Duna**, and **2,127.74 Mm at Jool**. OPM high states use their explicit half-SOI
@@ -105,7 +105,7 @@ paid Duna low and Jool high reference states, compared with the original
 these complete reference pairs. This is an expanded search over the stated
 models, not a claim of lower flight costs for arbitrary launch dates.
 
-Independent vis-viva calculations matched all **292** current directed Stock/OPM
+Independent vis-viva calculations matched all **292** directed Stock/OPM
 records and their reverse costs. All **102** directed low-to-low records from
 the initial extension retained their costs. Another **876** comparisons with all
 supported ideal captures and 100 m/s landing allowances showed **328** decreases
@@ -114,7 +114,55 @@ reset before a new interplanetary departure; stopping at a high state or moon
 does not erase that context. A complete modeled high-orbit arrival already pays
 for its stated bound capture and can continue without a second circularization.
 
-### Correction found
+### Sibling-moon routes and provenance correction — 3 November 2026
+
+The high-orbit correction still lacked direct transfers between moons sharing a
+parent. Mun low orbit → Minmus low orbit consequently used a **2,220 m/s**
+reference itinerary through Kerbin low orbit. Similar detours occurred in the
+Jool, Sarnus, Urlum, Mars, Jupiter, Saturn, and Uranus systems. These were the
+least expensive supplied graph routes, not requirements of orbital mechanics.
+
+The sibling model prices escape and capture at the moons using a parent-centered
+Hohmann reference. Its plane is the inner moon's orbital plane; the outer
+encounter includes the mutual inclination derived from both inclinations and
+ascending nodes. A local transfer preserves any pending parent arrival context,
+including through stops and a round-trip turnaround. It does not permit a free
+interplanetary departure after a moon visit.
+
+The extension adds **22 directed Stock**, **46 OPM**, and **76 RSS** sibling
+records. Independent endpoint calculations matched all **144** generated
+records. A separate comparison checked **512 physical and orbital fields** across
+the 16 Stock, 16 OPM, and 32 RSS contexts against the pinned source files. All
+pre-existing reference-maneuver records remain unchanged: 98 in Stock, 190 in
+OPM, and 202 in RSS.
+
+Independent source-based endpoint calculations give **242 + 88 = 330 m/s** for
+Mun low orbit → Minmus low orbit, and **798 + 378 = 1,176 m/s** for Laythe → Vall.
+They also give **281 m/s** for Bop → Pol, **181 m/s** for Hale → Ovok,
+**738 m/s** for Phobos → Deimos, and **2,547 m/s** for Io → Europa, at the
+documented parking states. These are nominal model comparisons, not flight tests.
+
+Compared with the previous revision across **1,488 atmosphere-off homeworld
+missions**, the new search found **24 lower RSS estimates**, no increases, and
+unchanged Stock/OPM totals. Another 1,488 comparisons with all supported ideal
+captures and 100 m/s landing allowances found **64 lower RSS estimates**, no
+increases, and unchanged Stock/OPM totals. These checks compare graph budgets;
+they do not validate actual transfer windows or spacecraft performance.
+
+The audit retains separate checks for published map segments, modeled endpoint
+burns, route optimization, and physical interpretation. **1,898 m/s** for
+Duna → Gilly remains **1,428 modeled + 60 map + 410 map**. A matching sum or a
+passing shortest-path test establishes neither a continuous dated trajectory
+nor an in-game flight result. The calculation sources and remaining reference
+route limitations are documented in the [data guide](DATA.md#direct-sibling-moon-transfers).
+
+Co-orbital Polta–Priax and retrograde/high-eccentricity Thatmo–Nissee are excluded
+from ordinary sibling generation. Native Kcalbeloh's nine complete sibling
+pairs retain their official map budgets, including its binary group. Cross-parent
+and multilevel escapes may still use parking visits from the supplied graph;
+the correction does not certify all possible moon trajectories.
+
+### RSS SOI correction
 
 RSS relay presets used the raw Laplace SOI for two small moons. Default
 Kopernicus uses `max(Laplace, 2R, R + 40,000 m)` unless a body supplies an explicit

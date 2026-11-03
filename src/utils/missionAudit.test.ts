@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { opmKcalbelohPack, stockKcalbelohPack } from '../data/kcalbeloh'
-import type { ManeuverEdge, PlannerGraph, RouteNode } from '../types/planner'
+import type { CelestialBody, ManeuverEdge, PlannerGraph, RouteNode } from '../types/planner'
 import { applyAtmosphericAssistance } from './atmosphericAssistance'
 import { buildGraph } from './buildGraph'
 import { calculateBudget } from './budget'
@@ -11,9 +11,10 @@ import { findMissionRoute, type MissionMode } from './mission'
  * production Dijkstra solver. The transition rules express the documented
  * parking-orbit requirement, independently of the shortest-path algorithm.
  */
-function exhaustiveMinimum(nodes: RouteNode[], edges: ManeuverEdge[], itinerary: string[]): number {
+function exhaustiveMinimum(nodes: RouteNode[], edges: ManeuverEdge[], itinerary: string[], bodies: CelestialBody[]): number {
   const contexts: (string | null)[] = [null, ...new Set(nodes.map(node => node.bodyId))]
   const byId = new Map(nodes.map(node => [node.id, node]))
+  const hierarchy = new Map(bodies.map(body => [body.id, body]))
   const key = (id: string, waitingForOrbit: string | null, visit: number) => JSON.stringify([id, waitingForOrbit, visit])
   const consumeVisits = (id: string, visit: number) => {
     while (visit < itinerary.length && itinerary[visit] === id) visit++
@@ -32,8 +33,16 @@ function exhaustiveMinimum(nodes: RouteNode[], edges: ManeuverEdge[], itinerary:
       const completeBoundArrival = edge.directTransfer === true && edge.kind === 'transfer'
         && from.bodyId !== to.bodyId
         && ['orbit', 'elliptical'].includes(from.kind) && ['orbit', 'elliptical'].includes(to.kind)
-      if (waitingForOrbit !== null && (arrivesAtAnotherEncounter || completeBoundArrival)) continue
-      const nextContext = completeBoundArrival ? null : arrivesAtAnotherEncounter ? to.bodyId
+      const origin = hierarchy.get(from.bodyId)
+      const destination = hierarchy.get(to.bodyId)
+      const parent = origin?.parentId ? hierarchy.get(origin.parentId) : undefined
+      const localParent = completeBoundArrival && origin?.kind === 'moon' && destination?.kind === 'moon'
+        && origin.parentId === destination.parentId && parent && ['planet', 'moon'].includes(parent.kind)
+        ? parent.id : null
+      if (waitingForOrbit !== null) {
+        if (localParent !== null ? waitingForOrbit !== localParent : arrivesAtAnotherEncounter || completeBoundArrival) continue
+      }
+      const nextContext = localParent !== null ? waitingForOrbit : completeBoundArrival ? null : arrivesAtAnotherEncounter ? to.bodyId
         : to.kind === 'orbit' && to.bodyId === waitingForOrbit ? null : waitingForOrbit
       arcs.push([key(from.id, waitingForOrbit, visit), key(to.id, nextContext, consumeVisits(to.id, visit)), edge.deltaV])
     }
@@ -63,6 +72,11 @@ function seededRandom(seed: number) {
 function auditCases() {
   const random = seededRandom(0x654abc)
   return Array.from({ length: 120 }, (_, trial) => {
+    const bodies: CelestialBody[] = [
+      { id: 'star', name: 'Star', kind: 'star', parentId: null, hasSurface: false, hasAtmosphere: false, color: '#fff' },
+      { id: 'c', name: 'Parent planet', kind: 'planet', parentId: 'star', hasSurface: true, hasAtmosphere: false, color: '#abc' },
+      ...['a', 'b'].map(id => ({ id, name: id, kind: 'moon' as const, parentId: 'c', hasSurface: true, hasAtmosphere: false, color: '#abc' })),
+    ]
     const nodes: RouteNode[] = ['a', 'b', 'c'].flatMap(bodyId =>
       (['encounter', 'orbit', 'elliptical', 'surface'] as const).map(kind => ({ id: `${bodyId}:${kind}`, bodyId, kind, label: `${bodyId} ${kind}` })))
     const edges: ManeuverEdge[] = []
@@ -77,13 +91,14 @@ function auditCases() {
     const graph: PlannerGraph = {
       nodes: new Map(nodes.map(node => [node.id, node])),
       adjacency: new Map(nodes.map(node => [node.id, edges.filter(edge => edge.from === node.id)])),
+      bodies: new Map(bodies.map(body => [body.id, body])),
     }
     const start = nodes[random(nodes.length)]!.id
     const end = nodes[random(nodes.length)]!.id
     const stops = Array.from({ length: random(4) }, () => nodes[random(nodes.length)]!.id)
     // Deliberately include repeated visits, not just whatever the seed yields.
     if (trial % 10 === 0) stops.push(stops.at(-1) ?? start)
-    return { trial, nodes, edges, graph, start, end, stops }
+    return { trial, nodes, edges, bodies, graph, start, end, stops }
   })
 }
 
@@ -93,12 +108,12 @@ describe('independent mission calculation audit', () => {
   it.each<MissionMode>(['one-way', 'round-trip', 'return-only'])('agrees with exhaustive state-space relaxation for seeded %s missions', mode => {
     let reachable = 0
     let unreachable = 0
-    for (const { trial, nodes, edges, graph, start, end, stops } of cases) {
+    for (const { trial, nodes, edges, bodies, graph, start, end, stops } of cases) {
       const before = structuredClone(graph)
       const outward = [start, ...stops, end]
       const itinerary = mode === 'one-way' ? outward : mode === 'return-only' ? [...outward].reverse()
         : [...outward, ...[...outward].reverse().slice(1)]
-      const expected = exhaustiveMinimum(nodes, edges, itinerary)
+      const expected = exhaustiveMinimum(nodes, edges, itinerary, bodies)
       const actual = findMissionRoute(graph, start, end, mode, stops)
       const detail = `Seeded graph ${trial}, ${mode}, itinerary ${itinerary.join(' → ')}`
       if (expected === Infinity) {
@@ -130,6 +145,7 @@ describe('independent mission calculation audit', () => {
     expect(unreachable).toBeGreaterThan(0)
     expect(cases.some(({ edges }) => edges.some(edge => edge.deltaV === 0))).toBe(true)
     expect(cases.some(({ edges }) => edges.some(edge => edge.directTransfer && (edge.from.endsWith(':elliptical') || edge.to.endsWith(':elliptical'))))).toBe(true)
+    expect(cases.some(({ edges }) => edges.some(edge => edge.directTransfer && edge.from.startsWith('a:') && edge.to.startsWith('b:')))).toBe(true)
   })
 
   it('matches exact-rational ceiling arithmetic for fractional budgets and reserve percentages', () => {

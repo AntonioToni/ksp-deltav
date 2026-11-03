@@ -22,15 +22,29 @@ high elliptical reference orbit. Its
 modeled energy uses the map's rounded circularization increment, as described
 under [direct transfers](#high-elliptical-endpoints).
 
-The pack retains all **98 source-map maneuvers** and adds **66 modeled direct
-transfers**, for **164 directed maneuvers** over the same 50 selectable states.
-Pack version `1.7.3-map.3` identifies this extension; the source map remains the
-pinned KSP 1.7.3 reference.
+The pack retains all **98 source-map maneuvers** and adds **66 modeled planetary
+transfers** and **22 sibling-moon transfers**, for **186 directed maneuvers** over
+the same 50 selectable states. Pack version `1.7.3-map.4` identifies this extension;
+the source map remains the pinned KSP 1.7.3 reference.
 
 All maneuver budgets use **m/s**. Low-orbit altitudes use **km above the body**,
 following the source map labels. An encounter is the source map's intercept
 reference, not an arbitrary hyperbolic orbit with any excess velocity. A low
 orbit and an elliptical orbit are different states.
+
+## Where the figures come from
+
+Published map segments are transcribed reference budgets. The new planetary and
+sibling-moon connections are calculated analytic estimates from pinned physical
+and orbital constants. Landing/link allowances and the percentage reserve are
+user inputs. The route total can contain all three, identified separately in
+**Budget assumptions**.
+
+For example, the Duna low orbit → Gilly low orbit figure of **1,898 m/s** is
+**1,428 modeled + 60 map + 410 map**. The first component is a complete modeled
+Duna departure and Eve high-orbit capture. The other two are the published
+Eve-to-Gilly transfer and Gilly capture segments. Checking their arithmetic does
+not make that mixed-reference itinerary an independently simulated flight.
 
 ## Assumptions and limitations
 
@@ -60,10 +74,15 @@ orbit and an elliptical orbit are different states.
   using the original encounter branches can still include a Kerbin parking-orbit
   layover. The search tracks
   whether a low-orbit reset at the arrival planet is required before another
-  interplanetary departure, including a direct pair; it does not chain
-  incompatible encounter energies into a free flyby.
+  interplanetary departure, including an interplanetary direct pair; it does not
+  chain incompatible encounter energies into a free flyby.
   A high elliptical state does not grant a free encounter reset. Complete direct
   pairs instead charge the departure and capture needed for their stated orbits.
+- Supported [sibling-moon transfers](#direct-sibling-moon-transfers) can remain
+  inside a parent system without visiting that parent's low orbit. They retain
+  any pending planetary-arrival context rather than erasing it. Other supplied
+  reference paths can still contain parking stops because a more direct escape
+  or transfer is missing from the graph. Such a stop is not a physical necessity.
 - Add a mission margin. A shortest path is the lowest estimate in this dataset,
   not a universal minimum over all possible KSP trajectories.
 
@@ -377,16 +396,120 @@ use their parent's existing reference branches; this is not a direct
 moon-to-moon flyby solver. The added links do not supply Kerbol–Kcalbeloh
 interstellar trajectories, new wormhole budgets, or new Kcalbeloh reference pairs.
 
-RSS retains its Earth-centered source graph. Some historical low-orbit
-references, including Saturn, Uranus, Neptune, and Pluto, are incompatible with
+RSS interplanetary travel retains its Earth-centered source graph. Some historical
+low-orbit references, including Saturn, Uranus, Neptune, and Pluto, are incompatible with
 the modern atmospheres. Attaching modern modeled burns to those same historical
 states would imply unsupported reference conditions; extending direct transfer
 coverage there requires compatible orbit references first.
 
+## Direct sibling-moon transfers
+
+Supported moons with the same physical parent receive complete low-orbit to
+low-orbit transfer alternatives. Each budget combines departure from the first
+moon, a transfer between the moons' orbital radii around their parent, and
+capture at the second moon. It does not include a parent parking-orbit visit. The
+connections use source ID **`sibling-moon-transfer-model`**, classified as
+**Analytic model**, and appear on the map only when selected.
+
+Stock adds **22 directed connections** over 11 sibling pairs; OPM has **46** over
+23 pairs, including those inherited from Stock. RSS adds **76** over 38 pairs.
+The selected Stock or OPM base passes these additions into its Kcalbeloh
+configurations without replacing native Kcalbeloh reference pairs.
+
+### Orbital-plane and burn model
+
+For the inner and outer moons' semi-major axes `aInner` and `aOuter`, the
+parent-centered transfer has `aTransfer = (aInner + aOuter) / 2`. The model
+circularizes each moon's reference orbit at its semi-major axis. Its Hohmann
+ellipse lies in the **inner moon's orbital plane**, with a favorable departure
+and outer-moon encounter at opposite mutual nodes.
+
+The pinned inclinations `i` and longitudes of ascending node `Omega` give the
+relative orbital-plane angle `I`:
+
+```text
+cos(I) = cos(iInner)cos(iOuter)
+       + sin(iInner)sin(iOuter)cos(OmegaInner - OmegaOuter)
+
+vCircular = sqrt(muParent / a)
+vTransfer = sqrt(muParent * (2/a - 1/aTransfer))
+
+vInfinityInner = abs(vTransferInner - vCircularInner)
+vInfinityOuter = sqrt(vTransferOuter² + vCircularOuter²
+                     - 2vTransferOuter*vCircularOuter*cos(I))
+```
+
+Thus an inclined outer moon is not priced as a coplanar encounter. At each moon,
+the parking radius `rp` is its physical radius plus the explicitly supplied low
+orbit altitude, and the complete local burn is:
+
+```text
+moonBurn = sqrt(vInfinity² + 2muMoon/rp) - sqrt(muMoon/rp)
+pairBudget = ceil(innerMoonBurn) + ceil(outerMoonBurn)
+```
+
+The two burns round upward separately. Reversing the journey uses the same
+inner-plane reference and exchanges the endpoint components; it does not solve a
+different return date. Surface ascent/descent and any reserve are added through
+their own route segments and settings.
+
+### Independently calculated landmarks
+
+The following figures use the documented low parking states and include both
+rounded endpoint burns, before reserve:
+
+| Moon pair | Complete estimate (m/s) |
+| --- | ---: |
+| Mun → Minmus | 330 |
+| Laythe → Vall | 1,176 |
+| Bop → Pol | 281 |
+| Hale → Ovok | 181 |
+| Phobos → Deimos | 738 |
+| Io → Europa | 2,547 |
+
+For Mun → Minmus, the rounded departure is **242 m/s** and the inclination-aware
+capture is **88 m/s**, giving **330 m/s**. The purely coplanar comparison would
+be **329 m/s**; the implemented reference uses Minmus's 6° relative plane.
+Laythe and Vall share a plane in the pinned Stock reference, giving
+**798 + 378 = 1,176 m/s**. These values are calculated from the stated reference
+model rather than transcribed moon-to-moon map totals.
+
+### Eligibility and remaining gaps
+
+Generation requires matching parent contexts, verified orbital-plane data,
+distinct semi-major axes, prograde moon orbits, and explicit parking states above
+the moon's atmosphere and inside its SOI. Unknown planes are not assumed zero.
+Ordinary Hohmann generation excludes **Polta–Priax**, whose equal orbital radii
+require a co-orbital phasing model, and **Thatmo–Nissee**, whose retrograde and
+strongly eccentric geometry is outside this model's scope. Their original
+reference connections remain available; the optimizer may also find a fully
+priced itinerary through another supported state.
+
+Kcalbeloh's **nine published sibling pairs** remain unchanged: six among
+Anehta's moons and three around the Simetra–Simeht barycenter. They are not
+replaced by this model, and the ordinary generator does not treat binary gravity
+as a single physical parent. Its selected Stock or OPM base inherits that base's
+supported modeled connections.
+
+The model assumes favorable nodal phasing and circularized moon orbits. It does
+not propagate eccentricity or actual phase, solve departure dates or durations,
+optimize B-plane targeting or parking-plane orientation, or model gravity assists
+and finite-thrust losses. It supplies a reference estimate, not a verified flight
+cost or a universal lower bound.
+
+A local sibling transfer can be used during a planetary arrival without first
+visiting the parent parking orbit, but it **preserves** any pending parent
+arrival context. Capturing at a second moon does not grant a free escape to
+another planetary system. Cross-parent and multilevel escapes are still limited
+by the supplied reference graph: Mun → Ike or Mun → Gilly can retain a Kerbin
+parking stop, and a Tal journey can retain a Wal parking visit. Those are modeled
+itineraries rather than statements that those visits are required in KSP.
+
 ## Outer Planets Mod pack
 
 `src/data/opm.ts` provides the selectable **OPM** pack: 32 bodies, 96 selectable
-states, and 416 directed maneuvers, including 226 direct planet-pair estimates.
+states, and **462 directed maneuvers**, including **226 direct planet-pair** and
+**46 sibling-moon estimates**.
 Shared Stock IDs are retained, Eeloo becomes
 a Sarnus moon, Tal orbits Wal, and Karen orbits Plock. Jool, Sarnus, Urlum, and
 Neidon have no surface states. Original Stock map costs and the RSS pack are
@@ -398,18 +521,20 @@ figures. **Tekto and Thatmo atmospheric ascent/landing allowances remain
 historical**, with their own source and limitations. The visible **Analytic
 estimates** notice opens the assumptions and sources.
 
-Pack version `2.2.12-analytic.3` identifies this model revision. Derived OPM
+Pack version `2.2.12-analytic.4` identifies this model revision. Derived OPM
 maneuvers use source tag `opm-analytic-2.2.12`; only the four retained atmospheric
 surface edges use `kowgan-opm-1.8.1`. Complete direct pairs use the separate
-`direct-interplanetary-model` source described above.
+`direct-interplanetary-model` source described above; sibling pairs use
+`sibling-moon-transfer-model`.
 
 ### Sources and physical inputs
 
 - Modern physical and orbital constants: [official OPM 2.2.12 Kopernicus configs](https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs),
   pinned to `ffedf02e23d2d620e1018d1467f5e485f7950fa0`.
   `src/data/opmReference.ts` reorganizes radius, surface gravity, atmosphere
-  height, semi-major axis, eccentricity, inclination, and parent identity into
-  numerical reference records. No mod config code or artwork is bundled.
+  height, semi-major axis, eccentricity, inclination, ascending-node longitude,
+  and parent identity into numerical reference records. No mod config code or
+  artwork is bundled.
 - Stock Kerbol/Kerbin constants, including Eeloo's inherited physical constants:
   the pinned [KSPTOT body reference](https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini)
   documented in the [relay guide](RELAYS.md). Kerbin's reference orbit is 80 km,
@@ -633,10 +758,10 @@ pack.
 
 | Configuration | Wormholes | Cataloged bodies/contexts | Selectable states | Priced directed maneuvers | Unpriced links |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Stock + Kcalbeloh | On | 50 | 97 | 270 | 10 |
-| OPM + Kcalbeloh | On | 65 | 143 | 522 | 10 |
-| Stock + Kcalbeloh (wormholes off) | Off | 48 | 97 | 270 | 9 |
-| OPM + Kcalbeloh (wormholes off) | Off | 63 | 143 | 522 | 9 |
+| Stock + Kcalbeloh | On | 50 | 97 | 292 | 10 |
+| OPM + Kcalbeloh | On | 65 | 143 | 568 | 10 |
+| Stock + Kcalbeloh (wormholes off) | Off | 48 | 97 | 292 | 9 |
+| OPM + Kcalbeloh (wormholes off) | Off | 63 | 143 | 568 | 9 |
 
 With wormholes on, each adds **33 contexts**: the 30 physical mod bodies, the
 invisible SimeSystem barycenter, and two wormholes. With wormholes off, only
@@ -644,7 +769,7 @@ the two portal bodies and their unpriced connector are omitted. All four
 configurations add the same **47 states** and **106 priced directed maneuvers**.
 Shared base IDs and costs are preserved; the composer clones records instead of
 changing Stock or OPM. The base pack's direct-transfer estimates are inherited
-alongside its reference branches. All use pack version `1.1.8-map.3`.
+alongside its reference branches. All use pack version `1.1.8-map.4`.
 
 ### Sources, attribution, and supported settings
 
@@ -802,8 +927,10 @@ all supported states, and source export does not include session-entered costs.
 
 `src/data/rss.ts` adds the **RSS** pack with independent `rss:` IDs and Earth as
 its interplanetary transfer hub. It contains **33 bodies, 102 selectable states,
-and 202 directed maneuvers**. No stock KSP costs are scaled or copied into RSS.
-The RSS dataset does not change the Stock or OPM packs.
+and 278 directed maneuvers**: 202 original map segments and 76 modeled sibling
+transfers. Version `community-map-dc472f5+rss-75139b9.2` identifies the shared
+physical-reference and sibling-model extension. No Stock KSP costs are scaled or
+copied into RSS. The RSS dataset does not change the Stock or OPM packs.
 
 ### Sources and scope
 
@@ -818,6 +945,11 @@ calibration. No source artwork is bundled into this application.
 Body hierarchy and atmosphere presence were checked against the
 [official KSP-RO/RealSolarSystem configs](https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus),
 pinned to `75139b961567f4dab61af83fe162a7e52026558b`.
+
+The shared physical and orbital facts in `src/data/rssPhysics.ts` use that same
+pinned configuration. The sibling model uses each moon's radius, gravity,
+atmosphere, semi-major axis, inclination, ascending node, and stated parking
+altitude. Modern physical facts do not reprice the historical map segments.
 
 Coverage is the intersection of the diagram and the named bodies in those base
 RSS configs:
@@ -907,16 +1039,21 @@ Earth 250/140 km, Venus 400/145 km, Mars 200/125 km, Jupiter 2000/1550 km, and
 Titan 1000/600 km (parking altitude / atmosphere depth). The underlying costs
 remain community-map estimates, not contemporary flight-tested RSS budgets.
 
-Earth is the supplied interplanetary hub. Travel between other planetary systems
-requires capture into a low parking orbit at Earth before the next departure.
-Encounter energies cannot be chained as an invented free gravity assist.
+Earth is the supplied interplanetary hub. In this reference graph, travel
+between other planetary systems includes capture into a low parking orbit at
+Earth before the next departure. This is a reference-itinerary assumption,
+not a physical requirement for every RSS flight. Encounter energies cannot be
+chained as an invented free gravity assist. Supported sibling-moon transfers
+remain local to their common parent and do not need this Earth stop.
 
-### RSS regression landmarks
+### RSS source-map regression landmarks
 
 `src/data/rss.test.ts` checks all 102 supported states in both directions, the
 Earth layover policy, safe altitude metadata, pack isolation, and independent
-reference sums. Examples from Earth surface, without plane changes or
-atmospheric savings:
+reference sums. The following are sums of the unchanged source-map branches from
+Earth surface, without plane changes or atmospheric savings. The optimized full
+pack can choose cheaper routes using modeled sibling transfers; these source
+sums are not a promise of identical displayed mission totals.
 
 | Destination | Budget (m/s) |
 | --- | ---: |

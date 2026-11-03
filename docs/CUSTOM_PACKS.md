@@ -174,10 +174,19 @@ data or verify its figures; costs remain author-supplied **Imported budget**.
 Disconnected states are allowed, but routes requiring missing connections are
 reported as unreachable. Encounter-to-encounter planetary arrivals retain their
 arrival context across stops: before another encounter-to-encounter departure or
-a marked direct pair, a route must reach the arrival planet's actual low orbit. An
-encounter, high ellipse, moon branch, or central reference does not clear that
-requirement. A complete bound-orbit pair establishes its stated destination
-state without introducing a new encounter context.
+a marked interplanetary direct pair, a route must reach the arrival planet's
+actual low orbit. An encounter, high ellipse, moon branch, or central reference
+does not clear that requirement. A complete bound-orbit pair establishes its
+stated destination state without introducing a new encounter context.
+
+A marked complete pair between sibling moons is local when both endpoint bodies
+are moons with the same physical planet or moon as parent. The graph uses the
+pack's body hierarchy to recognize this case. A local sibling transfer can
+continue inside an arriving planetary system, while preserving that parent's
+pending arrival context when it belongs to that parent. It does not grant a free
+interplanetary departure or reset the requirement by merely visiting another
+moon. A transfer between moons with different parents does not acquire this
+local behavior.
 
 ### Unpriced connections and regional views
 

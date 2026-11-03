@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { stockPack } from '../data/stock'
 import { opmPack } from '../data/opm'
+import { rssPack } from '../data/rss'
 import { stockKcalbelohPack, opmKcalbelohPack } from '../data/kcalbeloh'
 import type { ManeuverEdge, PlanetPack } from '../types/planner'
 import { connectionPoints, createMapLayout, maneuverPoints, type MapLayout, type MapMode, type Point } from './mapLayout'
@@ -76,6 +77,15 @@ describe.each([stockPack, opmPack])('$name selected direct paths', pack => {
   })
 })
 
+describe.each([stockPack, opmPack, rssPack])('$name selected sibling-moon paths', pack => {
+  it.each<MapMode>(['wide', 'portrait', 'short'])('keeps sibling paths clear of unrelated states and labels in %s mode', mode => {
+    const layout = createMapLayout(pack, mode)
+    const pairs = pack.maneuvers.filter(edge => edge.sourceId === 'sibling-moon-transfer-model' && edge.from < edge.to)
+    expect(pairs.length).toBeGreaterThan(0)
+    for (const edge of pairs) assertClear(pack, layout, edge)
+  })
+})
+
 it.each([stockKcalbelohPack, opmKcalbelohPack])('uses the same safe direct geometry inside the $id overview panel', pack => {
   const layout = createMapLayout(pack)
   expect(layout.presentation).toBe('overview')
@@ -85,6 +95,8 @@ it.each([stockKcalbelohPack, opmKcalbelohPack])('uses the same safe direct geome
   const from = pack.id.startsWith('opm') ? 'opm:sarnus:orbit' : 'stock:eve:orbit'
   const to = pack.id.startsWith('opm') ? 'opm:urlum:orbit' : 'stock:jool:orbit'
   assertClear(pack, layout, directEdge(pack, from, to))
+  assertClear(pack, layout, directEdge(pack, 'stock:mun:orbit', 'stock:minmus:orbit'))
+  if (pack.id.startsWith('opm')) assertClear(pack, layout, directEdge(pack, 'opm:hale:orbit', 'opm:ovok:orbit'))
 })
 
 it('omits direct geometry when a regional view lacks an endpoint', () => {

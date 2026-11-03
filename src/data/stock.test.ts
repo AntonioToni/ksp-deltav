@@ -18,9 +18,10 @@ describe('the reviewed stock reference pack', () => {
 
   it('has valid references and directed, sourced maneuvers', () => {
     expect(validatePlanetPack(stockPack)).toEqual([])
-    expect(stockPack.maneuvers).toHaveLength(164)
+    expect(stockPack.maneuvers).toHaveLength(186)
     expect(stockPack.maneuvers.filter(edge => edge.sourceId === 'kowgan-1.7.3')).toHaveLength(98)
-    expect(stockPack.maneuvers.filter(edge => edge.directTransfer)).toHaveLength(66)
+    expect(stockPack.maneuvers.filter(edge => edge.sourceId === 'direct-interplanetary-model')).toHaveLength(66)
+    expect(stockPack.maneuvers.filter(edge => edge.sourceId === 'sibling-moon-transfer-model')).toHaveLength(22)
     for (const maneuver of stockPack.maneuvers) {
       expect(maneuver.assumptions.length).toBeGreaterThan(0)
       expect(stockPack.sources.some((source) => source.id === maneuver.sourceId)).toBe(true)

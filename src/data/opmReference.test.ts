@@ -20,10 +20,10 @@ describe('pinned modern OPM physical and orbital references', () => {
 
   it('retains source eccentricity and inclination instead of silently making retrograde or eccentric bodies circular and prograde in the catalog', () => {
     expect(opmReferences.find(row => row.bodyId === 'opm:thatmo')).toMatchObject({
-      semiMajorAxisM: 32_300_895, eccentricity: .00043, inclinationDeg: 161.1,
+      semiMajorAxisM: 32_300_895, eccentricity: .00043, inclinationDeg: 161.1, longitudeOfAscendingNodeDeg: 66,
       radiusM: 286_000, atmosphereHeightM: 35_000,
     })
-    expect(opmReferences.find(row => row.bodyId === 'opm:nissee')).toMatchObject({ eccentricity: .72, inclinationDeg: 29.56 })
+    expect(opmReferences.find(row => row.bodyId === 'opm:nissee')).toMatchObject({ eccentricity: .72, inclinationDeg: 29.56, longitudeOfAscendingNodeDeg: 66 })
     expect(opmReferences.find(row => row.bodyId === 'opm:plock')).toMatchObject({ eccentricity: .26, inclinationDeg: 6.15 })
     expect(opmReferences.find(row => row.bodyId === 'opm:tal')).toMatchObject({ eccentricity: 0, inclinationDeg: 1.9 })
   })
@@ -40,6 +40,8 @@ describe('pinned modern OPM physical and orbital references', () => {
       expect(reference.eccentricity, reference.bodyId).toBeLessThan(1)
       expect(reference.inclinationDeg, reference.bodyId).toBeGreaterThanOrEqual(0)
       expect(reference.inclinationDeg, reference.bodyId).toBeLessThanOrEqual(180)
+      expect(reference.longitudeOfAscendingNodeDeg, reference.bodyId).toBeGreaterThanOrEqual(0)
+      expect(reference.longitudeOfAscendingNodeDeg, reference.bodyId).toBeLessThan(360)
     }
     expect(opmReferences.find(row => row.bodyId === 'opm:sarnus')?.gravitationalParameter).toBe(82_089_701_953_000)
     expect(opmReferences.find(row => row.bodyId === 'stock:eeloo')?.gravitationalParameter).toBe(74_410_814_527)

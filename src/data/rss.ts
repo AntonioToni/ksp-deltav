@@ -1,4 +1,6 @@
 import type { CelestialBody, ManeuverEdge, ManeuverKind, NodeKind, PlanetPack, RouteNode } from '../types/planner'
+import { withSiblingTransfers } from './siblingTransfers'
+import { rssPhysicalReferences, rssPhysicsSource } from './rssPhysics'
 
 const mapSourceId = 'rss-community-solar-system-map'
 const mapCommit = 'dc472f56101b260baee8814a94de985f44a6c9b2'
@@ -251,14 +253,14 @@ moonTransfer('pluto', 'charon', 'elliptical', [40])
 localBudget('charon', 'orbit', 'encounter', [20, 160])
 surfaceBudget('charon', 420)
 
-export const rssPack: PlanetPack = {
+export const rssPack: PlanetPack = withSiblingTransfers({
   id: 'rss',
   name: 'Real Solar System',
   shortName: 'RSS',
   transferHubBodyId: 'rss:earth',
   dataNotice: 'Reference estimates',
-  version: 'community-map-dc472f5+rss-75139b9.1',
-  description: 'Reference-based Real Solar System planning estimates for the 33 named bodies shared by the community diagram and base RSS configs. Budgets are transcribed from the Solar System map, not scaled from stock KSP.',
+  version: 'community-map-dc472f5+rss-75139b9.2',
+  description: 'Real Solar System planning estimates for the 33 shared map/config bodies: original Solar System map budgets plus separately modeled, inclination-aware sibling-moon transfers.',
   sources: [
     {
       id: mapSourceId,
@@ -275,7 +277,7 @@ export const rssPack: PlanetPack = {
   assumptions: [
     'All budgets are in m/s, converted from the community diagram’s km/s. The mirrored diagram has no visible version/date or authorship credit; its exact repository revision is pinned for reproducibility, without claiming official RSS calibration.',
     'Coverage is the 33 named base RSS bodies also present in the diagram. Optional expansion bodies, diagram-only minor moons/dwarf planets, GEO, Lagrange points, and solar approach/landing missions are outside this pack.',
-    'The graph follows the main transfer rails. Inset/direct moon-transfer alternatives from the diagram are not supplied, so the planner minimizes only over this supported graph.',
+    'The source graph follows the main transfer rails. Direct sibling-moon alternatives use the separately sourced analytic orbital-node model; they are not transcriptions of the diagram’s transfer insets.',
     'The source assumes idealized Hohmann transfers, low-periapsis burns, and favorable geometry. Launch windows, flight duration, inclination changes, gravity assists, finite-thrust losses, and spacecraft performance are not modeled; add a mission margin.',
     'Transfer-rail increments are summed from Earth rather than treated as independent Earth departure costs. Intermediate rail nodes represent energy references, not planetary or moon visits. Destination capture and Earth escape (3210 m/s) are separate maneuvers.',
     'Earth-to-Moon transfer is 3120 m/s; the Moon encounter-to-low-orbit budget is 140 + 680 = 820 m/s. Every other supported moon branches from its parent’s high elliptical capture orbit, not its low orbit.',
@@ -287,4 +289,4 @@ export const rssPack: PlanetPack = {
   bodies,
   nodes,
   maneuvers,
-}
+}, rssPhysicalReferences, [rssPhysicsSource])

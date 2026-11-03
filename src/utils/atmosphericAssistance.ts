@@ -103,5 +103,5 @@ export function applyAtmosphericAssistance(graph: PlannerGraph, pack: PlanetPack
     })
     if (changed) adjacency.set(nodeId, updated)
   }
-  return { graph: adjustments.size ? { nodes: graph.nodes, adjacency } : graph, adjustments }
+  return { graph: adjustments.size ? { ...graph, adjacency } : graph, adjustments }
 }

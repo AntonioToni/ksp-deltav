@@ -19,6 +19,9 @@ return-only budgets, and add a reserve for your mission.
   departure and capture estimates for low circular and supported high elliptical
   orbits. Moon journeys can join their parent's high-orbit branch without an
   unnecessary low-orbit capture. Extra connections appear when selected.
+- **Direct transfers between supported sibling moons**, with departure and
+  capture estimates that avoid an unnecessary parent-planet parking visit.
+  Orbital-plane differences are included under the documented reference model.
 - **Stock + Kcalbeloh and OPM + Kcalbeloh configurations**, with official map
   budgets, regional views, wormholes on/off, and explicit allowances for
   unpriced links.
@@ -80,6 +83,12 @@ low orbit** is an analytic **1,532 m/s** estimate. **Duna low orbit → Gilly lo
 orbit** can use Eve's high orbit, avoiding a Kerbin layover. Open **Budget
 assumptions** to distinguish modeled transfers from published map figures.
 
+Supported moons sharing a parent also have direct low-orbit transfers. These
+use the moons' orbital radii and relative orbital planes, together with their
+own departure and capture burns. **Mun low orbit → Minmus low orbit** is a
+**330 m/s** reference estimate without a low Kerbin orbit stop. Existing native
+Kcalbeloh moon pairs retain their published complete-pair budgets.
+
 **Swap** reverses both the endpoints and the stop order. Changing systems keeps
 states available in the new pack and removes unsupported stops. **Clear** removes
 the endpoints, stops, atmospheric choices, and link allowances, resets the reserve
@@ -138,18 +147,26 @@ and landing placeholders. The dialog lists reserves and final rounding
 separately. **Sources & assumptions** explains the active pack. Imported budgets
 remain author-supplied even when their source metadata names a map or model.
 
+The numbers have three distinct origins: published map budgets, calculated
+reference estimates, and personal allowances or reserves. For example, the
+**1,898 m/s** Duna low orbit → Gilly low orbit estimate combines a **1,428 m/s
+modeled** Duna → Eve high-orbit transfer with **60 + 410 m/s from the Stock
+map**. It is not an in-game measurement or a simulated flight.
+
 These are schematic planning estimates within the supplied maneuver graph,
 rather than simulated trajectories. Stock/OPM retain their Kerbin-centered
 reference branches and add modeled direct bound-orbit links between other planets.
-The direct links reach low circular and supported high elliptical orbits used by
-moon branches. Original encounter references can still require parking-orbit layovers.
-RSS interplanetary branches remain Earth-centered, with an Earth parking-orbit
-layover between other planetary systems. Kcalbeloh adds complete reference-pair
-transfers; custom pack estimates depend on their supplied data.
+The planetary links reach low circular and supported high elliptical orbits used
+by moon branches; sibling-moon links provide supported local alternatives.
+Other reference routes can still include parent-planet parking stops because
+more direct escape or transfer trajectories are absent from the graph. Those
+stops describe the supplied itinerary, not physical requirements for spaceflight.
+RSS interplanetary branches remain Earth-centered. Kcalbeloh adds complete
+reference-pair transfers; custom pack estimates depend on their supplied data.
 Flight dates, plane-change optimization, gravity assists, and vehicle performance
 are not modeled.
 
-**Direct transfers use circular, coplanar planetary orbits.** Spacecraft endpoints
+**Direct planetary transfers use circular, coplanar planetary orbits.** Spacecraft endpoints
 can be low circular or supported high elliptical reference orbits. Stock high-orbit
 energy is inferred from the map's rounded circularization increment; OPM high
 orbits use their explicit reference geometry. Each pair includes powered departure
@@ -157,6 +174,14 @@ and arrival capture, rounded separately. Planetary eccentricity, inclination, an
 dated encounter geometry are omitted. The same nominal pair reverses its two
 components for the return. These are analytic estimates, rather than new
 published map budgets.
+
+**Sibling-moon estimates use circularized reference orbits.** The transfer lies
+in the inner moon's orbital plane and meets the outer moon at an assumed mutual
+node, using their relative inclination and longitude of ascending node. Escape
+and capture at the moons are both charged. Orbital eccentricity, actual phase,
+travel dates, and gravity assists are not solved. Co-orbital rendezvous,
+retrograde pairs, and unsupported binary geometry keep their reference routes
+instead of receiving an ordinary Hohmann estimate.
 
 **Atmospheric choices are estimates, not entry simulations.** Ideal capture
 uses a zero-powered-burn lower bound for separate capture and circularization
@@ -219,7 +244,7 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 - Additional planet packs, rescaled systems, and alternative starting-homeworld
   configurations.
-- Direct transfer estimates for RSS and additional reference orbits.
+- Direct interplanetary transfer estimates for RSS and additional reference orbits.
 - Interplanetary signal planning: antenna pairs, changing planet-to-planet
   distances, best/worst-case signal strength, and occlusion checks.
 - Advanced relay planning: inclined and polar constellations for coverage beyond

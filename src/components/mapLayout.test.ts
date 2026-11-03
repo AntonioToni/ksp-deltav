@@ -287,7 +287,7 @@ it.each<MapMode>(['wide', 'short'])('keeps RSS %s satellite transfer bands clear
   const moons = new Set(rssPack.bodies.filter(body => body.kind === 'moon').map(body => body.id))
   const transfers = rssPack.maneuvers.filter(edge => edge.kind === 'transfer' && moons.has(nodes.get(edge.to)!.bodyId))
   for (const edge of transfers) {
-    const points = connectionPoints(nodes.get(edge.from)!, nodes.get(edge.to)!, layout, rssPack)
+    const points = maneuverPoints(edge, layout, rssPack)
     for (const node of rssPack.nodes) {
       if (node.id === edge.from || node.id === edge.to) continue
       const point = layout.nodePositions.get(node.id)!

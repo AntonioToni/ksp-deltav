@@ -110,7 +110,7 @@ test('exports modern source costs independently of assistance and permits a mode
   const file = await (await downloading).path()
   if (!file) throw new Error('Exported OPM reference pack is missing')
   const pack = JSON.parse(await readFile(file, 'utf8')) as PlanetPack
-  expect(pack.version).toBe('2.2.12-analytic.3')
+  expect(pack.version).toBe('2.2.12-analytic.4')
   expect(pack.nodes.find(node => node.id === 'opm:sarnus:orbit')?.altitudeKm).toBe(600)
   expect(pack.nodes.find(node => node.id === 'opm:thatmo:orbit')?.altitudeKm).toBe(50)
   expect(pack.maneuvers.find(edge => edge.id === 'opm:tekto:encounter->opm:tekto:orbit')?.deltaV).toBe(464)

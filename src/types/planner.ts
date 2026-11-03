@@ -85,6 +85,8 @@ export interface PlanetPack {
 export interface PlannerGraph {
   nodes: ReadonlyMap<string, RouteNode>
   adjacency: ReadonlyMap<string, readonly ManeuverEdge[]>
+  /** Compiled pack hierarchy; omitted hand-built graphs retain conservative transfer rules. */
+  bodies?: ReadonlyMap<string, CelestialBody>
 }
 
 export interface RouteLeg {

@@ -1,8 +1,9 @@
 import type { CelestialBody, DataSource } from '../types/planner'
 import { opmReferences } from './opmReference'
 import { kcalbelohConfigSource } from './kcalbelohReference'
-import { kcalbelohGravitySource, kcalbelohPhysicalReferences, kcalbelohSoiConstants, kcalbelohSoiSource } from './kcalbelohPhysics'
+import { kcalbelohGravitySource, kcalbelohPhysicalReferences, kcalbelohSoiSource } from './kcalbelohPhysics'
 import { stockPhysicalReferences } from './stockPhysics'
+import { rssPhysicalReferences, rssPhysicsSource } from './rssPhysics'
 
 export interface RelayBodyPreset {
   bodyId: string
@@ -31,7 +32,7 @@ export interface CommNetAntenna extends CommNetPowerPreset {
 export const commNetSources: readonly DataSource[] = [
   { id: 'commnet-stock-bodies', title: 'KSP Trajectory Optimization Tool stock body constants · pinned revision', url: 'https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini' },
   { id: 'commnet-opm-bodies', title: 'Official OPM body constants · pinned revision', url: 'https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs' },
-  { id: 'commnet-rss-bodies', title: 'Official RSS body constants and equatorial-radius patches · pinned revision', url: 'https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus' },
+  { id: 'commnet-rss-bodies', title: 'Official RSS body constants and equatorial-radius patches · pinned revision', url: rssPhysicsSource.url },
   { id: 'commnet-kcalbeloh-bodies', title: 'Official Kcalbeloh 1.1.8 body constants · default 1× configuration', url: kcalbelohConfigSource.url },
   kcalbelohGravitySource,
   kcalbelohSoiSource,
@@ -59,69 +60,27 @@ const opmRows: readonly PhysicalRow[] = opmReferences.map(reference => [
   reference.semiMajorAxisM, reference.sphereOfInfluenceM,
 ])
 
-const rssRows: readonly PhysicalRow[] = [
-  ['rss:ariel', 'rss:uranus', 578900, 83463444317.70477, 0, 190944364.477622],
-  ['rss:callisto', 'rss:jupiter', 2409300, 7179289361397.27, 0, 1883812366.573522],
-  ['rss:ceres', 'rss:sun', 473000, 62632500000, 0, 413738762313.173],
-  ['rss:charon', 'rss:pluto', 603500, 105879988860.1881, 0, 19596193.83540397],
-  ['rss:deimos', 'rss:mars', 5456, 96155.69648120314, 0, 23458112.01759387, 45000],
-  ['rss:dione', 'rss:saturn', 561400, 73116366487.32, 0, 377650651.501709],
-  ['rss:earth', 'rss:sun', 6371000, 398600435436096, 140000, 149598261150.4425],
-  ['rss:enceladus', 'rss:saturn', 252100, 7211454165.826, 0, 238413699.4838728],
-  ['rss:europa', 'rss:jupiter', 1550800, 3202738774922.892, 0, 671253637.5417169],
-  ['rss:ganymede', 'rss:jupiter', 2624100, 9887834453334.145, 0, 1070823468.894524],
-  ['rss:iapetus', 'rss:saturn', 734500, 120512088703.3, 0, 3560162593.02297],
-  ['rss:io', 'rss:jupiter', 1811300, 5959916033410.404, 0, 422018294.5236953],
-  ['rss:jupiter', 'rss:sun', 69373000 * 1.02261446696514, 126686534921800800, 1550000, 778188938659.7554],
-  ['rss:mars', 'rss:sun', 3375800, 42828373620699.09, 125000, 227949699961.9763],
-  ['rss:mercury', 'rss:sun', 2439700, 22031780000000.02, 0, 57908973645.88802],
-  ['rss:mimas', 'rss:saturn', 198200, 2503524000, 0, 186009285.922049, 396000],
-  ['rss:miranda', 'rss:uranus', 235700, 4319516899.2321, 0, 129880047.634175],
-  ['rss:moon', 'rss:earth', 1737100, 4902800066163.796, 0, 384308437.7707066],
-  ['rss:neptune', 'rss:sun', 24085000 * 1.00576720006498, 6835099502439672, 1250000, 4497455832811.736],
-  ['rss:oberon', 'rss:uranus', 761400, 205323430253.5623, 0, 583435328.340603],
-  ['rss:phobos', 'rss:mars', 7250, 708754.6066894452, 0, 9378492.209088314, 47000],
-  ['rss:pluto', 'rss:sun', 1187000, 869613817760.8748, 110000, 5845670624078.223],
-  ['rss:rhea', 'rss:saturn', 763800, 153942464353.5, 0, 527212645.707199],
-  ['rss:saturn', 'rss:sun', 57216000 * 1.03496359390026, 37931207498652240, 2000000, 1424838758613.269],
-  ['rss:tethys', 'rss:saturn', 531100, 41211077826.41, 0, 294973462.3804425],
-  ['rss:titan', 'rss:saturn', 2573300, 8977864800000, 600000, 1221966238.511425],
-  ['rss:titania', 'rss:uranus', 788900, 226943700374.1248, 0, 436292682.967703],
-  ['rss:triton', 'rss:neptune', 1353400, 1427598140725.034, 110000, 354767243.5406647],
-  ['rss:umbriel', 'rss:uranus', 584700, 85093380944.89388, 0, 265992360.127656],
-  ['rss:uranus', 'rss:sun', 24702000 * 1.00776752622033, 5793951322279009, 1400000, 2866832853163.975],
-  ['rss:venus', 'rss:sun', 6049000, 324858592000000.06, 145000, 108209548790.4671],
-  ['rss:vesta', 'rss:sun', 262700, 17288244969.3, 0, 353346223803.158],
-]
-
-// RSS giant radii above include their *_Oblate.cfg multipliers. The planner
-// uses a sphere at that equatorial datum; it does not simulate oblateness.
-// Titan's later gravParameter assignment is authoritative in the pinned config.
+// RSS references separately apply their equatorial-radius and SOI patches.
 // OPM Eeloo inherits the stock radius/gravity but has a different parent and SOI.
 const gravitationalParameters = new Map<string, number>([
   ['stock:kerbol', 1172332794832490500],
-  // Parse the source decimal explicitly at JavaScript's double precision.
-  ['rss:sun', Number('1.3271244004193938e20')],
-  ...[...stockRows, ...opmRows, ...rssRows].map(row => [row[0], row[3]] as const),
+  ...[...stockRows, ...opmRows].map(row => [row[0], row[3]] as const),
 ])
 
 function bodyPreset(row: PhysicalRow, sourceId: string): RelayBodyPreset {
   const [bodyId, parentBodyId, radiusM, gravitationalParameter, atmosphereHeightM, semiMajorAxisM, override] = row
   const laplaceSoiM = semiMajorAxisM * (gravitationalParameter / gravitationalParameters.get(parentBodyId)!) ** (2 / 5)
-  // Default RSS uses the same Kopernicus minimums as Kcalbeloh. They affect
-  // Enceladus and Miranda; Principia/recomputed-SOI configurations are separate.
-  // Explicit source overrides, including Mimas below 2R, retain priority.
-  const derivedSoiM = sourceId === 'commnet-rss-bodies'
-    ? Math.max(laplaceSoiM, radiusM * kcalbelohSoiConstants.minimumRadiusMultiplier, radiusM + kcalbelohSoiConstants.minimumAltitudeM)
-    : laplaceSoiM
-  const sphereOfInfluenceM = override ?? derivedSoiM
+  const sphereOfInfluenceM = override ?? laplaceSoiM
   return { bodyId, parentBodyId, radiusM, gravitationalParameter, atmosphereHeightM, sphereOfInfluenceM, sourceId }
 }
 
 export const relayBodyPresets: readonly RelayBodyPreset[] = [
   ...stockRows.map(row => bodyPreset(row, 'commnet-stock-bodies')),
   ...opmRows.map(row => bodyPreset(row, 'commnet-opm-bodies')),
-  ...rssRows.map(row => bodyPreset(row, 'commnet-rss-bodies')),
+  ...rssPhysicalReferences.map(({ bodyId, parentBodyId, radiusM, gravitationalParameter, atmosphereHeightM, sphereOfInfluenceM }) => ({
+    bodyId, parentBodyId, radiusM, gravitationalParameter, atmosphereHeightM, sphereOfInfluenceM,
+    sourceId: 'commnet-rss-bodies',
+  })),
   ...kcalbelohPhysicalReferences.map(reference => ({
     bodyId: reference.bodyId,
     parentBodyId: reference.parentBodyId,

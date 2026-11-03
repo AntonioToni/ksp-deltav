@@ -15,13 +15,14 @@ describe('the reviewed OPM planning pack', () => {
       .toEqual(stockPack.nodes.map(node => node.id))
   })
 
-  it('covers 32 bodies, 96 states, and 416 sourced directed maneuvers', () => {
+  it('covers 32 bodies, 96 states, and 462 sourced directed maneuvers', () => {
     expect(validatePlanetPack(opmPack)).toEqual([])
     expect(opmPack.bodies).toHaveLength(32)
     expect(opmPack.nodes).toHaveLength(96)
-    expect(opmPack.maneuvers).toHaveLength(416)
+    expect(opmPack.maneuvers).toHaveLength(462)
     expect(opmPack.maneuvers.filter(edge => !edge.directTransfer)).toHaveLength(190)
-    expect(opmPack.maneuvers.filter(edge => edge.directTransfer)).toHaveLength(226)
+    expect(opmPack.maneuvers.filter(edge => edge.sourceId === 'direct-interplanetary-model')).toHaveLength(226)
+    expect(opmPack.maneuvers.filter(edge => edge.sourceId === 'sibling-moon-transfer-model')).toHaveLength(46)
     expect(opmPack.bodies.filter(body => body.kind === 'planet')).toHaveLength(10)
     expect(opmPack.bodies.filter(body => body.kind === 'moon')).toHaveLength(21)
     for (const edge of opmPack.maneuvers) {
@@ -112,7 +113,7 @@ describe('the reviewed OPM planning pack', () => {
       expect(edge.assumptions.join(' ')).toContain('nor an upper bound')
     }
     expect(opmPack.dataNotice).toBe('Analytic estimates')
-    expect(opmPack.version).toBe('2.2.12-analytic.3')
+    expect(opmPack.version).toBe('2.2.12-analytic.4')
     expect(opmPack.description).toContain('historical atmospheric surface allowances')
     expect(opmPack.assumptions.join(' ')).toContain('Parking-orbit orientation is unconstrained')
     expect(opmPack.assumptions.join(' ')).toContain('Eccentricity and changing orbital distances are not propagated')

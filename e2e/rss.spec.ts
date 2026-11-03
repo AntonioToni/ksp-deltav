@@ -258,19 +258,21 @@ test('keeps the largest RSS mission budget and reserve text visible at 320 pixel
 })
 
 for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }]) {
-  test(`fits the maximum 14-maneuver RSS return leg above controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+  test(`fits the maximum 16-maneuver RSS return leg above controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
     await packButton(page, 'RSS').click()
-    await node(page, 'rss:phobos:surface').click()
-    await node(page, 'rss:io:surface').click()
+    await node(page, 'rss:rhea:surface').click()
+    await node(page, 'rss:umbriel:surface').click()
     await missionModeButton(page, 'round-trip').click()
     const slider = page.getByRole('slider', { name: 'Redundancy', exact: true })
     await slider.focus()
     await slider.press('End')
     await detailsToggle(page).check()
     await page.getByRole('tab', { name: 'Return', exact: true }).click()
-    const journey = expectedMission(rssPack, 'rss:phobos:surface', 'rss:io:surface', 'round-trip').returnRoute!
-    expect(journey.legs).toHaveLength(14)
+    const journey = expectedMission(rssPack, 'rss:rhea:surface', 'rss:umbriel:surface', 'round-trip').returnRoute!
+    expect(journey.legs).toHaveLength(16)
+    // Independent sums: 26,345 outward + 38,605 return, with 100% reserve.
+    await expect(page.getByTestId('route-total')).toHaveText('129,900 m/s')
     await expectBreakdownPages(page, rssPack, journey)
     await assertDetailsAboveDock(page)
     await assertSettingsVisible(page)

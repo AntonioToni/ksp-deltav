@@ -7,6 +7,7 @@ import type {
   RouteNode,
 } from '../types/planner'
 import { withDirectTransfers } from './directTransfers'
+import { withSiblingTransfers } from './siblingTransfers'
 import { stockCentralMu, stockPhysicalReferences, stockPhysicsSource } from './stockPhysics'
 
 const sourceId = 'kowgan-1.7.3'
@@ -196,13 +197,13 @@ interplanetaryTransfer('dres', 610)
 interplanetaryTransfer('jool', 980)
 interplanetaryTransfer('eeloo', 1140)
 
-export const stockPack: PlanetPack = withDirectTransfers({
+export const stockPack: PlanetPack = withSiblingTransfers(withDirectTransfers({
   id: 'stock',
   name: 'Stock Kerbol system',
   shortName: 'Stock',
   transferHubBodyId: 'stock:kerbin',
-  version: '1.7.3-map.3',
-  description: 'Stock reference-map budgets with directed maneuvers, explicit reference orbits, and coplanar analytic direct transfers between non-home planets, including map-calibrated high elliptical states for moon connections.',
+  version: '1.7.3-map.4',
+  description: 'Stock reference-map budgets with explicit reference orbits, analytic direct transfers between non-home planets, and inclination-aware reference transfers between sibling moons.',
   sources: [{
     id: sourceId,
     budgetType: 'reference',
@@ -220,4 +221,4 @@ export const stockPack: PlanetPack = withDirectTransfers({
   bodies,
   nodes,
   maneuvers,
-}, stockPhysicalReferences, stockCentralMu, [stockPhysicsSource])
+}, stockPhysicalReferences, stockCentralMu, [stockPhysicsSource]), stockPhysicalReferences, [stockPhysicsSource])
