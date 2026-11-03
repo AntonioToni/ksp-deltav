@@ -10,7 +10,7 @@ reference figures have been reorganized into named, directed maneuver records.
 
 The separate [CommNet relay guide](RELAYS.md) documents relay body constants,
 antenna presets, coverage geometry, and deployment estimates. Relay calculations
-remain separate from maneuver budgets. Stock and OPM share their pinned physical
+remain separate from maneuver budgets. Stock, OPM, and RSS share their pinned physical
 constants with the analytic direct-transfer model documented below.
 
 ## Coverage and units
@@ -255,13 +255,16 @@ summarizes these changes.
 
 ## Direct interplanetary transfers
 
-Stock and OPM automatically consider complete transfers between their non-home
-planets' low circular and supported high elliptical orbits. Stock has **66
+Stock, OPM, and supported RSS reference orbits automatically consider complete
+transfers between non-home planets' low circular and supported high elliptical
+orbits. Stock has **66
 directed edges** among Moho, Eve, Duna, Dres, Jool, and Eeloo, including the high
 states at Eve, Duna, and Jool. OPM has **226 directed edges**: Eeloo becomes a
 Sarnus moon and leaves that list, while Sarnus, Urlum, Neidon, and Plock join it
-with their own high states. Kerbin retains its original reference branches.
-No new route states are added.
+with their own high states. RSS adds **52 directed edges** over eight existing
+reference states: low orbit at Mercury, Venus, Mars, Vesta, Ceres, and Jupiter,
+plus high orbit at Vesta and Jupiter. Kerbin and Earth retain their original
+homeworld branches. No new route states are added.
 
 Each pair is a `transfer` edge marked `directTransfer: true`. Its price includes
 both departure from the first planet's stated bound orbit and powered capture
@@ -284,9 +287,12 @@ Stock physical and semi-major-axis facts in `src/data/stockPhysics.ts` are share
 with the relay catalog. They use the pinned
 [KSPTOT body reference](https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini).
 OPM uses the pinned [official 2.2.12 constants](https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs)
-from `opmReference.ts`. The model uses each selected node's existing parking
-altitude: Stock map references for Stock bodies and the explicit OPM choices
-listed below. Adding these links does not reprice the original map segments.
+from `opmReference.ts`. RSS uses the pinned
+[official RSS configs](https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus)
+through `rssPhysics.ts`. The model uses each selected node's existing parking
+altitude: Stock/RSS map references where compatible with the pinned physical
+facts, and the explicit OPM choices listed below. Adding these links does not
+reprice the original map segments.
 
 The pure functions in `src/utils/orbitalBudgets.ts` calculate a circular,
 coplanar Hohmann reference. For planets A and B with stellar semi-major axes
@@ -321,12 +327,13 @@ For a low circular endpoint, `vReferenceAtPeriapsis = sqrt(mu / rp)`, reproducin
 the formula above. For a high elliptical endpoint, its bound periapsis speed is
 higher, so establishing that high state avoids the low circularization burn.
 
-Stock infers the reference speed from the map's same-body low-to-high increment:
-`vReferenceAtPeriapsis = sqrt(mu / rp) + circularizationIncrement`. The increments
-are **1,300 m/s at Eve**, **360 at Duna**, and **2,780 at Jool**. This calibrates
+Stock and RSS infer the reference speed from the map's same-body low-to-high
+increment:
+`vReferenceAtPeriapsis = sqrt(mu / rp) + circularizationIncrement`. The Stock
+increments are **1,300 m/s at Eve**, **360 at Duna**, and **2,780 at Jool**. This calibrates
 the high-state energy to rounded map figures; it does not claim precise orbital
 elements from the source map. The implied ellipse must be bound, with apoapsis
-above periapsis and inside the nominal SOI. Approximate implied apoapsis radii
+above periapsis and inside the nominal SOI. Approximate implied Stock apoapsis radii
 are **75.23 Mm**, **26.68 Mm**, and **2,127.74 Mm** respectively.
 
 OPM's Sarnus, Urlum, Neidon, and Plock high states already have explicit geometry:
@@ -396,11 +403,29 @@ use their parent's existing reference branches; this is not a direct
 moon-to-moon flyby solver. The added links do not supply Kerbol–Kcalbeloh
 interstellar trajectories, new wormhole budgets, or new Kcalbeloh reference pairs.
 
-RSS interplanetary travel retains its Earth-centered source graph. Some historical
-low-orbit references, including Saturn, Uranus, Neptune, and Pluto, are incompatible with
-the modern atmospheres. Attaching modern modeled burns to those same historical
-states would imply unsupported reference conditions; extending direct transfer
-coverage there requires compatible orbit references first.
+RSS retains its Earth-centered source graph and adds complete direct pairs only
+at compatible reference states. Low-orbit altitudes are **100 km at Mercury**,
+**400 km at Venus**, **200 km at Mars**, **20 km at Vesta and Ceres**, and
+**2,000 km at Jupiter**. Vesta and Jupiter also have supported inferred high
+states. Mercury, Venus, Mars, and Ceres have low-to-high map increments that
+would imply unbound high states under the pinned modern gravity constants;
+those high endpoints are excluded rather than adjusting the reference figures.
+Saturn, Uranus, Neptune, and Pluto lack a compatible advertised low-orbit
+altitude, so their direct pairs remain outside this model. Their source-map
+branches and selectable states are still available.
+
+Complete low-to-low RSS edge examples are **Mars → Venus 7,850 m/s**,
+**Mercury → Mars 16,894 m/s**, **Mars → Jupiter 21,608 m/s**, and
+**Vesta → Ceres 1,102 m/s**. These are individual complete-pair prices, including
+both powered endpoint burns, not promises of the displayed mission minimum.
+The full route search can find a cheaper itinerary through other paid low or
+high reference states. It charges each arrival and departure; intermediate
+planets are not free gravity assists.
+
+For an RSS moon journey, **Mars low orbit → Io low orbit** can use **Jupiter
+high orbit** without an Earth or Jupiter low-orbit stop. The estimate is
+**4,398 + 4,540 + 6,520 = 15,458 m/s**: complete Mars-to-Jupiter-high transfer,
+unchanged Io encounter increment, then unchanged Io capture/circularization.
 
 ## Direct sibling-moon transfers
 
@@ -927,9 +952,10 @@ all supported states, and source export does not include session-entered costs.
 
 `src/data/rss.ts` adds the **RSS** pack with independent `rss:` IDs and Earth as
 its interplanetary transfer hub. It contains **33 bodies, 102 selectable states,
-and 278 directed maneuvers**: 202 original map segments and 76 modeled sibling
-transfers. Version `community-map-dc472f5+rss-75139b9.2` identifies the shared
-physical-reference and sibling-model extension. No Stock KSP costs are scaled or
+and 330 directed maneuvers**: 202 original map segments, 76 modeled sibling
+transfers, and 52 direct planetary transfers. Version
+`community-map-dc472f5+rss-75139b9.3` identifies this shared-physics and
+direct-transfer extension. No Stock KSP costs are scaled or
 copied into RSS. The RSS dataset does not change the Stock or OPM packs.
 
 ### Sources and scope
@@ -947,7 +973,9 @@ Body hierarchy and atmosphere presence were checked against the
 pinned to `75139b961567f4dab61af83fe162a7e52026558b`.
 
 The shared physical and orbital facts in `src/data/rssPhysics.ts` use that same
-pinned configuration. The sibling model uses each moon's radius, gravity,
+pinned configuration. Direct planetary pairs use the Sun's gravity and the
+supported planets' radii, gravity, stellar semi-major axes, and existing reference
+altitudes. The sibling model uses each moon's radius, gravity,
 atmosphere, semi-major axis, inclination, ascending node, and stated parking
 altitude. Modern physical facts do not reprice the historical map segments.
 
@@ -968,9 +996,11 @@ optional RSS expansion packs, GEO, Lagrange points, and solar approach/landing
 missions are outside this dataset. No unsupported figures are invented to fill
 those omissions.
 
-The pack follows the main transfer rails. Inset/direct moon-transfer alternatives
-shown elsewhere in the diagram are not supplied. Route minima therefore apply
-only to this graph, rather than every trajectory or alternative in the source.
+The original map records follow the main transfer rails. Inset/direct
+moon-transfer alternatives shown elsewhere in the diagram are not transcribed;
+the sibling and planetary alternatives are separately identified analytic
+estimates. Route minima apply only to this combined graph, rather than every
+trajectory or alternative in the source.
 
 ### Numeric interpretation and graph normalization
 
@@ -1039,21 +1069,25 @@ Earth 250/140 km, Venus 400/145 km, Mars 200/125 km, Jupiter 2000/1550 km, and
 Titan 1000/600 km (parking altitude / atmosphere depth). The underlying costs
 remain community-map estimates, not contemporary flight-tested RSS budgets.
 
-Earth is the supplied interplanetary hub. In this reference graph, travel
-between other planetary systems includes capture into a low parking orbit at
-Earth before the next departure. This is a reference-itinerary assumption,
-not a physical requirement for every RSS flight. Encounter energies cannot be
-chained as an invented free gravity assist. Supported sibling-moon transfers
-remain local to their common parent and do not need this Earth stop.
+Earth remains the supplied source-map interplanetary hub. Complete direct
+planetary alternatives connect the compatible states listed under
+[direct transfers](#direct-interplanetary-transfers), avoiding an Earth layover
+when the graph supports it. Other reference paths can still include Earth or
+parent-planet parking visits because more direct trajectories are missing from
+this graph; those visits are itinerary assumptions, not physical requirements
+for every RSS flight. Encounter energies cannot be chained as invented free
+gravity assists. Supported sibling-moon transfers remain local to their common
+parent and do not need an Earth stop.
 
 ### RSS source-map regression landmarks
 
-`src/data/rss.test.ts` checks all 102 supported states in both directions, the
-Earth layover policy, safe altitude metadata, pack isolation, and independent
-reference sums. The following are sums of the unchanged source-map branches from
+`src/data/rss.test.ts` checks all 102 supported states in both directions,
+legacy arrival-reset policy, safe altitude metadata, pack isolation, and
+independent reference sums. Direct-transfer tests separately check supported
+endpoints and complete-pair arithmetic. The following are sums of the unchanged source-map branches from
 Earth surface, without plane changes or atmospheric savings. The optimized full
-pack can choose cheaper routes using modeled sibling transfers; these source
-sums are not a promise of identical displayed mission totals.
+pack can choose cheaper routes using modeled sibling or planetary transfers;
+these source sums are not a promise of identical displayed mission totals.
 
 | Destination | Budget (m/s) |
 | --- | ---: |

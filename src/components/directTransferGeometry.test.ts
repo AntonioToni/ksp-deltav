@@ -77,6 +77,18 @@ describe.each([stockPack, opmPack])('$name selected direct paths', pack => {
   })
 })
 
+describe('RSS selected direct planetary paths', () => {
+  const pairs = rssPack.maneuvers.filter(edge => edge.sourceId === 'direct-interplanetary-model' && edge.from < edge.to)
+
+  it.each<MapMode>(['wide', 'portrait', 'short'])('keeps generated low/high planetary pairs clear in %s mode', mode => {
+    const layout = createMapLayout(rssPack, mode)
+    expect(pairs.length).toBeGreaterThan(0)
+    expect(pairs.some(edge => [edge.from, edge.to].includes('rss:jupiter:elliptical'))).toBe(true)
+    expect(pairs.some(edge => [edge.from, edge.to].includes('rss:vesta:elliptical'))).toBe(true)
+    for (const edge of pairs) assertClear(rssPack, layout, edge)
+  })
+})
+
 describe.each([stockPack, opmPack, rssPack])('$name selected sibling-moon paths', pack => {
   it.each<MapMode>(['wide', 'portrait', 'short'])('keeps sibling paths clear of unrelated states and labels in %s mode', mode => {
     const layout = createMapLayout(pack, mode)

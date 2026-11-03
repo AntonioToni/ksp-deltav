@@ -26,13 +26,14 @@ describe('the reference-based RSS pack', () => {
       .toMatchObject({ parentId: 'opm:sarnus', kind: 'moon' })
   })
 
-  it('covers 33 reference-supported bodies, 102 states, and 278 directed maneuvers', () => {
+  it('covers 33 reference-supported bodies, 102 states, and 330 directed maneuvers', () => {
     expect(validatePlanetPack(rssPack)).toEqual([])
     expect(rssPack.bodies).toHaveLength(33)
     expect(rssPack.nodes).toHaveLength(102)
-    expect(rssPack.maneuvers).toHaveLength(278)
+    expect(rssPack.maneuvers).toHaveLength(330)
     expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'rss-community-solar-system-map')).toHaveLength(202)
     expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'sibling-moon-transfer-model')).toHaveLength(76)
+    expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'direct-interplanetary-model')).toHaveLength(52)
     expect(rssPack.bodies.filter(body => body.kind === 'moon')).toHaveLength(21)
     expect(rssPack.bodies.filter(body => body.kind === 'planet')).toHaveLength(11)
     expect(rssPack.nodes.filter(node => node.kind === 'elliptical')).toHaveLength(10)
@@ -131,12 +132,12 @@ describe('the reference-based RSS pack', () => {
     expect(rssPack.assumptions.join(' ')).toContain('placeholders')
   })
 
-  it('requires an Earth parking-orbit layover between other planetary systems', () => {
+  it('can travel between compatible planetary orbits without an Earth layover', () => {
     const route = findLowestCostPath(buildGraph(rssPack), 'rss:mars:surface', 'rss:venus:surface')
     expect(route.status).toBe('success')
     if (route.status !== 'success') throw new Error(route.message)
-    expect(route.nodeIds).toContain('rss:earth:orbit')
-    expect(route.nodeIds).not.toContain('rss:earth:surface')
+    expect(route.nodeIds).toEqual(['rss:mars:surface', 'rss:mars:orbit', 'rss:venus:orbit', 'rss:venus:surface'])
+    expect(route.totalDeltaV).toBe(38450)
     expect(route.nodeIds.some(node => node.startsWith('stock:'))).toBe(false)
   })
 

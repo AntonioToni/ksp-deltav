@@ -95,6 +95,25 @@ describe('custom planet pack JSON', () => {
       .toMatchObject({ status: 'success', totalDeltaV: 1234 })
   })
 
+  it('retains RSS modeled planetary pairs and bound high-orbit semantics through storage and export', () => {
+    const imported = parse({ ...rssPack, id: 'custom-rss-transfers' })
+    if (imported.status !== 'success') throw new Error(imported.errors.join('\n'))
+    const store = storage()
+    expect(saveCustomPacks(store, [imported.pack])).toBeNull()
+    const restored = readCustomPacks(store).packs[0]!
+    const modelEdges = rssPack.maneuvers.filter(edge => edge.sourceId === 'direct-interplanetary-model')
+    expect(modelEdges.length).toBeGreaterThan(0)
+    expect(restored.maneuvers.filter(edge => edge.sourceId === 'direct-interplanetary-model')).toEqual(modelEdges)
+    const highArrival = restored.maneuvers.find(edge => edge.id === 'direct:rss:mars:orbit->rss:jupiter:elliptical')!
+    expect(highArrival).toMatchObject({ directTransfer: true, kind: 'transfer', sourceId: 'direct-interplanetary-model' })
+    expect(restored.sources.find(source => source.id === highArrival.sourceId)?.budgetType).toBe('model')
+    expect(describeManeuverBasis(highArrival, restored, { customPack: true })).toMatchObject({ kind: 'imported' })
+    const originalRoute = findMissionRoute(buildGraph(rssPack), highArrival.from, highArrival.to, 'round-trip')
+    expect(originalRoute.status).toBe('success')
+    expect(findMissionRoute(buildGraph(restored), highArrival.from, highArrival.to, 'round-trip')).toEqual(originalRoute)
+    expect(parsePlanetPackJson(JSON.stringify(restored))).toEqual({ status: 'success', pack: restored })
+  })
+
   it('keeps legacy maneuver data without direct-transfer metadata unchanged', () => {
     const legacy = pack()
     // Earlier exports could contain ordinary complete low-orbit pairs, but

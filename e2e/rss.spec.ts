@@ -172,7 +172,7 @@ test('clears incompatible endpoints across RSS and Kerbol packs while retaining 
   await expect(page.getByTestId('route-total')).toHaveCount(0)
 })
 
-test('uses Earth as the RSS hub and displays RSS-specific sources and assumptions', async ({ page }) => {
+test('retains the Earth RSS hub while offering direct alternatives and RSS-specific sources', async ({ page }) => {
   await packButton(page, 'RSS').click()
   await expect(node(page, 'rss:earth:encounter')).toHaveAttribute('aria-label', 'Earth encounter')
   await expect(page.locator('[data-node-id^="stock:"]')).toHaveCount(0)
@@ -191,11 +191,10 @@ test('uses Earth as the RSS hub and displays RSS-specific sources and assumption
   }
   await node(page, 'rss:mars:orbit').click()
   await node(page, 'rss:venus:orbit').click()
-  await expect(page.getByTestId('route-total')).toBeVisible()
-  await expect(page.getByText(/Earth parking-orbit layover/)).toBeVisible()
+  await expect(page.getByTestId('route-total')).toHaveText('7,850 m/s')
+  await expect(page.getByText(/Earth parking-orbit layover/)).toHaveCount(0)
   const edges = await page.locator('[data-route-edge="true"]').evaluateAll(elements => elements.map(element => element.getAttribute('data-edge-id')))
-  expect(edges).toContain('rss:earth:encounter->rss:earth:orbit')
-  expect(edges).toContain('rss:earth:orbit->rss:earth:encounter')
+  expect(edges).toEqual(['direct:rss:mars:orbit->rss:venus:orbit'])
 
   await page.getByRole('button', { name: 'Model assumptions and data sources', exact: true }).click()
   const info = page.getByRole('dialog')
@@ -227,19 +226,19 @@ test('makes every RSS state selectable while omitting gas-giant and solar landin
   }
 })
 
-test('keeps the largest RSS mission budget and reserve text visible at 320 pixels', async ({ page }) => {
+test('keeps a large RSS mission budget and reserve text visible at 320 pixels', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 })
   await packButton(page, 'RSS').click()
   await node(page, 'rss:venus:surface').click()
   await node(page, 'rss:io:surface').click()
   await missionModeButton(page, 'round-trip').click()
-  await expect(page.getByTestId('route-total')).toHaveText('140,820 m/s')
+  await expect(page.getByTestId('route-total')).toHaveText('96,686 m/s')
   const slider = page.getByRole('slider', { name: 'Redundancy', exact: true })
   await slider.focus()
   await slider.press('End')
-  await expect(page.getByTestId('route-total')).toHaveText('281,640 m/s')
-  await expect(page.getByTestId('route-base')).toContainText('140,820')
-  await expect(page.getByTestId('route-margin')).toContainText('140,820')
+  await expect(page.getByTestId('route-total')).toHaveText('193,372 m/s')
+  await expect(page.getByTestId('route-base')).toContainText('96,686')
+  await expect(page.getByTestId('route-margin')).toContainText('96,686')
 
   for (const id of ['route-total', 'route-base', 'route-margin']) {
     const textBounds = await page.getByTestId(id).evaluate(element => {

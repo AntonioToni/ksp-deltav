@@ -182,21 +182,23 @@ changing reference figures.
 
 ## Direct interplanetary estimates
 
-`directTransfers.ts` augments Stock and OPM with complete low/high-orbit pairs
-between non-home sibling planets. `stockPhysics.ts` holds the pinned Stock
+`directTransfers.ts` augments Stock, OPM, and compatible RSS states with complete
+low/high-orbit pairs between non-home sibling planets. `stockPhysics.ts` holds the pinned Stock
 physical and semi-major-axis facts shared with the relay catalog;
-`opmReference.ts` supplies the OPM contexts. Actual body parentage controls
+`opmReference.ts` supplies the OPM contexts, and `rssPhysics.ts` supplies pinned
+RSS physical and stellar-orbit facts. Actual body parentage controls
 eligibility, so Eeloo participates as a Stock planet and is excluded when OPM
-makes it a Sarnus moon. Kerbin retains its existing homeworld branches. The
-Kcalbeloh composer inherits the selected base pack's added edges and sources.
+makes it a Sarnus moon. Kerbin and Earth retain their existing homeworld
+branches. The Kcalbeloh composer inherits the selected base pack's added edges
+and sources.
 
 Each modeled edge has kind `transfer`, `directTransfer: true`, and source
 `direct-interplanetary-model` with `budgetType: 'model'`. Its cost is the sum of
 separately rounded departure and arrival burns. The circular, coplanar Hohmann
 model describes the planets' stellar orbits; spacecraft endpoints may be low
-circular or supported high elliptical references. Stock high-state periapsis
-energy is inferred from the published circularization increment and checked for
-a bound ellipse inside the SOI. OPM high states use the explicit half-SOI
+circular or supported high elliptical references. Stock and eligible RSS
+high-state periapsis energy is inferred from the published circularization
+increment and checked for a bound ellipse inside the SOI. OPM high states use the explicit half-SOI
 apoapsis before rounding. It does not propagate dated trajectories, planetary
 eccentricity, inclination, or parking-plane orientation. Reverse pairs swap the
 same nominal components.
@@ -220,10 +222,17 @@ travel uses the same band in the opposite direction. Imported packs can retain
 the optional flag through canonical JSON storage/export; it neither generates
 new physics nor verifies their author-supplied budgets.
 
-The planetary model adds 66 directed Stock pairs and 226 in OPM. RSS
-interplanetary branches retain their historical reference graph until their
-low-orbit states have compatible physical references for direct planetary
-estimates. This restriction does not prevent local sibling-moon estimates.
+The planetary model adds 66 directed Stock pairs, 226 in OPM, and 52 in RSS.
+RSS has eight eligible endpoints: existing low states at Mercury (100 km),
+Venus (400 km), Mars (200 km), Vesta (20 km), Ceres (20 km), and Jupiter
+(2,000 km), plus inferred high states at Vesta and Jupiter. The Mercury, Venus,
+Mars, and Ceres map increments imply unbound high states under modern gravity
+constants and are rejected. Saturn, Uranus, Neptune, and Pluto lack compatible
+low-altitude metadata and remain outside the direct model. No altitude, local
+map price, or selectable state is replaced. The resulting RSS pack keeps all
+202 original map edges and 76 sibling edges and adds 52 planetary edges, for
+330 maneuvers over the same 102 states. Additional reference orbits remain
+planned rather than guessed from atmospheric boundary altitudes.
 
 ## Sibling-moon reference estimates
 

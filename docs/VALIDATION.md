@@ -67,8 +67,9 @@ chaining. Presentation checks cover selected-only connections, shared static
 and animated geometry, reverse direction, and the optional JSON metadata.
 
 This extension does not solve eccentric or inclined transfer geometry, dates,
-travel times, parking-plane orientation, or vehicle losses. RSS retains its
-historical graph pending compatible reference orbits. It is a calculation and
+travel times, parking-plane orientation, or vehicle losses. RSS retained its
+historical graph at this revision; its later compatible-orbit extension is
+recorded below. This is a calculation and
 integration extension, not a new certification of physical flight feasibility.
 
 ### High-orbit moon-route correction
@@ -161,6 +162,37 @@ from ordinary sibling generation. Native Kcalbeloh's nine complete sibling
 pairs retain their official map budgets, including its binary group. Cross-parent
 and multilevel escapes may still use parking visits from the supplied graph;
 the correction does not certify all possible moon trajectories.
+
+### RSS direct planetary transfers — 3 November 2026
+
+The existing circular, coplanar complete-pair model now includes compatible RSS
+states using the same official physical/configuration revision
+`75139b961567f4dab61af83fe162a7e52026558b`. It adds **52 directed planetary edges**
+across six non-home planets and eight endpoints: low orbit at Mercury, Venus,
+Mars, Vesta, Ceres, and Jupiter, plus high orbit at Vesta and Jupiter. The pack
+retains all **102 states**, **202 original map edges**, and **76 sibling edges**,
+for **330 priced maneuvers**. No local reference-map cost or altitude is changed.
+
+Eligibility is deliberately limited. Mercury/Venus/Mars/Ceres map low-to-high
+increments imply unbound states with the pinned modern gravity, so these high
+endpoints are excluded. Saturn/Uranus/Neptune/Pluto have incompatible or omitted
+low-altitude references, so their direct pairs are not generated. Earth keeps
+its original homeworld branches. Existing map paths remain available for
+unsupported pairs; extending them needs reviewed reference orbits first.
+
+Independent component-wise Hohmann/vis-viva calculations give these complete
+low-to-low edge totals: **Mars → Venus 7,850 m/s**, **Mercury → Mars 16,894 m/s**,
+**Mars → Jupiter 21,608 m/s**, and **Vesta → Ceres 1,102 m/s**. Departure and
+capture are each rounded upward before summing. The full mission solver may
+choose a lower sum through other paid low/high states; these examples describe
+the individual direct edges rather than guaranteed displayed minima.
+
+The same provenance and arrival-context rules apply as for Stock/OPM. Bundled
+direct pairs retain both powered burns under atmospheric assistance; separate
+eligible reference segments can still affect the optimized itinerary. Ordered
+stops and return journeys do not create free encounters or gravity assists.
+This extension checks the stated reference model, not dated flight feasibility,
+planetary inclination/eccentricity, or vehicle losses.
 
 ### RSS SOI correction
 

@@ -1,6 +1,7 @@
 import type { CelestialBody, ManeuverEdge, ManeuverKind, NodeKind, PlanetPack, RouteNode } from '../types/planner'
 import { withSiblingTransfers } from './siblingTransfers'
-import { rssPhysicalReferences, rssPhysicsSource } from './rssPhysics'
+import { withDirectTransfers } from './directTransfers'
+import { rssCentralMu, rssPhysicalReferences, rssPhysicsSource } from './rssPhysics'
 
 const mapSourceId = 'rss-community-solar-system-map'
 const mapCommit = 'dc472f56101b260baee8814a94de985f44a6c9b2'
@@ -253,14 +254,14 @@ moonTransfer('pluto', 'charon', 'elliptical', [40])
 localBudget('charon', 'orbit', 'encounter', [20, 160])
 surfaceBudget('charon', 420)
 
-export const rssPack: PlanetPack = withSiblingTransfers({
+export const rssPack: PlanetPack = withDirectTransfers(withSiblingTransfers({
   id: 'rss',
   name: 'Real Solar System',
   shortName: 'RSS',
   transferHubBodyId: 'rss:earth',
-  dataNotice: 'Reference estimates',
-  version: 'community-map-dc472f5+rss-75139b9.2',
-  description: 'Real Solar System planning estimates for the 33 shared map/config bodies: original Solar System map budgets plus separately modeled, inclination-aware sibling-moon transfers.',
+  dataNotice: 'Map + model estimates',
+  version: 'community-map-dc472f5+rss-75139b9.3',
+  description: 'Real Solar System planning estimates for the 33 shared map/config bodies: original Solar System map budgets plus separately modeled direct planetary and inclination-aware sibling-moon transfers at compatible reference orbits.',
   sources: [
     {
       id: mapSourceId,
@@ -283,10 +284,12 @@ export const rssPack: PlanetPack = withSiblingTransfers({
     'Earth-to-Moon transfer is 3120 m/s; the Moon encounter-to-low-orbit budget is 140 + 680 = 820 m/s. Every other supported moon branches from its parent’s high elliptical capture orbit, not its low orbit.',
     'No atmospheric assistance is credited. Atmospheric powered-descent allowances reuse source ascent budgets and are placeholders rather than verified landing calculations. Opposite directed edges reuse the source’s idealized budget convention.',
     'Current RSS atmospheres differ from the diagram. Historical parking altitudes at/inside modern atmospheres are omitted for Saturn, Uranus, Neptune, Pluto, and Triton; costs are not silently recalculated for a new altitude. Pluto and Triton retain their true atmosphere metadata, with atmospheric-braking markers disabled because the reference does not support those opportunities.',
-    'Interplanetary branches use Earth as the transfer hub. Consecutive interplanetary transfers require a low parking-orbit reset at the arrival planet; the planner does not invent a free compatible flyby.',
+    'Complete analytic direct planetary transfers connect the verified low orbits at Mercury, Venus, Mars, Vesta, Ceres, and Jupiter, plus the verified Vesta and Jupiter high elliptical references. They add alternatives without repricing the community diagram.',
+    'Direct planetary estimates exclude the historical high states at Mercury, Venus, Mars, and Ceres: their rounded map increments imply unbound orbits with the pinned modern physical constants. Saturn, Uranus, Neptune, and Pluto lack compatible low-orbit altitudes, so their historical states retain reference-map routes rather than invented direct estimates.',
+    'Original interplanetary branches use Earth as the transfer hub. Their encounter arrivals require a low parking-orbit reset before another interplanetary departure. Complete modeled pairs instead pay departure and capture into the stated bound orbits; neither route assumes a free compatible flyby.',
     'Sun has no selectable states. Jupiter, Saturn, Uranus, and Neptune have no landable surface states. Ceres, Vesta, and Pluto use the domain’s generic planet category for star-orbiting bodies; this is not an IAU classification claim.',
   ],
   bodies,
   nodes,
   maneuvers,
-}, rssPhysicalReferences, [rssPhysicsSource])
+}, rssPhysicalReferences, [rssPhysicsSource]), rssPhysicalReferences, rssCentralMu, [rssPhysicsSource])

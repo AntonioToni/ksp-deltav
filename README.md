@@ -15,7 +15,7 @@ return-only budgets, and add a reserve for your mission.
   elliptical-orbit states. OPM includes Eeloo under Sarnus and Tal under Wal.
 - **Config-based OPM estimates** using official 2.2.12 constants, explicit parking
   orbits, and analytic transfer, capture, and vacuum surface budgets.
-- **Direct transfers between non-home planets in Stock and OPM**, with complete
+- **Direct transfers between supported non-home planets in Stock, OPM, and RSS**, with complete
   departure and capture estimates for low circular and supported high elliptical
   orbits. Moon journeys can join their parent's high-orbit branch without an
   unnecessary low-orbit capture. Extra connections appear when selected.
@@ -77,11 +77,15 @@ that itinerary, and Round trip follows it outward and then in reverse. Return
 only starts at the selected destination state without including an outbound
 flight or its arrival conditions. The reserve applies once to the full budget.
 
-Stock and OPM automatically consider direct transfers between non-home planets'
-low or supported high elliptical orbits. For example, **Duna low orbit → Dres
+Stock, OPM, and compatible RSS reference orbits automatically consider direct
+transfers between non-home planets' low or supported high elliptical orbits.
+For example, **Duna low orbit → Dres
 low orbit** is an analytic **1,532 m/s** estimate. **Duna low orbit → Gilly low
 orbit** can use Eve's high orbit, avoiding a Kerbin layover. Open **Budget
 assumptions** to distinguish modeled transfers from published map figures.
+RSS coverage includes Mercury, Venus, Mars, Vesta, Ceres, and Jupiter; its
+remaining planets retain their source-map routes until compatible reference
+orbits are available.
 
 Supported moons sharing a parent also have direct low-orbit transfers. These
 use the moons' orbital radii and relative orbital planes, together with their
@@ -162,21 +166,23 @@ map**. It is not an in-game measurement or a simulated flight.
 
 These are schematic planning estimates within the supplied maneuver graph,
 rather than simulated trajectories. Stock/OPM retain their Kerbin-centered
-reference branches and add modeled direct bound-orbit links between other planets.
+reference branches and RSS its Earth-centered branches, with modeled direct
+bound-orbit links between supported non-home planets.
 The planetary links reach low circular and supported high elliptical orbits used
 by moon branches; sibling-moon links provide supported local alternatives.
 Other reference routes can still include parent-planet parking stops because
 more direct escape or transfer trajectories are absent from the graph. Those
 stops describe the supplied itinerary, not physical requirements for spaceflight.
-RSS interplanetary branches remain Earth-centered. Kcalbeloh adds complete
-reference-pair transfers; custom pack estimates depend on their supplied data.
+Kcalbeloh adds complete reference-pair transfers; custom pack estimates depend
+on their supplied data.
 Flight dates, plane-change optimization, gravity assists, and vehicle performance
 are not modeled.
 
 **Direct planetary transfers use circular, coplanar planetary orbits.** Spacecraft endpoints
-can be low circular or supported high elliptical reference orbits. Stock high-orbit
-energy is inferred from the map's rounded circularization increment; OPM high
-orbits use their explicit reference geometry. Each pair includes powered departure
+can be low circular or supported high elliptical reference orbits. Stock and RSS
+high-orbit energy is inferred from the map's rounded circularization increment
+only when it implies a valid bound orbit; OPM high orbits use their explicit
+reference geometry. Each pair includes powered departure
 and arrival capture, rounded separately. Planetary eccentricity, inclination, and
 dated encounter geometry are omitted. The same nominal pair reverses its two
 components for the return. These are analytic estimates, rather than new
@@ -252,7 +258,8 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 - Additional planet packs, rescaled systems, and alternative starting-homeworld
   configurations.
-- Direct interplanetary transfer estimates for RSS and additional reference orbits.
+- Additional compatible RSS reference orbits and direct-transfer coverage,
+  including the outer planets and currently unsupported high-orbit states.
 - Interplanetary signal planning: antenna pairs, changing planet-to-planet
   distances, best/worst-case signal strength, and occlusion checks.
 - Advanced relay planning: inclined and polar constellations for coverage beyond
