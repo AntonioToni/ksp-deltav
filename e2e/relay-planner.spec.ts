@@ -183,14 +183,16 @@ test('loads Eeloo sphere-of-influence data for its actual parent in Stock and OP
   expect(opmSoi).toBeLessThan(stockSoi / 10)
 })
 
-test('uses RSS body physics while keeping the stock radio model and omitting gas-giant surface coverage', async ({ page }) => {
+test('uses RSS body physics and patched antenna powers while omitting gas-giant surface coverage', async ({ page }) => {
   await button(page, 'RSS').click()
   await openPlanner(page)
   await expect(combo(page, 'Relay body')).toHaveText('Earth')
+  await expect(combo(page, 'Radio setup')).toHaveText('RSS CommNet (without CBK)')
+  await expect(metric(page, 'relay-dsn-range')).toHaveText('5 Gm')
   await section(page, 'Body data')
   expect(Number(await field(page, 'Body radius').inputValue())).toBeGreaterThan(6000)
   expect(Number(await field(page, 'Gravitational parameter').inputValue())).toBeGreaterThan(1e14)
-  await expect(planner(page).getByText(/Radio estimates use stock antennas and DSN powers; RSS radio patches/)).toBeVisible()
+  await expect(planner(page).getByText(/RealAntennas and RemoteTech are not modeled/)).toBeVisible()
   await planner(page).getByRole('button', { name: 'Close', exact: true }).click()
   await button(page, 'Stock').click()
   await openPlanner(page)

@@ -97,6 +97,7 @@ On Linux CI machines that also need browser system dependencies, use
 | Custom pack import, export, and selection | `src/components/PlanetPacksDialog.tsx` |
 | Per-body atmospheric options and landing inputs | `src/components/AtmosphereDialog.tsx` |
 | CommNet presets and body reference constants | `src/data/commnet.ts` |
+| Stock/RSS radio profiles and conditional CustomBarnKit DSN powers | `src/data/radioProfiles.ts` |
 | Kcalbeloh relay physics and gravity/SOI derivation | `src/data/kcalbelohPhysics.ts` |
 | Automatic relay altitude within clearance and SOI bounds | `src/utils/relayDefaults.ts` |
 | Validated antenna loadouts and effective power | `src/utils/antennaArray.ts` |
@@ -351,19 +352,22 @@ graph or persist settings across page reloads.
 
 `calculateRelayPlan` takes explicit SI-unit inputs and returns validated network
 geometry and deployment results. Single antenna presets and applied arrays
-supply effective stock CommNet powers for the relay and surface endpoints.
+supply effective CommNet powers from the selected radio profile for the relay
+and surface endpoints.
 Equatorial visibility, neighboring relay links, and maximum
 DSN range are separate results. A local constellation is not a complete DSN
 connection.
 
-`calculateAntennaArray` validates the role, selected model IDs, unique rows, and
+`calculateAntennaArray(entries, role, catalog)` validates the role, selected model IDs, unique rows, and
 integer counts, with at most 100 antennas on one craft. Relay loadouts accept
 only relay-capable models; surface-client loadouts accept direct and relay
 antennas. Only combinable parts contribute to the power-weighted combination;
 the result is compared with the strongest single part. Metadata records the
 Communotron 16 exponent of 1.0, the usual 0.75 exponent, and noncombinable
 internal/16-S antennas. DSN powers remain station presets, and a custom power
-input is an already-aggregated endpoint power.
+input is an already-aggregated endpoint power. The optional catalog defaults to
+the stock vessel catalog for existing callers; supplied profile powers are
+already effective and must not be scaled again.
 
 The array dialog stages edits. Apply stores the selected array and enters array
 mode; Cancel or Escape keeps the previous selection and live calculation.
@@ -380,9 +384,26 @@ sphere of influence leaves that orbital bound unchecked.
 
 RSS-derived SOIs apply Kopernicus's default `2R` and `R + 40 km` floors before
 checking the target orbit; explicit source overrides still win. These minimums
-affect Enceladus and Miranda. RSS body physics do not imply RSS radio settings:
-the workspace retains stock powers and occlusion options unless the user changes
-them. The relay guide documents the pinned RSS radio patches separately.
+affect Enceladus and Miranda.
+
+`radioProfiles.ts` keeps radio setup separate from physical body presets. The
+exact built-in `rss` pack defaults to the `rss` profile; other pack IDs default
+to `stock`. Users can select any profile independently. The three immutable
+catalogs are Stock CommNet, RSS without CustomBarnKit, and RSS + CustomBarnKit.
+Both RSS profiles multiply stock vessel powers by 20 while preserving antenna
+IDs and combining metadata. Only the CustomBarnKit profile substitutes DSN
+powers of 5e9/5e11/5e13 m; bare RSS retains stock DSN powers. Normal occlusion
+uses the active profile's factors (Stock 0.75/0.9, RSS 1/1), while the default
+Full radius option remains 1. The range multiplier starts at 1 independently.
+
+Changing radio profile keeps body/orbit drafts, antenna IDs, array entries, and
+custom power inputs. Presets and arrays recalculate from the selected catalog;
+custom powers remain final effective values without profile multiplication.
+Changing body within a pack preserves the profile, and the existing pack key
+resets the complete relay session on pack changes. Profile sources pin the
+official RSS range patch and CommNet defaults; the [relay guide](RELAYS.md#rss-radio-configuration)
+records the installation assumptions. RealAntennas and RemoteTech remain outside
+this model.
 
 The catalog includes all 25 Kcalbeloh planets/moons in either composition, for
 89 total contextual presets. `kcalbelohPhysics.ts` reuses pinned body facts and

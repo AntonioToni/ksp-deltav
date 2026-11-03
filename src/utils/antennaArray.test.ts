@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { dsnLevels, relayAntennas, vesselAntennas } from '../data/commnet'
+import { dsnLevels, relayAntennas, vesselAntennas, type CommNetAntenna } from '../data/commnet'
+import { getRadioProfile } from '../data/radioProfiles'
 import { calculateRelayPlan, type RelayNetworkInput } from './relay'
 import { calculateAntennaArray, type AntennaArrayEntry, type AntennaArrayRole } from './antennaArray'
 
-function success(entries: readonly AntennaArrayEntry[], role: AntennaArrayRole = 'client') {
-  const result = calculateAntennaArray(entries, role)
+function success(entries: readonly AntennaArrayEntry[], role: AntennaArrayRole = 'client', catalog?: readonly CommNetAntenna[]) {
+  const result = calculateAntennaArray(entries, role, catalog)
   if (result.status !== 'success') throw new Error(result.errors.join('\n'))
   return result
 }
@@ -125,6 +126,82 @@ describe('stock antenna arrays on one craft', () => {
     expect(array.neighborDistanceM).toBe(single.neighborDistanceM)
     expect(array.orbitalPeriodS).toBe(single.orbitalPeriodS)
     expect(input.relayPower).toBe(5e6)
+  })
+})
+
+describe('installation-specific antenna arrays', () => {
+  const rssCatalog = getRadioProfile('rss').vesselAntennas
+
+  it.each([
+    [{ antennaId: 'hg-5', count: 4 }],
+    [{ antennaId: 'communotron-16', count: 4 }],
+    [{ antennaId: 'ra-2', count: 1 }, { antennaId: 'hg-5', count: 1 }],
+    [{ antennaId: 'hg-5', count: 1 }, { antennaId: 'communotron-16', count: 3 }],
+    [{ antennaId: 'hg-5', count: 1 }, { antennaId: 'communotron-16-s', count: 50 }, { antennaId: 'internal', count: 48 }],
+    [{ antennaId: 'communotron-16-s', count: 100 }],
+    [{ antennaId: 'internal', count: 100 }],
+  ])('scales an existing loadout once with RSS powers: %j', (...entries) => {
+    const stock = success(entries)
+    const rss = success(entries, 'client', rssCatalog)
+    expect(rss.effectivePower / stock.effectivePower).toBeCloseTo(20, 12)
+    expect(rss.strongestSinglePower / stock.strongestSinglePower).toBe(20)
+    expect(rss.combinableCount).toBe(stock.combinableCount)
+    expect(rss.totalCount).toBe(stock.totalCount)
+    if (rss.weightedExponent !== null && stock.weightedExponent !== null) {
+      expect(rss.weightedExponent).toBeCloseTo(stock.weightedExponent, 14)
+    } else expect(rss.weightedExponent).toBeNull()
+    expect(rss.notes).toEqual(stock.notes)
+    expect(success(entries)).toEqual(stock)
+  })
+
+  it('uses the same antenna powers for RSS with and without CustomBarnKit', () => {
+    const entries = [{ antennaId: 'ra-100', count: 2 }, { antennaId: 'hg-5', count: 1 }]
+    expect(success(entries, 'relay', getRadioProfile('rss-cbk').vesselAntennas)).toEqual(success(entries, 'relay', rssCatalog))
+  })
+
+  it('retains relay restrictions for RSS and accepts stock relay parts at the RSS power', () => {
+    expect(success([{ antennaId: 'hg-5', count: 1 }], 'relay', rssCatalog).effectivePower).toBe(100_000_000)
+    expect(calculateAntennaArray([{ antennaId: 'communotron-16', count: 1 }], 'relay', rssCatalog).status).toBe('invalid')
+  })
+
+  it('reads the supplied catalog instead of falling back to stock powers or model names', () => {
+    const catalog = Object.freeze([
+      Object.freeze({ id: 'test-relay', name: 'Test relay', power: 100, combinable: true, combinabilityExponent: .75, relay: true }),
+      Object.freeze({ id: 'test-direct', name: 'Test direct', power: 1_000, combinable: false, combinabilityExponent: 0, relay: false }),
+    ])
+    const before = structuredClone(catalog)
+    expect(success([{ antennaId: 'test-relay', count: 4 }], 'relay', catalog).effectivePower).toBeCloseTo(282.842712474619, 12)
+    expect(success([{ antennaId: 'test-relay', count: 4 }, { antennaId: 'test-direct', count: 2 }], 'client', catalog).effectivePower).toBe(1_000)
+    expect(calculateAntennaArray([{ antennaId: 'test-direct', count: 1 }], 'relay', catalog).status).toBe('invalid')
+    expect(calculateAntennaArray([{ antennaId: 'hg-5', count: 1 }], 'client', catalog).status).toBe('invalid')
+    expect(catalog).toEqual(before)
+  })
+
+  it('derives the maximum number of distinct rows from the supplied catalog', () => {
+    const catalog = Array.from({ length: 11 }, (_, index) => ({
+      id: `test-${index}`, name: `Test ${index}`, power: 100,
+      combinable: true, combinabilityExponent: 1, relay: true,
+    }))
+    const entries = catalog.map(antenna => ({ antennaId: antenna.id, count: 1 }))
+    expect(success(entries, 'relay', catalog).effectivePower).toBe(1_100)
+    const result = calculateAntennaArray(entries, 'relay', catalog.slice(0, 2))
+    expect(result.status).toBe('invalid')
+    if (result.status === 'invalid') expect(result.errors).toEqual(['Choose between 1 and 2 distinct antenna models.'])
+  })
+
+  it.each([
+    null, {}, [], [null],
+    [{ ...relayAntennas[0], power: 0 }],
+    [{ ...relayAntennas[0], power: Infinity }],
+    [{ ...relayAntennas[0], power: '100' }],
+    [{ ...relayAntennas[0], combinabilityExponent: NaN }],
+    [{ ...relayAntennas[0], combinabilityExponent: 1.1 }],
+    [{ ...relayAntennas[0], relay: 'true' }],
+    [{ ...relayAntennas[0], id: '' }],
+    [relayAntennas[0], relayAntennas[0]],
+  ].map(raw => [raw]))('rejects an unusable runtime catalog without calculating or throwing: %j', raw => {
+    const result = calculateAntennaArray([{ antennaId: 'hg-5', count: 1 }], 'relay', raw as unknown as CommNetAntenna[])
+    expect(result.status).toBe('invalid')
   })
 })
 

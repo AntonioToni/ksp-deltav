@@ -278,7 +278,7 @@ test('keeps a large built-in Kcalbeloh round-trip total readable at 320px', asyn
 })
 
 for (const viewport of [{ width: 320, height: 568 }, { width: 700, height: 900 }]) {
-  test(`shows complete relay physics and identifies RSS stock radio at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+  test(`shows complete relay physics and identifies the RSS radio setup at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
     await useKcalbeloh(page)
     await button(page, 'CommNet relay planner').click()
@@ -306,9 +306,10 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 700, height: 900 }
     await relays(page).getByRole('button', { name: 'Close', exact: true }).click()
     await button(page, 'RSS').click()
     await button(page, 'CommNet relay planner').click()
-    await expect(relays(page).getByText('RSS body data · Stock radio model', { exact: true })).toBeVisible()
+    await expect(relays(page).getByText('RSS body data · RSS CommNet (without CBK)', { exact: true })).toBeVisible()
+    await expect(relays(page).getByRole('combobox', { name: 'Radio setup', exact: true })).toHaveText('RSS CommNet (without CBK)')
     await relays(page).getByRole('tab', { name: 'Body data', exact: true }).click()
-    await expect(relays(page).getByText(/RSS radio patches, RealAntennas, and RemoteTech are not modeled/)).toBeVisible()
+    await expect(relays(page).getByText(/RealAntennas and RemoteTech are not modeled/)).toBeVisible()
     await onScreen(relays(page).getByRole('button', { name: 'Close', exact: true }), page)
     await relays(page).getByRole('button', { name: 'Close', exact: true }).click()
     await pageFits(page)

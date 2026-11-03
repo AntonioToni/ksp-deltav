@@ -18,15 +18,35 @@ export type AntennaArrayResult = {
   notes: string[]
 } | { status: 'invalid'; errors: string[] }
 
-const antennasById = new Map(vesselAntennas.map(antenna => [antenna.id, antenna]))
 const maxAntennas = 100
 
-/** Stock CommNet power for antennas on one craft, before any range multiplier. */
-export function calculateAntennaArray(entries: readonly AntennaArrayEntry[], role: AntennaArrayRole): AntennaArrayResult {
+/** Effective CommNet power for antennas on one craft, before any range multiplier. */
+export function calculateAntennaArray(
+  entries: readonly AntennaArrayEntry[],
+  role: AntennaArrayRole,
+  catalog: readonly CommNetAntenna[] = vesselAntennas,
+): AntennaArrayResult {
   const errors: string[] = []
   if (role !== 'relay' && role !== 'client') return { status: 'invalid', errors: ['Choose a relay or surface-client antenna array.'] }
-  if (!Array.isArray(entries) || entries.length === 0 || entries.length > vesselAntennas.length) {
-    return { status: 'invalid', errors: [`Choose between 1 and ${vesselAntennas.length} distinct antenna models.`] }
+  if (!Array.isArray(catalog) || catalog.length === 0) {
+    return { status: 'invalid', errors: ['Choose a non-empty vessel antenna catalog.'] }
+  }
+  const antennasById = new Map<string, CommNetAntenna>()
+  for (const antenna of catalog) {
+    if (typeof antenna !== 'object' || antenna === null || Array.isArray(antenna)
+      || typeof antenna.id !== 'string' || antenna.id.trim().length === 0
+      || typeof antenna.name !== 'string' || antenna.name.trim().length === 0
+      || !Number.isFinite(antenna.power) || antenna.power <= 0 || antenna.power > 1e18
+      || typeof antenna.combinable !== 'boolean' || typeof antenna.relay !== 'boolean'
+      || !Number.isFinite(antenna.combinabilityExponent)
+      || antenna.combinabilityExponent < 0 || antenna.combinabilityExponent > 1
+      || antennasById.has(antenna.id)) {
+      return { status: 'invalid', errors: ['The vessel antenna catalog contains invalid or duplicate models.'] }
+    }
+    antennasById.set(antenna.id, antenna)
+  }
+  if (!Array.isArray(entries) || entries.length === 0 || entries.length > catalog.length) {
+    return { status: 'invalid', errors: [`Choose between 1 and ${catalog.length} distinct antenna models.`] }
   }
 
   const seen = new Set<string>()
@@ -48,7 +68,7 @@ export function calculateAntennaArray(entries: readonly AntennaArrayEntry[], rol
     const validCount = typeof count === 'number' && Number.isInteger(count) && count >= 1 && count <= maxAntennas
     if (!validCount) errors.push(`Antenna row ${index + 1} quantity must be an integer from 1 to ${maxAntennas}.`)
     else totalCount += count
-    if (antenna && role === 'relay' && !antenna.relay) errors.push('Relay forwarding arrays can only contain HG-5 or RA relay antennas.')
+    if (antenna && role === 'relay' && !antenna.relay) errors.push('Relay forwarding arrays can only contain relay-capable antennas.')
     if (antenna && validCount) selected.push({ antenna, count })
   }
   if (totalCount > maxAntennas) errors.push(`Use at most ${maxAntennas} antennas on one craft.`)

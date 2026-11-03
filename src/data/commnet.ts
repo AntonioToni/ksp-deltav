@@ -19,7 +19,7 @@ export interface RelayBodyPreset {
 export interface CommNetPowerPreset {
   id: string
   name: string
-  /** Stock CommNet power in meters. */
+  /** Effective CommNet power in meters. */
   power: number
 }
 

@@ -135,9 +135,16 @@ body data automatically with either base system and wormhole setting. Inputs
 remain editable; **Restore preset** returns to the reference values. The
 [relay guide](docs/RELAYS.md) explains the calculations and supported data.
 
+**Radio setup** selects Stock CommNet, RSS CommNet without CustomBarnKit, or
+RSS + CustomBarnKit. RSS maps start with RSS antenna powers (20× stock) and
+stock DSN powers; select the CustomBarnKit option if your installation includes
+its RSS DSN patch. Radio setup can be changed independently of the body map.
+
 Choose **Antenna array…** under **Relay antenna** or **Surface antenna** to mix
 stock parts and counts, then choose **Apply**. A relay loadout is fitted to each
-satellite separately; antennas on different satellites do not combine.
+satellite separately; antennas on different satellites do not combine. Arrays
+use the selected radio setup's powers. Custom powers are final effective values
+and are never scaled automatically.
 
 ## About the estimates
 
@@ -214,9 +221,10 @@ claims are omitted. See the data guide for coverage and calculation assumptions.
 
 **Relay coverage is equatorial.** A visible surface receiver and a working local
 ring do not establish a connection back to the homeworld's Deep Space Network
-(DSN). The radio presets use stock CommNet rules; RSS radio patches,
-RealAntennas, and RemoteTech are not applied automatically. Use custom powers
-for your installation. The [validation record](docs/VALIDATION.md) describes the
+(DSN). The radio presets use stock CommNet rules with explicit Stock and RSS
+power configurations. RealAntennas and RemoteTech use different models and are
+not simulated; custom powers do not reproduce those models. The
+[validation record](docs/VALIDATION.md) describes the
 checked data, independent calculation tests, and remaining limits.
 
 ## Run locally

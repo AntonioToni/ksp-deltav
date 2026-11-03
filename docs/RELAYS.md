@@ -19,15 +19,15 @@ the relay inputs.
    body, enter its radius, gravitational parameter, and atmosphere height before
    planning an orbit. Supply its sphere of influence when known.
 2. Under **Network**, choose the **Orbit altitude** above the body's physical
-   radius and a **Relay count** from 2 to 12. Choose a relay antenna or array,
-   a surface-client antenna or array, and a DSN level.
+   radius and a **Relay count** from 2 to 12. Choose your **Radio setup**, a relay
+   antenna or array, a surface-client antenna or array, and a DSN level.
 3. Inspect the equatorial coverage, neighboring links, orbital period, and maximum
    DSN range. **Rotate relays** changes the constellation's phase so you can
    inspect the sample surface station's links.
 4. Under **Body data**, choose **Full radius** occlusion for conservative
-   spherical geometry, or **KSP normal** for the game's normal effective
-   occlusion factors. The range multiplier applies to the antenna range
-   calculation.
+   spherical geometry, or the selected radio setup's normal effective occlusion
+   factors. The range multiplier applies to the antenna range calculation and
+   defaults to 1.
 5. Under **Deployment**, compare a lower or higher resonant carrier orbit and
    inspect its apsides, release interval, circularization burn, and clearance
    checks. **Clearance margin** is an additional user-selected distance above the
@@ -50,13 +50,15 @@ endpoint's **effective** CommNet power in meters, not watts. For a craft with
 multiple antennas, this value is already the combined craft power; the planner
 does not apply another count or assume a combinability exponent for custom
 parts. This uses the same stock range formula with your value; it does not
-switch to a different radio model.
+switch to a different radio model. Custom powers are final values: changing
+**Radio setup** preserves them and never applies a power multiplier to them.
 
 ## Antenna arrays
 
 Choose **Antenna array…** in the **Relay antenna** or **Surface antenna** list to
 open the matching array editor. Add stock antenna models, set their counts, and
-inspect the effective power before choosing **Apply**. **Cancel** or Escape
+inspect their powers under the selected radio setup before choosing **Apply**.
+**Cancel** or Escape
 discards the draft. Reopen the same array option to edit it, or choose a single
 antenna preset or **Custom power** to use that mode instead.
 
@@ -68,7 +70,9 @@ remains a single station power, with no array count.
 
 Applied arrays remain in the relay workspace during the same session, including
 when the tool is closed and reopened. Changing planet packs or reloading the
-page resets the workspace. The resulting powers recalculate neighbor and
+page resets the workspace. Changing radio setup keeps the selected parts and
+counts, recalculating their powers from that setup's catalog. The resulting
+powers recalculate neighbor and
 surface ranges, coverage, and maximum DSN range. Orbital geometry and deployment
 burn estimates still depend on the orbit and physical body inputs.
 
@@ -92,8 +96,9 @@ that do not combine. Noncombinable antennas do not enter either weighted sum.
 stock combinable models use **0.75**. The **internal antenna** and
 **Communotron 16-S** do not combine: extra copies do not increase their power.
 
-For example, four HG-5 antennas on **each relay**, with one Communotron 16 on
-the surface client, give these estimates at range multiplier 1:
+For example, under **Stock CommNet**, four HG-5 antennas on **each relay**, with
+one Communotron 16 on the surface client, give these estimates at range
+multiplier 1:
 
 | Result | Estimate |
 | --- | ---: |
@@ -128,9 +133,11 @@ establish a path to mission control.
 Bodies without a landable surface still support orbital relay and deployment
 calculations, but have no surface coverage or surface-station result.
 
-The radio model is **stock CommNet**, including when the selected physical body
-is from RSS or another planet pack. **RealAntennas** and **RemoteTech** use
-different models and are not simulated here.
+The radio model follows **stock CommNet** range and combining rules. **Radio
+setup** supplies Stock or RSS-adjusted powers independently of the physical
+body data; see [RSS radio configuration](#rss-radio-configuration).
+**RealAntennas** and **RemoteTech** use different models and are not simulated
+here. Custom effective powers do not reproduce their behavior.
 
 ## Geometry and radio model
 
@@ -181,9 +188,11 @@ equatorial coverage fraction = min(1, N theta / pi)
 The range and limb boundary checks remain separate from the coverage percentage:
 a percentage rounding to 100% is not proof of a robust link at the boundary.
 
-**Full radius** uses `f = 1`. **KSP normal** uses `f = 0.75` for a body with an
-atmosphere and `f = 0.90` for an airless body. These are effective game occlusion
-settings, not changes to a planet's physical radius or atmospheric height. The
+**Full radius**, the default, uses `f = 1`. With **Stock CommNet**, **KSP normal**
+uses `f = 0.75` for a body with an atmosphere and `f = 0.90` for an airless body.
+Both RSS radio setups use normal defaults of `f = 1` for either body type.
+These are effective game occlusion settings, not changes to a planet's physical
+radius or atmospheric height. The
 diagram distinguishes the effective occluder when it differs from the body.
 
 ## Resonant deployment
@@ -358,17 +367,42 @@ compatibility with a different mod release or radio overhaul.
 
 ### RSS radio configuration
 
-Selecting RSS loads its body physics while retaining the planner's **stock
-CommNet radio presets**. The pinned RSS
+The built-in RSS map defaults to **RSS CommNet (without CBK)**. Other maps,
+including custom imports, default to **Stock CommNet**. The **Radio setup**
+selector is independent of the body: changing bodies within the active pack
+keeps your radio setup, while changing packs resets the relay workspace.
+
+| Radio setup | Vessel antenna powers | DSN levels 1 / 2 / 3 | Normal occlusion |
+| --- | --- | --- | --- |
+| Stock CommNet | Stock | 2e9 / 5e10 / 2.5e11 m | 0.75 atmospheric / 0.90 vacuum |
+| RSS CommNet (without CBK) | 20× stock | Stock | 1.0 for either body type |
+| RSS + CustomBarnKit | 20× stock | 5e9 / 5e11 / 5e13 m | 1.0 for either body type |
+
+These profiles follow RSS revision `75139b961567f4dab61af83fe162a7e52026558b`. Its
 [`DSN_Ranges.cfg`](https://github.com/KSP-RO/RealSolarSystem/blob/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/DSN_Ranges.cfg)
 multiplies transmitter powers by 20 and, when a CustomBarnKit configuration node
-is present, supplies DSN powers of 5e9, 5e11, and 5e13 m. Its
+is present, supplies the stronger DSN powers. RSS itself does not require
+CustomBarnKit, so the planner exposes that choice explicitly. The patch keeps
+stock antenna names, relay flags, and combining rules. Its
 [`CommNetFixer`](https://github.com/KSP-RO/RealSolarSystem/blob/75139b961567f4dab61af83fe162a7e52026558b/Source/CommNetFixer.cs)
-also sets normal occlusion defaults to 1.0. These patches are not applied
-automatically here. Choose **Custom power** for the effective vessel and DSN
-powers in your installation, and match the occlusion setting. **Full radius**
-uses 1.0; **KSP normal** uses stock 0.75/0.9 factors. RealAntennas and RemoteTech
-use different models and remain unsupported. See the
+sets normal occlusion defaults to 1.0 with the shipped `overrideCommNetParams`
+setting enabled.
+
+For example, a single RSS HG-5 has power **100 Mm** and a Communotron 16
+**10 Mm**. Their maximum surface link range is **31.622777 Mm** at range
+multiplier 1. The HG-5's maximum DSN level 3 range is **5 Gm** without CBK or
+**70.710678 Gm** with the conditional CBK patch. Four HG-5s on one RSS craft
+combine to **282.842712 Mm**, exactly 20 times the stock array power. Catalog
+powers are already scaled; the array calculation does not multiply them again.
+
+Choose **Custom power** when you know your installation's final effective craft
+or station power. These values are preserved without profile scaling. Keep the
+range multiplier matched to your game settings; a multiplier of 20 is not an
+equivalent substitute for RSS's separate antenna and DSN changes.
+
+RealAntennas and RemoteTech use different models and remain unsupported. An RSS,
+RO, or RP-1 installation using either radio overhaul should not use these
+CommNet profiles as a simulation of that overhaul. See the
 [validation record](VALIDATION.md) for the source audit and calculation checks.
 
 ### Retained MIT notice for the antenna reference

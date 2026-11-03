@@ -174,9 +174,34 @@ override. The active `2R` floors give:
 | Miranda | 459,755.119 | 471,400 |
 
 Only these two preset SOIs changed. Explicit overrides remain intact. Historical
-RSS maneuver costs were not recalculated from modern physical constants. RSS
-radio patches also differ from the tool's stock radio presets; the
-[RSS radio note](RELAYS.md#rss-radio-configuration) explains the distinction.
+RSS maneuver costs were not recalculated from modern physical constants.
+
+### RSS CommNet configuration
+
+The RSS radio profiles were checked against official revision
+`75139b961567f4dab61af83fe162a7e52026558b`:
+
+- [`DSN_Ranges.cfg`](https://github.com/KSP-RO/RealSolarSystem/blob/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/DSN_Ranges.cfg)
+  multiplies configured transmitter powers by 20, including configured upgrades.
+  It preserves relay flags and combining metadata. DSN powers of 5e9/5e11/5e13 m
+  are applied only to an existing CustomBarnKit node; RSS itself does not require
+  CustomBarnKit. The profiles therefore distinguish bare RSS from RSS + CBK.
+- [`CommNetFixer.cs`](https://github.com/KSP-RO/RealSolarSystem/blob/75139b961567f4dab61af83fe162a7e52026558b/Source/CommNetFixer.cs)
+  sets normal atmospheric and vacuum occlusion to 1.0 when the shipped
+  `overrideCommNetParams` setting is enabled.
+
+Independent arithmetic fixtures cover a single RSS HG-5's **100 Mm** power,
+its **31.6227766 Mm** link to a Communotron 16, and its DSN level 3 ranges:
+**5 Gm** with stock DSN or **70.7106781 Gm** with CBK. Four RSS HG-5 antennas
+combine to **282.8427125 Mm**, preserving the stock exponent and applying the
+20× catalog scaling once. Custom inputs are already-effective powers and bypass
+profile scaling. Existing Stock presets and default array calls retain their
+original values.
+
+These checks validate the stated CommNet patch configuration, not other radio
+overhauls or an arbitrary RSS/RO/RP-1 installation. RealAntennas and RemoteTech
+remain unsupported. See the [RSS radio note](RELAYS.md#rss-radio-configuration)
+for profile selection and installation assumptions.
 
 ## Calculation checks
 

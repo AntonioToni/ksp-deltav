@@ -1,0 +1,109 @@
+import type { DataSource } from '../types/planner'
+import {
+  clientAntennas, commNetSources, dsnLevels, relayAntennas,
+  type CommNetAntenna, type CommNetPowerPreset,
+} from './commnet'
+
+export type RadioProfileId = 'stock' | 'rss' | 'rss-cbk'
+
+export interface CommNetRadioProfile {
+  readonly id: RadioProfileId
+  readonly name: string
+  readonly description: string
+  readonly relayAntennas: readonly CommNetAntenna[]
+  readonly clientAntennas: readonly CommNetAntenna[]
+  readonly vesselAntennas: readonly CommNetAntenna[]
+  readonly dsnLevels: readonly CommNetPowerPreset[]
+  readonly normalOcclusion: Readonly<{ atmospheric: number; vacuum: number }>
+  readonly sources: readonly DataSource[]
+}
+
+const rssRevision = '75139b961567f4dab61af83fe162a7e52026558b'
+const rssRangesSource: DataSource = Object.freeze({
+  id: 'commnet-rss-ranges',
+  title: 'Official RSS antenna-power and conditional CustomBarnKit DSN patch · pinned revision',
+  url: `https://github.com/KSP-RO/RealSolarSystem/blob/${rssRevision}/GameData/RealSolarSystem/DSN_Ranges.cfg`,
+})
+const rssOcclusionSource: DataSource = Object.freeze({
+  id: 'commnet-rss-occlusion',
+  title: 'Official RSS Normal CommNet occlusion defaults · pinned revision',
+  url: `https://github.com/KSP-RO/RealSolarSystem/blob/${rssRevision}/Source/CommNetFixer.cs`,
+})
+
+const stockRadioSources = Object.freeze(commNetSources
+  .filter(source => ['commnet-stock-antennas', 'commnet-normal-settings', 'commnet-antenna-combination'].includes(source.id))
+  .map(source => Object.freeze({ ...source })))
+const rssRadioSources = Object.freeze([
+  ...stockRadioSources.filter(source => source.id !== 'commnet-normal-settings'),
+  rssRangesSource, rssOcclusionSource,
+])
+
+function antennaCatalog(antennas: readonly CommNetAntenna[], powerScale: number): readonly CommNetAntenna[] {
+  // Keep part identities and combination rules while storing final effective powers.
+  return Object.freeze(antennas.map(antenna => Object.freeze({ ...antenna, power: antenna.power * powerScale })))
+}
+
+function powerCatalog(presets: readonly CommNetPowerPreset[]): readonly CommNetPowerPreset[] {
+  return Object.freeze(presets.map(preset => Object.freeze({ ...preset })))
+}
+
+const stockRelayAntennas = antennaCatalog(relayAntennas, 1)
+const stockClientAntennas = antennaCatalog(clientAntennas, 1)
+const stockDsnLevels = powerCatalog(dsnLevels)
+const rssRelayAntennas = antennaCatalog(relayAntennas, 20)
+const rssClientAntennas = antennaCatalog(clientAntennas, 20)
+const rssVesselAntennas = Object.freeze([...rssClientAntennas, ...rssRelayAntennas])
+const rssNormalOcclusion = Object.freeze({ atmospheric: 1, vacuum: 1 })
+
+const profilesById: Readonly<Record<RadioProfileId, CommNetRadioProfile>> = Object.freeze({
+  stock: Object.freeze({
+    id: 'stock',
+    name: 'Stock CommNet',
+    description: 'Stock antenna powers, DSN levels and Normal difficulty occlusion defaults.',
+    relayAntennas: stockRelayAntennas,
+    clientAntennas: stockClientAntennas,
+    vesselAntennas: Object.freeze([...stockClientAntennas, ...stockRelayAntennas]),
+    dsnLevels: stockDsnLevels,
+    normalOcclusion: Object.freeze({ atmospheric: .75, vacuum: .9 }),
+    sources: stockRadioSources,
+  }),
+  rss: Object.freeze({
+    id: 'rss',
+    name: 'RSS CommNet (without CBK)',
+    description: 'RSS increases stock antenna powers by 20×. Without CustomBarnKit, DSN powers remain stock.',
+    relayAntennas: rssRelayAntennas,
+    clientAntennas: rssClientAntennas,
+    vesselAntennas: rssVesselAntennas,
+    dsnLevels: stockDsnLevels,
+    normalOcclusion: rssNormalOcclusion,
+    sources: rssRadioSources,
+  }),
+  'rss-cbk': Object.freeze({
+    id: 'rss-cbk',
+    name: 'RSS + CustomBarnKit',
+    description: 'RSS antenna powers with the stronger DSN levels applied when CustomBarnKit is installed.',
+    relayAntennas: rssRelayAntennas,
+    clientAntennas: rssClientAntennas,
+    vesselAntennas: rssVesselAntennas,
+    dsnLevels: powerCatalog([
+      { id: 'dsn1', name: 'DSN level 1', power: 5_000_000_000 },
+      { id: 'dsn2', name: 'DSN level 2', power: 500_000_000_000 },
+      { id: 'dsn3', name: 'DSN level 3', power: 50_000_000_000_000 },
+    ]),
+    normalOcclusion: rssNormalOcclusion,
+    sources: rssRadioSources,
+  }),
+})
+
+export const radioProfileOptions: readonly CommNetRadioProfile[] = Object.freeze([
+  profilesById.stock, profilesById.rss, profilesById['rss-cbk'],
+])
+
+export function getRadioProfile(id: RadioProfileId): CommNetRadioProfile {
+  return profilesById[id]
+}
+
+/** A physical pack does not identify other installed radio mods or settings. */
+export function defaultRadioProfileId(packId: string): RadioProfileId {
+  return packId === 'rss' ? 'rss' : 'stock'
+}

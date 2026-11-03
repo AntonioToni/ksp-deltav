@@ -5,13 +5,15 @@ import {
 } from '@mui/material'
 import AddRounded from '@mui/icons-material/AddRounded'
 import CloseRounded from '@mui/icons-material/CloseRounded'
-import { relayAntennas, vesselAntennas } from '../data/commnet'
+import { vesselAntennas, type CommNetAntenna } from '../data/commnet'
 import { calculateAntennaArray, type AntennaArrayEntry } from '../utils/antennaArray'
 
 interface AntennaArrayDialogProps {
   open: boolean
   role: 'relay' | 'client'
   entries: readonly AntennaArrayEntry[]
+  antennas?: readonly CommNetAntenna[]
+  radioLabel?: string
   onApply: (entries: AntennaArrayEntry[]) => void
   onClose: () => void
 }
@@ -37,12 +39,12 @@ function validCount(text: string): boolean {
   return text.trim() !== '' && Number.isInteger(count) && count >= 1 && count <= 100
 }
 
-function ArrayContent({ role, entries, onApply, onClose, headingId, descriptionId }: Omit<AntennaArrayDialogProps, 'open'> & { headingId: string; descriptionId: string }) {
-  const antennas = role === 'relay' ? relayAntennas : vesselAntennas
+function ArrayContent({ role, entries, antennas: catalog = vesselAntennas, radioLabel, onApply, onClose, headingId, descriptionId }: Omit<AntennaArrayDialogProps, 'open'> & { headingId: string; descriptionId: string }) {
+  const antennas = role === 'relay' ? catalog.filter(antenna => antenna.relay) : catalog
   const [draft, setDraft] = useState<DraftEntry[]>(() => entries.map((entry, index) => ({ key: index, antennaId: entry.antennaId, count: String(entry.count) })))
   const nextKey = useRef(entries.length)
   const parsed = draft.map(entry => ({ antennaId: entry.antennaId, count: entry.count.trim() === '' ? NaN : Number(entry.count) }))
-  const result = calculateAntennaArray(parsed, role)
+  const result = calculateAntennaArray(parsed, role, catalog)
   const available = antennas.filter(antenna => !draft.some(entry => entry.antennaId === antenna.id))
   const enteredCount = draft.reduce((sum, entry) => sum + (validCount(entry.count) ? Number(entry.count) : 0), 0)
   const atLimit = available.length === 0 || enteredCount >= 100
@@ -64,6 +66,7 @@ function ArrayContent({ role, entries, onApply, onClose, headingId, descriptionI
       <Box component="span" id={headingId}>{title}</Box>
     </DialogTitle>
     <Box id={descriptionId} sx={{ px: 1.5, pb: .75 }}>
+      {radioLabel && <Typography sx={{ mb: .25, fontSize: 11, lineHeight: 1.4, color: 'primary.light' }}>{radioLabel}</Typography>}
       <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>
         {role === 'relay'
           ? 'This loadout is fitted to each relay. Antennas on separate satellites do not combine.'
@@ -115,11 +118,11 @@ function ArrayContent({ role, entries, onApply, onClose, headingId, descriptionI
   </>
 }
 
-export default function AntennaArrayDialog({ open, role, entries, onApply, onClose }: AntennaArrayDialogProps) {
+export default function AntennaArrayDialog({ open, role, entries, antennas = vesselAntennas, radioLabel, onApply, onClose }: AntennaArrayDialogProps) {
   const id = useId().replace(/:/g, '')
   const headingId = `${id}-antenna-array-heading`
   const descriptionId = `${id}-antenna-array-description`
   return <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" aria-labelledby={headingId} aria-describedby={descriptionId} sx={{ '& .MuiDialog-paper': { m: 1, width: 'calc(100% - 16px)', maxHeight: 'calc(100dvh - 16px)' } }}>
-    <ArrayContent key={`${role}:${open}`} role={role} entries={entries} onApply={onApply} onClose={onClose} headingId={headingId} descriptionId={descriptionId} />
+    <ArrayContent key={`${role}:${open}`} role={role} entries={entries} antennas={antennas} radioLabel={radioLabel} onApply={onApply} onClose={onClose} headingId={headingId} descriptionId={descriptionId} />
   </Dialog>
 }
