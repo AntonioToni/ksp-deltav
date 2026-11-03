@@ -222,7 +222,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
       <Box component="span" id="relay-planner-heading">CommNet relay planner</Box>
       <IconButton aria-label="Close relay planner" size="small" onClick={onClose}><CloseRounded sx={{ fontSize: 19 }} /></IconButton>
     </DialogTitle>
-    <Box sx={{ px: 1.5, pt: .5, pb: .75, display: 'flex', alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' }, columnGap: 1, rowGap: .5, minWidth: 0 }}>
+    <Box sx={{ px: 1.5, pt: 1.5, pb: .75, display: 'flex', alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' }, columnGap: 1, rowGap: .5, minWidth: 0 }}>
       <TextField select fullWidth size="small" label="Relay body" value={bodyId} onChange={event => changeBody(event.target.value)} sx={{ ...fieldStyles, maxWidth: 380 }}>
         {bodies.map(candidate => <MenuItem key={candidate.id} value={candidate.id} sx={{ fontSize: 12 }}>{candidate.name}</MenuItem>)}
       </TextField>
@@ -233,7 +233,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
       <Tab id="relay-deployment-tab" aria-controls="relay-deployment-panel" value="deployment" label="Deployment" />
       <Tab id="relay-body-tab" aria-controls="relay-body-panel" value="body" label="Body data" />
     </Tabs>
-    <DialogContent sx={{ p: 1.5, minWidth: 0, minHeight: 0, overflowY: 'auto', [compact]: { py: 1 } }}>
+    <DialogContent sx={{ p: 1.5, minWidth: 0, minHeight: 0, overflowY: 'auto', [compact]: { pb: 1 } }}>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.25, '@media (min-width: 600px)': { gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' } }}>
         <Box role="tabpanel" id={`relay-${tab}-panel`} aria-labelledby={`relay-${tab}-tab`} sx={{ minWidth: 0, containerType: 'inline-size' }}>
           {tab === 'network' && <Stack spacing={.5}>
@@ -241,18 +241,18 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               {radioProfileOptions.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 12 }}>{option.name}</MenuItem>)}
             </TextField>
             <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>{radioProfile.description}</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, .7fr)', gap: .75 }}>
+            <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, .7fr)', gap: .75 }}>
               <NumericField label="Orbit altitude" value={current.altitude} unit="km" onChange={value => changeProfile({ altitude: value, altitudeAutomatic: false })} />
               <TextField select fullWidth size="small" label="Relay count" value={satelliteCount} onChange={event => setSatelliteCount(Number(event.target.value))} sx={fieldStyles}>
                 {Array.from({ length: 11 }, (_, index) => index + 2).map(count => <MenuItem key={count} value={count} sx={{ fontSize: 12 }}>{count} relays</MenuItem>)}
               </TextField>
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: .5 }}>
+            <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: .5 }}>
               {antennaField('Relay antenna', relayId, setRelayId, relayAntennas, 'relay')}
               {antennaField('Surface antenna', clientId, setClientId, clientAntennas, 'client')}
               {antennaField('DSN level', dsnId, setDsnId, dsnLevels)}
             </Box>
-            {(relayId === 'custom' || clientId === 'custom' || dsnId === 'custom') && <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: .75 }}>
+            {(relayId === 'custom' || clientId === 'custom' || dsnId === 'custom') && <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', columnGap: .75, rowGap: 1.5 }}>
               {relayId === 'custom' && <NumericField label="Relay power" value={relayCustomPower} onChange={setRelayCustomPower} unit="m" min={Number.MIN_VALUE} />}
               {clientId === 'custom' && <NumericField label="Surface power" value={clientCustomPower} onChange={setClientCustomPower} unit="m" min={Number.MIN_VALUE} />}
               {dsnId === 'custom' && <NumericField label="DSN power" value={dsnCustomPower} onChange={setDsnCustomPower} unit="m" min={Number.MIN_VALUE} />}
@@ -275,7 +275,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
             <ToggleButtonGroup exclusive fullWidth aria-label="Carrier orbit" value={deploymentMode} onChange={(_, value: typeof deploymentMode | null) => { if (value) setDeploymentMode(value) }} sx={{ '& .MuiToggleButton-root': { flex: 1, minHeight: 34, py: .5, px: .5, fontSize: 11 } }}>
               <ToggleButton value="lower">Lower carrier</ToggleButton><ToggleButton value="higher">Higher carrier</ToggleButton>
             </ToggleButtonGroup>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
+            <Box sx={{ pt: .5, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
               <NumericField label="Orbit altitude" value={current.altitude} unit="km" onChange={value => changeProfile({ altitude: value, altitudeAutomatic: false })} />
               <NumericField label="Clearance margin" value={safetyMargin} unit="km" onChange={value => {
                 setSafetyMargin(value)
@@ -302,7 +302,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>{preset ? current.edited ? 'Edited reference body data' : 'Reference body preset' : 'Enter body data for this system'}</Typography>
               {preset && <Button size="small" onClick={() => setProfiles(previous => new Map(previous).set(bodyId, profile(body, numeric(safetyMargin))))} sx={{ minHeight: 32, fontSize: 11, minWidth: 0, flexShrink: 0, whiteSpace: 'nowrap' }}>Restore preset</Button>}
             </Stack>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridTemplateAreas: '"radius atmosphere" "mu soi" "occlusion multiplier"', gap: .75, '@container (max-width: 399px)': { gridTemplateAreas: '"radius atmosphere" "mu mu" "soi soi" "occlusion multiplier"' } }}>
+            <Box sx={{ pt: .5, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridTemplateAreas: '"radius atmosphere" "mu soi" "occlusion multiplier"', columnGap: .75, rowGap: 1.5, '@container (max-width: 399px)': { gridTemplateAreas: '"radius atmosphere" "mu mu" "soi soi" "occlusion multiplier"' } }}>
               <Box sx={{ gridArea: 'radius', minWidth: 0 }}><NumericField label="Body radius" value={current.radius} unit="km" min={Number.MIN_VALUE} onChange={value => changeProfile({ radius: value, edited: true })} /></Box>
               <Box sx={{ gridArea: 'atmosphere', minWidth: 0 }}><NumericField label="Atmosphere height" value={current.atmosphere} unit="km" onChange={value => changeProfile({ atmosphere: value, edited: true })} /></Box>
               <Box sx={{ gridArea: 'mu', minWidth: 0 }}><NumericField label="Gravitational parameter" value={current.mu} unit="m³/s²" min={Number.MIN_VALUE} onChange={value => changeProfile({ mu: value, edited: true })} /></Box>
