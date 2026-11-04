@@ -120,8 +120,10 @@ test('continues an arriving planetary mission between moons without an extra par
   await button(page, 'Next stage').click()
   await expect(page.getByTestId('stage-total')).toHaveText('1,176 m/s')
   await missionModeButton(page, 'round-trip').click()
-  // The complete itinerary can choose a different paid outbound arrival.
-  await expect(total(page)).toHaveText('11,186 m/s')
+  // The legacy incoming Jool context survives the moon visits. Its reference
+  // departure pays the 2,780 m/s low capture and raise instead of visiting Duna.
+  await expect(total(page)).toHaveText('15,732 m/s')
+  await expect(selected(page).and(page.locator('[data-edge-id*="stock:duna:"]'))).toHaveCount(0)
   await missionModeButton(page, 'return-only').click()
   await expect(total(page)).toHaveText('5,086 m/s')
   await expect(sibling(page)).toHaveAttribute('data-edge-id', 'sibling:stock:vall:orbit->stock:laythe:orbit')
@@ -155,7 +157,13 @@ test('identifies remaining reference parking stops and keeps co-orbital exclusio
   await button(page, 'Reset mission').click()
   await button(page, 'OPM').click()
   await plan(page, 'opm:polta:orbit', 'opm:priax:orbit')
-  // A paid two-transfer route via Wal is valid; no zero-cost co-orbital edge is invented.
+  // The supplied parent route is used rather than an unrequested Wal visit.
+  await expect(total(page)).toHaveText('1,884 m/s')
+  await expect(sibling(page)).toHaveCount(0)
+  await expect(selected(page).and(page.locator('[data-edge-id*="opm:wal:"]'))).toHaveCount(0)
+  // An explicit Wal stop retains the two paid pairs without inventing a
+  // zero-cost co-orbital Polta–Priax transfer.
+  await addStop(page, 'Wal low orbit')
   await expect(total(page)).toHaveText('1,474 m/s')
   await expect(sibling(page)).toHaveCount(2)
   await expect(sibling(page).and(page.locator('[data-edge-id="sibling:opm:polta:orbit->opm:priax:orbit"]'))).toHaveCount(0)
