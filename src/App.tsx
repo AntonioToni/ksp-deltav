@@ -451,9 +451,15 @@ export default function App() {
           }} sx={{ gridArea: 'stops', justifySelf: 'start', minHeight: 32, minWidth: 0, px: .75, fontSize: 11, color: waypointIds.length ? '#92d5c6' : 'text.secondary', border: '1px solid', borderColor: waypointIds.length || selection === 'stop' ? '#92d5c660' : 'divider', borderRadius: 1 }}>
             {selection === 'stop' ? 'Cancel' : 'Stops'}{waypointIds.length > 0 && <Box component="span" data-testid="stop-count" sx={{ ml: .75, color: '#92d5c6', fontVariantNumeric: 'tabular-nums' }}>{waypointIds.length}</Box>}
           </Button>
-          <Box sx={{ gridArea: 'actions', display: 'flex', alignItems: 'center', justifyContent: { xs: 'space-between', sm: 'flex-start' }, gap: .25, '@media (min-width: 700px), (min-width: 600px) and (max-height: 500px)': { flexDirection: 'column', alignItems: 'flex-start', gap: 0 } }}>
+          <Box sx={{ gridArea: 'actions', display: 'flex', alignItems: 'center', justifyContent: { xs: 'space-between', sm: 'flex-start' }, gap: .25, '@media (min-width: 700px), (min-width: 600px) and (max-height: 500px)': { flexDirection: 'column', alignItems: 'flex-end', gap: .5 } }}>
+            <Button variant="outlined" startIcon={<RestartAltRounded sx={{ fontSize: '17px !important' }} />} aria-label="Reset mission" size="small" onClick={reset} sx={{
+              minHeight: 34, minWidth: 60, px: .5, fontSize: 12, fontWeight: 600, letterSpacing: 0, flexShrink: 0,
+              color: '#f0b9aa', borderColor: '#d98b7580', bgcolor: '#d98b7514', borderRadius: 1.25,
+              '& .MuiButton-startIcon': { ml: 0, mr: .5 },
+              '&:hover': { bgcolor: '#d98b7529', borderColor: '#e4a38e' },
+              '@media (min-width: 700px), (min-width: 600px) and (max-height: 500px)': { minWidth: 80, px: 1.25 },
+            }}>Clear</Button>
             <FormControlLabel sx={{ m: 0, '& .MuiFormControlLabel-label': { fontSize: 11 } }} control={<Checkbox size="small" checked={showBreakdown} onChange={(_, checked) => setShowBreakdown(checked)} slotProps={{ input: { 'aria-label': 'Show breakdown', ref: breakdownToggle } }} sx={{ p: .5, '& .MuiSvgIcon-root': { fontSize: 17 } }} />} label="Breakdown" />
-            <Button startIcon={<RestartAltRounded sx={{ fontSize: '16px !important' }} />} aria-label="Reset mission" size="small" onClick={reset} sx={{ minHeight: 28, minWidth: 0, fontSize: 11, px: .5 }}>Clear</Button>
           </Box>
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', columnGap: 1, rowGap: .25, px: { xs: 1.25, sm: 2.5 }, pb: .75, minHeight: 20 }}>
