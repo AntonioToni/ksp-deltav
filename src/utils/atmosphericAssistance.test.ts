@@ -156,7 +156,7 @@ describe('atmospheric mission optimization', () => {
     expect(findMissionRoute(graph, 'E', 'S', 'one-way')).toMatchObject({ status: 'success', totalDeltaV: 10, nodeIds: ['E', 'O2', 'S'] })
   })
 
-  it('requires actual parking-orbit arrival between interplanetary transfers, even through an encounter stop', () => {
+  it('does not add an ideal-capture detour, and requires parking arrival when its encounter is requested', () => {
     const pack = fixture()
     const prototype = pack.bodies[1]!
     pack.bodies = [pack.bodies[0]!, ...['A', 'B', 'C'].map(id => ({ ...prototype, id, name: id, hasAtmosphere: id === 'B' }))]
@@ -168,9 +168,16 @@ describe('atmospheric mission optimization', () => {
     ]
     const reference = buildGraph(pack)
     expect(findMissionRoute(reference, 'AE', 'CE', 'one-way')).toMatchObject({ status: 'success', totalDeltaV: 100, nodeIds: ['AE', 'CE'] })
+    expect(findMissionRoute(reference, 'AE', 'CE', 'one-way', ['BE']))
+      .toMatchObject({ status: 'success', totalDeltaV: 122, nodeIds: ['AE', 'BE', 'BO', 'BE', 'CE'] })
     const { graph } = applyAtmosphericAssistance(reference, pack, [{ bodyId: 'B', capture: true, landing: false, landingDeltaV: 0 }])
-    for (const stops of [[], ['BE']]) {
-      expect(findMissionRoute(graph, 'AE', 'CE', 'one-way', stops)).toMatchObject({ status: 'success', totalDeltaV: 22, nodeIds: ['AE', 'BE', 'BO', 'BE', 'CE'] })
+    expect(findMissionRoute(graph, 'AE', 'CE', 'one-way'))
+      .toMatchObject({ status: 'success', totalDeltaV: 100, nodeIds: ['AE', 'CE'] })
+    for (const stops of [['BE'], ['BO']]) {
+      const stopped = findMissionRoute(graph, 'AE', 'CE', 'one-way', stops)
+      expect(stopped).toMatchObject({ status: 'success', totalDeltaV: 22, nodeIds: ['AE', 'BE', 'BO', 'BE', 'CE'] })
+      if (stopped.status !== 'success') throw new Error('Expected the requested atmospheric stop')
+      expect(stopped.legs.map(({ edge }) => edge.deltaV)).toEqual([1, 0, 20, 1])
     }
   })
 

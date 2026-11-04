@@ -77,6 +77,12 @@ that itinerary, and Round trip follows it outward and then in reverse. Return
 only starts at the selected destination state without including an outbound
 flight or its arrival conditions. The reserve applies once to the full budget.
 
+The planner first avoids unrequested planet or moon parking visits, then finds
+the lowest Delta-V budget for that itinerary. Necessary parent-system passages
+and available reference-map connections remain usable. Add a state under
+**Stops** to deliberately compare a detour through another body; a smaller sum
+of reference burns does not establish compatible transfer dates or orbit planes.
+
 Stock, OPM, and compatible RSS reference orbits automatically consider direct
 transfers between non-home planets' low or supported high elliptical orbits.
 For example, **Duna low orbit → Dres

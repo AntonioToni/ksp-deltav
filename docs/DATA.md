@@ -83,8 +83,12 @@ not make that mixed-reference itinerary an independently simulated flight.
   any pending planetary-arrival context rather than erasing it. Other supplied
   reference paths can still contain parking stops because a more direct escape
   or transfer is missing from the graph. Such a stop is not a physical necessity.
-- Add a mission margin. A shortest path is the lowest estimate in this dataset,
-  not a universal minimum over all possible KSP trajectories.
+- Route selection first minimizes unrequested planet/moon parking arrivals,
+  then Delta-V within that itinerary. Required parent-system passages remain
+  available, as do unavoidable homeworld/reference-map or Kcalbeloh gateway
+  connections. Add explicit stops to request a detour through another body.
+- Add a mission margin. A selected route is a reference estimate for this
+  itinerary, not a universal minimum over all possible KSP trajectories.
 
 ## Mission modes
 
@@ -100,11 +104,20 @@ For example, an itinerary with two stops is A → S1 → S2 → B.
   reverse order to A. Arrival context carries through every stop and the
   turnaround. The budget is not assumed to be twice the outbound cost.
 
-The route search optimizes the complete sequence for the selected mode. Its
-state includes the current node, pending parking-orbit requirement, and next
+The route search optimizes the complete sequence for the selected mode. It
+first minimizes parking arrivals at planets or moons outside the active
+stage's intended bodies: the stage endpoints and their ancestors. It then
+minimizes the summed Delta-V among routes with that preference. This keeps an
+unrequested Vesta or Jupiter parking visit from winning merely because a
+combination of idealized burns is numerically cheaper. It does not filter out
+those bodies or make a route unreachable when the supplied reference graph
+needs them. Explicit **Stops** make a deliberate detour part of the itinerary.
+
+The state includes the current node, pending parking-orbit requirement, and next
 required visit. A stop cannot erase arrival energy or turn an encounter into a
-free parking-orbit reset. A longer route to one stop may therefore give the
-lowest total budget once later visits and their arrival conditions are included.
+free parking-orbit reset. With the itinerary preference applied, a more expensive
+stage can still give the lowest whole-mission budget once later visits and their
+arrival conditions are included.
 Passing a later stop early does not complete that required visit out of order.
 Consecutive repeated states are allowed and can produce zero-maneuver stages.
 
@@ -179,8 +192,9 @@ are session settings and do not modify or export with source data.
   even though their arrows indicate potential assistance.
 
 The planner applies the selected costs to a copy of the maneuver graph **before
-optimizing the whole selected mission**. The cheapest adjusted path can differ
-from the cheapest powered path. The reference comparison uses the original
+optimizing the whole selected mission**. It retains the same itinerary preference;
+the lowest adjusted budget within that preference can differ from the powered
+path. The reference comparison uses the original
 powered mission estimate, and the reserve applies once to the adjusted mission
 total. Map details and the breakdown use the effective maneuver costs while
 retaining their original figures for comparison. Repeated visits apply the
@@ -238,7 +252,7 @@ and excluding reserves and plane changes:
 | Tylo | 9,210 |
 | Bop | 6,830 |
 | Pol | 6,590 |
-| Eeloo | 7,421 |
+| Eeloo | 7,480 |
 
 Some printed body totals in the source map differ from the sum of their revised
 segments. The planner sums selected directed maneuver costs rather than
@@ -246,12 +260,12 @@ substituting printed body totals. Original source-segment values remain intact.
 Historical map revisions also differ (for example, the old Mun capture figure
 was 310 m/s; this pinned source uses 280 m/s).
 
-The Eeloo figure includes modeled transfers through Duna low orbit and Jool high
-orbit. The unchanged original source branch sums to **7,480 m/s**. The optimizer
-can select a lower estimate using paid intermediate reference orbits, so retaining
-source segments does not guarantee that every complete mission keeps its old
-total. The [validation record](VALIDATION.md#high-orbit-moon-route-correction)
-summarizes these changes.
+The Eeloo figure follows the original source branch at **7,480 m/s**. A previous
+Delta-V-only search selected a **7,421 m/s** route through unrequested Duna low
+and Jool high states. The current preference keeps that detour out of the default
+itinerary; choosing those states explicitly under **Stops** requests the
+separate reference estimate. The [validation record](VALIDATION.md#selected-itinerary-preference)
+explains the correction.
 
 ## Direct interplanetary transfers
 
@@ -270,8 +284,10 @@ Each pair is a `transfer` edge marked `directTransfer: true`. Its price includes
 both departure from the first planet's stated bound orbit and powered capture
 into the second planet's stated bound orbit. The solver charges
 that complete edge once, including when it belongs to a multi-stop or return
-journey. A route can use several pairs, with each intermediate arrival and
-departure charged. Endpoint kinds are explicit: a high-orbit arrival does not
+journey. An explicit multi-stop route can use several pairs, with each
+intermediate arrival and departure charged. Unrequested parking detours take
+lower priority than the selected itinerary, even if their summed burns are
+smaller. Endpoint kinds are explicit: a high-orbit arrival does not
 silently include low-orbit circularization, and an encounter is not a substitute
 for either bound state. Moon journeys can follow the existing branch from a
 parent's high orbit without an unnecessary low capture and re-raise.
@@ -386,17 +402,17 @@ Atmospheric assistance still adjusts only supported standalone inward captures
 and descents. A direct pair retains its full departure and powered-capture
 estimate, even if a braking marker indicates an opportunity at arrival.
 A separate destination landing allowance can still change an eligible descent.
-Selected atmospheric choices can also make another complete route cheaper,
-including one through an intermediate planet's low parking orbit. Whole-mission
-totals reflect the available reference links and the selected assumptions;
-unchanged map segments do not imply unchanged optimized totals.
+Atmospheric choices can change the lowest budget within the selected itinerary.
+They do not make an unrequested intermediate planet the default merely because
+its capture is free in the idealized model.
 
-For example, enabling **Ideal capture at Duna** changes Kerbin surface → Dres
-low orbit from **6,260** to **6,012 m/s**. That route pays **4,480 m/s** to reach
-Duna's low orbit under the selected capture assumption, then the unchanged
-**1,532 m/s** direct transfer to Dres. Adding Dres powered descent gives
-**6,442 m/s** to its surface. The intermediate low-orbit visit remains part of
-the route; it is not a free flyby.
+For example, with **Ideal capture at Duna**, Kerbin surface → Dres low orbit
+remains **6,260 m/s** by default. Adding **Duna low orbit** as an explicit stop
+gives a separate **6,012 m/s** estimate: **4,480 m/s** to reach that stop, then
+the unchanged **1,532 m/s** direct transfer to Dres. Adding Dres powered descent
+gives **6,442 m/s** to its surface for that requested detour. The stop is a paid
+parking visit, not a free flyby, and its timing/orientation compatibility is
+outside the reference model.
 
 Kcalbeloh compositions inherit the selected base system's direct links. Moons
 use their parent's existing reference branches; this is not a direct
@@ -417,10 +433,20 @@ branches and selectable states are still available.
 Complete low-to-low RSS edge examples are **Mars → Venus 7,850 m/s**,
 **Mercury → Mars 16,894 m/s**, **Mars → Jupiter 21,608 m/s**, and
 **Vesta → Ceres 1,102 m/s**. These are individual complete-pair prices, including
-both powered endpoint burns, not promises of the displayed mission minimum.
-The full route search can find a cheaper itinerary through other paid low or
-high reference states. It charges each arrival and departure; intermediate
-planets are not free gravity assists.
+both powered endpoint burns. Explicitly selected stops can connect several
+low/high reference states, charging every arrival and departure. The default
+preference avoids extra parking visits at unrelated bodies; those connections
+are not free gravity assists or a solved dated trajectory.
+
+For example, **Ceres surface → Mars surface** is **8,800 m/s** by default,
+rather than the **8,794 m/s** estimate through an unrequested Vesta high orbit.
+Requesting that Vesta stop explicitly still produces the latter reference
+estimate. Ceres surface → Mercury surface is **25,164 m/s**, and → Venus surface
+**39,745 m/s**. Explicit Jupiter high-orbit stops instead give **21,280**
+and **38,115 m/s** respectively. These are alternative selected itineraries,
+not evidence that a Jupiter detour is a verified lower-cost flight.
+The surface totals include the existing allowances; Mars and Venus powered
+descents remain the documented landing placeholders.
 
 For an RSS moon journey, **Mars low orbit → Io low orbit** can use **Jupiter
 high orbit** without an Earth or Jupiter low-orbit stop. The estimate is
@@ -507,8 +533,9 @@ the moon's atmosphere and inside its SOI. Unknown planes are not assumed zero.
 Ordinary Hohmann generation excludes **Polta–Priax**, whose equal orbital radii
 require a co-orbital phasing model, and **Thatmo–Nissee**, whose retrograde and
 strongly eccentric geometry is outside this model's scope. Their original
-reference connections remain available; the optimizer may also find a fully
-priced itinerary through another supported state.
+reference connections remain available. A fully priced detour through another
+supported body can be requested as an explicit stop; unavoidable reference
+connections are not removed by the itinerary preference.
 
 Kcalbeloh's **nine published sibling pairs** remain unchanged: six among
 Anehta's moons and three around the Simetra–Simeht barycenter. They are not
@@ -846,8 +873,10 @@ For example, Suluco low orbit → Tot low orbit is **676 + 312 = 988 m/s**.
 The source surface allowances are 2,920 m/s at Suluco and 23 m/s at Tot, so the
 surface-to-surface estimate is **3,931 m/s** before reserve. A 20% reserve gives
 **4,718 m/s**; the reversed nominal source route has the same base cost. A
-shortest path may use several complete pairs, but each intermediate parking
-state and both burns of every pair are charged.
+selected multi-stop path may use several complete pairs, but each intermediate
+parking state and both burns of every pair are charged. The default preference
+avoids adding unrelated parking visits solely to reduce the numerical sum;
+necessary reference states and gateways remain available.
 
 The map's stellar/circumbinary reference states are distinct from local planet
 parking orbits:
@@ -1086,8 +1115,9 @@ legacy arrival-reset policy, safe altitude metadata, pack isolation, and
 independent reference sums. Direct-transfer tests separately check supported
 endpoints and complete-pair arithmetic. The following are sums of the unchanged source-map branches from
 Earth surface, without plane changes or atmospheric savings. The optimized full
-pack can choose cheaper routes using modeled sibling or planetary transfers;
-these source sums are not a promise of identical displayed mission totals.
+pack can use supported modeled sibling or planetary transfers while preferring
+the selected itinerary. These source sums are not a promise of identical
+displayed mission totals for every ordered-stop or atmospheric configuration.
 
 | Destination | Budget (m/s) |
 | --- | ---: |

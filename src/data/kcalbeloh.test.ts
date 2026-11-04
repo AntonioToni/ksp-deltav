@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildGraph } from '../utils/buildGraph'
 import { findLowestCostPath } from '../utils/findRoute'
+import { findMissionRoute } from '../utils/mission'
 import { validatePlanetPack } from '../utils/validatePlanetPack'
 import { stockPack } from './stock'
 import { opmPack } from './opm'
@@ -144,8 +145,15 @@ describe('published Kcalbeloh numerical facts', () => {
     }
   })
 
-  it('may choose a cheaper two-pair journey while charging the intermediate parking orbit completely', () => {
-    const result = route(stockKcalbelohPack, local('onrefni', 'surface'), local('iomena', 'surface'))
+  it('uses the published direct pair unless a Rouqea parking stop is requested', () => {
+    const from = local('onrefni', 'surface')
+    const to = local('iomena', 'surface')
+    const direct = route(stockKcalbelohPack, from, to)
+    expect(direct.totalDeltaV).toBe(1300 + (30300 + 30900) + 1610)
+    expect(direct.nodeIds).not.toContain(local('rouqea'))
+    expect(direct.legs.filter(leg => leg.edge.kind === 'transfer')).toHaveLength(1)
+    const result = findMissionRoute(buildGraph(stockKcalbelohPack), from, to, 'one-way', [local('rouqea')])
+    if (result.status !== 'success') throw new Error(result.message)
     expect(result.totalDeltaV).toBe(1300 + (21100 + 11700) + (15100 + 11100) + 1610)
     expect(result.nodeIds).toContain(local('rouqea'))
     expect(result.legs.filter(leg => leg.edge.kind === 'transfer')).toHaveLength(2)

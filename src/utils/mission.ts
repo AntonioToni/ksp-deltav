@@ -34,7 +34,7 @@ function sliceRoute(route: SuccessfulRoute, startIndex: number, endIndex: number
   return { status: 'success', nodeIds: route.nodeIds.slice(startIndex, endIndex + 1), legs, totalDeltaV }
 }
 
-/** Optimize the complete ordered mission; reserve is applied separately by the UI. */
+/** Prefer the requested body itinerary, then minimize its budget; the UI adds reserve. */
 export function findMissionRoute(graph: PlannerGraph, start: string, goal: string, mode: MissionMode, waypointIds: readonly string[] = []): MissionRouteResult {
   const invalid = (message: string): MissionRouteResult => ({
     status: 'invalid', message: mode === 'return-only' ? `Return leg: ${message}` : message,

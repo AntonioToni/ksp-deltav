@@ -59,9 +59,10 @@ At that low-only revision, all 876 homeworld comparisons across Stock/OPM states
 Kerbin surface/orbit origins, and mission modes retained their **atmosphere-off**
 budgets.
 
-Atmospheric choices can still reoptimize a mission through an intermediate
-planet's low parking orbit; they are not covered by that unchanged-default
-claim. Complete direct pairs retain both modeled burns. Ordered stops and
+At that revision, atmospheric choices could reoptimize a mission through an
+unrequested intermediate planet's low parking orbit; they were not covered by
+that unchanged-default claim. The later selected-itinerary correction below
+changes that preference. Complete direct pairs retain both modeled burns. Ordered stops and
 arrival rules remain active, so added links do not create free encounter
 chaining. Presentation checks cover selected-only connections, shared static
 and animated geometry, reverse direction, and the optional JSON metadata.
@@ -100,11 +101,13 @@ The guarded high-orbit extension was compared with the published low-only
 revision across the same **876 atmosphere-off homeworld missions**. **332**
 estimates decreased and none increased. All OPM outbound comparisons retained
 their prior totals; the four changed Stock outbound comparisons end at Eeloo's
-low orbit or surface. Kerbin surface → Eeloo surface is now **7,421 m/s** through
+low orbit or surface. At that revision, Kerbin surface → Eeloo surface was **7,421 m/s** through
 paid Duna low and Jool high reference states, compared with the original
-**7,480 m/s** branch. Return-only and round-trip totals can also improve through
-these complete reference pairs. This is an expanded search over the stated
-models, not a claim of lower flight costs for arbitrary launch dates.
+**7,480 m/s** branch. Return-only and round-trip totals also improved under that
+former Delta-V-only preference. That comparison expanded the search over the
+stated models; it did not establish lower flight costs for arbitrary launch
+dates. The later selected-itinerary correction below changes how unrequested
+parking visits are treated.
 
 Independent vis-viva calculations matched all **292** directed Stock/OPM
 records and their reverse costs. All **102** directed low-to-low records from
@@ -183,16 +186,68 @@ unsupported pairs; extending them needs reviewed reference orbits first.
 Independent component-wise Hohmann/vis-viva calculations give these complete
 low-to-low edge totals: **Mars → Venus 7,850 m/s**, **Mercury → Mars 16,894 m/s**,
 **Mars → Jupiter 21,608 m/s**, and **Vesta → Ceres 1,102 m/s**. Departure and
-capture are each rounded upward before summing. The full mission solver may
-choose a lower sum through other paid low/high states; these examples describe
-the individual direct edges rather than guaranteed displayed minima.
+capture are each rounded upward before summing. These describe the individual
+direct edges. The later selected-itinerary preference below avoids adding
+unrequested low/high parking visits merely to lower a complete mission's sum.
 
 The same provenance and arrival-context rules apply as for Stock/OPM. Bundled
 direct pairs retain both powered burns under atmospheric assistance; separate
-eligible reference segments can still affect the optimized itinerary. Ordered
+eligible reference segments can still affect the budget within the selected
+itinerary. Ordered
 stops and return journeys do not create free encounters or gravity assists.
 This extension checks the stated reference model, not dated flight feasibility,
 planetary inclination/eccentricity, or vehicle losses.
+
+### Selected-itinerary preference
+
+RSS Ceres surface → Mars surface exposed an unwanted automatic Vesta high-orbit
+stop; Mercury and Venus journeys could similarly detour through Jupiter high
+orbit. Every component burn was charged, but minimizing only their sum presented
+an unrequested combination of reference transfers as the default. The model does
+not validate timing or parking-plane compatibility between those transfers.
+This did not show that the detours were physically impossible, or verify them
+as lower-cost flights.
+
+Route search now prefers the fewest unrequested planet/moon parking arrivals,
+then minimizes Delta-V. Each ordered stage treats its endpoints and their
+ancestor bodies as intended. Necessary parent-system passages and unavoidable
+homeworld, map, or Kcalbeloh gateway paths remain available. Explicit mission
+stops still request deliberate detours. All individual maneuver costs, endpoint
+burn formulas, reference states, and original map figures are unchanged.
+
+Targeted RSS regressions are:
+
+| Journey from Ceres surface | Default itinerary (m/s) | Explicit detour (m/s) |
+| --- | ---: | ---: |
+| Mars surface | 8,800 | 8,794 via Vesta high orbit |
+| Mercury surface | 25,164 | 21,280 via Jupiter high orbit |
+| Venus surface | 39,745 | 38,115 via Jupiter high orbit |
+
+These totals retain the existing surface allowances, including Mars and Venus
+powered-descent placeholders.
+
+The Stock atmospheric example also changes: with ideal capture at Duna,
+Kerbin surface → Dres low orbit stays **6,260 m/s** by default, while an explicit
+Duna low-orbit stop gives **6,012 m/s**. Kerbin surface → Eeloo surface returns
+to the **7,480 m/s** source branch unless the detour is deliberately requested.
+Earlier change counts in this record describe the former Delta-V-only search;
+they are historical comparisons, not assertions about the current preference.
+
+The graph audit checked **81,108 distinct ordered state pairs** across all seven
+built-in packs, with synthetic directional allowances for unknown Kcalbeloh
+connections: **67,384 reachable** and **13,724 intentionally disconnected**
+with wormholes disabled. Reachability matched the previous search in every case.
+No invalid route, cumulative-budget mismatch, or legacy arrival-context violation
+was found. Among ordinary low-orbit routes, unrelated modeled parking detours
+fell from **46 to 0 in Stock**, **470 to 0 in OPM**, and **154 to 0 in RSS**.
+
+A separate label-correcting solver checked **8,324 Kcalbeloh orbital pairs** and
+matched both the fewest-extra-visits objective and Delta-V totals. Those checks
+used synthetic **123,456 m/s directional allowances** to price otherwise unknown
+connections; that value is a connectivity fixture, not a fuel reference. The
+remaining gateway visits were necessary under those entered connections.
+These checks validate route selection and graph consistency under the stated
+model, not all-pair physical trajectory feasibility.
 
 ### RSS SOI correction
 

@@ -324,7 +324,7 @@ describe('return-only missions', () => {
 
   it.each([
     { pack: stockPack, home: 'stock:kerbin:surface', target: 'stock:mun:surface', expected: 5120 },
-    { pack: opmPack, home: 'stock:kerbin:surface', target: 'opm:tekto:surface', expected: 11546 },
+    { pack: opmPack, home: 'stock:kerbin:surface', target: 'opm:tekto:surface', expected: 11927 },
     { pack: rssPack, home: 'rss:earth:surface', target: 'rss:moon:surface', expected: 14660 },
   ])('supports $pack.id reference routes and applies reserve once to the return', ({ pack, home, target, expected }) => {
     const graph = buildGraph(pack)
@@ -339,6 +339,26 @@ describe('return-only missions', () => {
       extraDeltaV: Math.ceil(expected * 1.2) - expected, totalDeltaV: Math.ceil(expected * 1.2),
     })
     expect(graph).toEqual(before)
+  })
+
+  it('uses the Sarnus homeward branch unless a Jool parking stop is requested', () => {
+    const graph = buildGraph(opmPack)
+    const home = 'stock:kerbin:surface'
+    const target = 'opm:tekto:surface'
+    const direct = findMissionRoute(graph, home, target, 'return-only')
+    expect(direct).toMatchObject({ status: 'success', totalDeltaV: 11927 })
+    if (direct.status !== 'success') throw new Error('Expected a homeward reference route')
+    // Tekto ascent/escape, Sarnus departure, then the original Kerbin branch.
+    expect(direct.legs.map(({ edge }) => edge.deltaV)).toEqual([2600, 464, 1393, 1534, 281, 1305, 950, 3400])
+    expect(direct.nodeIds.some(id => id.startsWith('stock:jool:'))).toBe(false)
+
+    const stopped = findMissionRoute(graph, home, target, 'return-only', ['stock:jool:elliptical'])
+    expect(stopped).toMatchObject({ status: 'success', totalDeltaV: 11546 })
+    if (stopped.status !== 'success') throw new Error('Expected the requested Jool parking itinerary')
+    // The cheaper two-system itinerary remains available with both burns paid.
+    expect(stopped.legs.map(({ edge }) => edge.deltaV)).toEqual([2600, 464, 1393, 1599, 160, 980, 950, 3400])
+    expect(stopped.nodeIds).toContain('stock:jool:elliptical')
+    expect(stopped.returnStages.map(stage => stage.totalDeltaV)).toEqual([6056, 5490])
   })
 
   it('does not add an unused outbound cost that would overflow a finite return budget', () => {

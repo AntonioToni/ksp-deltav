@@ -147,7 +147,7 @@ export function withDirectTransfers(
       }
     }
   }
-  const note = 'Complete analytic direct transfers connect the reviewed circular and high elliptical reference orbits of non-home planets. High-orbit arrivals can continue along existing moon branches without an unnecessary low-orbit capture and re-raise. Homeworld encounter branches retain their source budgets; the route planner compares the supplied map and model edges without assuming free flybys.'
+  const note = 'Complete analytic direct transfers connect the reviewed circular and high elliptical reference orbits of non-home planets. High-orbit arrivals can continue along existing moon branches without an unnecessary low-orbit capture and re-raise. The planner first avoids unrequested planet/moon parking arrivals, then minimizes Delta-V; add explicit stops to request a detour. Homeworld encounter branches retain their source budgets. Reference transfers do not solve timing or parking-plane orientation and do not imply free flybys.'
   if (!result.assumptions.includes(note)) result.assumptions.push(note)
   return result
 }

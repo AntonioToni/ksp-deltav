@@ -25,7 +25,8 @@ const nodeKinds = new Set(['surface', 'orbit', 'elliptical', 'encounter', 'refer
 const stateKey = ({ nodeId, pendingParkingBodyId, nextStopIndex }: SearchState) => JSON.stringify([nodeId, pendingParkingBodyId, nextStopIndex])
 
 /**
- * Dijkstra over directed maneuvers and arrival/departure context.
+ * Dijkstra over directed maneuvers and arrival/departure context, preferring
+ * the requested body itinerary before minimizing its Delta-V budget.
  * A map encounter is not a universal zero-cost gravity assist: after an
  * interplanetary encounter arrival, a low parking orbit at that planet is
  * required before another interplanetary departure. Complete pairs include
@@ -72,6 +73,26 @@ function searchOrderedPath(graph: PlannerGraph, itinerary: readonly string[], op
   if (pendingParkingBodyId !== null && (typeof pendingParkingBodyId !== 'string' || ![...graph.nodes.values()].some(node => node.bodyId === pendingParkingBodyId))) {
     return invalid('The arrival context references an unknown body.')
   }
+  // A cheap scalar orbit budget does not establish the timing/orientation of
+  // an extra planetary or moon layover. Prefer the requested stage's bodies
+  // and their parent systems, while retaining necessary reference gateways.
+  // Raw graphs without hierarchy metadata keep their original cost objective.
+  const lineage = (bodyId: string): Set<string> => {
+    const ids = new Set<string>()
+    let current: string | null = bodyId
+    while (current !== null && !ids.has(current)) {
+      ids.add(current)
+      current = graph.bodies?.get(current)?.parentId ?? null
+    }
+    return ids
+  }
+  const stageBodies = itinerary.map((id, index): Set<string> | null => {
+    if (index === 0) return null
+    const from = graph.nodes.get(itinerary[index - 1]!)!
+    const to = graph.nodes.get(id)!
+    if (!graph.bodies?.has(from.bodyId) || !graph.bodies.has(to.bodyId)) return null
+    return new Set([...lineage(from.bodyId), ...lineage(to.bodyId)])
+  })
   const advance = (nodeId: string, nextStopIndex: number) => {
     while (nextStopIndex < itinerary.length && itinerary[nextStopIndex] === nodeId) nextStopIndex++
     return nextStopIndex
@@ -86,6 +107,7 @@ function searchOrderedPath(graph: PlannerGraph, itinerary: readonly string[], op
   const initialKey = stateKey(initialState)
   const states = new Map<string, SearchState>([[initialKey, initialState]])
   const distances = new Map<string, number>([[initialKey, 0]])
+  const extraParkingArrivals = new Map<string, number>([[initialKey, 0]])
   const previous = new Map<string, { edge: ManeuverEdge; fromKey: string }>()
   const visited = new Set<string>()
   let goalKey: string | undefined
@@ -136,10 +158,14 @@ function searchOrderedPath(graph: PlannerGraph, itinerary: readonly string[], op
   while (true) {
     let currentKey: string | undefined
     let lowest = Infinity
+    let fewestExtraArrivals = Infinity
     for (const [key, distance] of distances) {
-      if (!visited.has(key) && distance < lowest) {
+      const extraArrivals = extraParkingArrivals.get(key)!
+      if (!visited.has(key) && (extraArrivals < fewestExtraArrivals
+        || extraArrivals === fewestExtraArrivals && distance < lowest)) {
         currentKey = key
         lowest = distance
+        fewestExtraArrivals = extraArrivals
       }
     }
     if (currentKey === undefined) break
@@ -176,6 +202,12 @@ function searchOrderedPath(graph: PlannerGraph, itinerary: readonly string[], op
       if (current.pendingParkingBodyId && (
         isSiblingTransfer ? current.pendingParkingBodyId !== parent?.id : isInterplanetary || isCompleteBoundTransfer
       )) continue
+      const intendedBodies = stageBodies[current.nextStopIndex]
+      const extraArrival = intendedBodies !== null && intendedBodies !== undefined
+        && toBody !== undefined && (toBody.kind === 'planet' || toBody.kind === 'moon')
+        && !intendedBodies.has(toNode.bodyId) && toNode.kind !== 'encounter'
+        && (fromNode.bodyId !== toNode.bodyId || fromNode.kind === 'encounter') ? 1 : 0
+      const candidateExtraArrivals = fewestExtraArrivals + extraArrival
       const next: SearchState = {
         nodeId: edge.to,
         pendingParkingBodyId: isSiblingTransfer ? current.pendingParkingBodyId : isCompleteBoundTransfer ? null : isInterplanetary
@@ -192,9 +224,12 @@ function searchOrderedPath(graph: PlannerGraph, itinerary: readonly string[], op
         overflow = true
         continue
       }
-      if (candidate < (distances.get(nextKey) ?? Infinity)) {
+      const previousExtraArrivals = extraParkingArrivals.get(nextKey) ?? Infinity
+      if (candidateExtraArrivals < previousExtraArrivals
+        || candidateExtraArrivals === previousExtraArrivals && candidate < (distances.get(nextKey) ?? Infinity)) {
         states.set(nextKey, next)
         distances.set(nextKey, candidate)
+        extraParkingArrivals.set(nextKey, candidateExtraArrivals)
         previous.set(nextKey, { edge, fromKey: currentKey })
       }
     }

@@ -175,10 +175,9 @@ describe('complete coplanar direct-transfer estimates', () => {
     expect(distinguishesPrematureRounding, 'Subtracting already-rounded local increments can understate a complete burn').toBe(true)
   })
 
-  it.each(configurations)('retains every homeworld route while allowing cheaper paid high-orbit transfers in $pack.id', ({ pack }) => {
+  it.each(configurations)('retains homeworld budgets without adding unrelated model layovers in $pack.id', ({ pack }) => {
     const graph = buildGraph(pack)
     const baseline = buildGraph(withoutDirect(pack))
-    let improved = 0
     for (const home of ['stock:kerbin:surface', 'stock:kerbin:orbit']) {
       for (const target of pack.nodes) {
         for (const mode of ['one-way', 'return-only', 'round-trip'] as const) {
@@ -186,21 +185,23 @@ describe('complete coplanar direct-transfer estimates', () => {
           const after = findMissionRoute(graph, home, target.id, mode)
           expect(after.status, `${home} → ${target.id} · ${mode}`).toBe(before.status)
           if (after.status === 'success' && before.status === 'success') {
-            expect(after.totalDeltaV).toBeLessThanOrEqual(before.totalDeltaV)
-            if (after.totalDeltaV < before.totalDeltaV) improved++
+            expect(after.totalDeltaV).toBe(before.totalDeltaV)
           }
         }
       }
     }
-    expect(improved).toBeGreaterThan(0)
   })
 
-  it('prices an audited return through a paid Eve high-orbit arrival instead of forcing the original homeworld branch', () => {
+  it('returns from Moho without an Eve layover unless that stop is requested', () => {
     const home = 'stock:kerbin:surface'
     const target = 'stock:moho:orbit'
     expect(findMissionRoute(buildGraph(withoutDirect(stockPack)), home, target, 'return-only'))
       .toMatchObject({ status: 'success', totalDeltaV: 7510 })
-    const result = findMissionRoute(buildGraph(stockPack), home, target, 'return-only')
+    const graph = buildGraph(stockPack)
+    const direct = findMissionRoute(graph, home, target, 'return-only')
+    expect(direct).toMatchObject({ status: 'success', totalDeltaV: 2400 + 760 + 950 + 3400,
+      nodeIds: [target, 'stock:moho:encounter', 'stock:kerbin:encounter', 'stock:kerbin:orbit', home] })
+    const result = findMissionRoute(graph, home, target, 'return-only', ['stock:eve:elliptical'])
     // Complete Moho-to-Eve-high model1,968 + reference80+90+950+3,400.
     expect(result).toMatchObject({ status: 'success', totalDeltaV: 6488 })
     if (result.status !== 'success') throw new Error(result.message)
@@ -211,8 +212,14 @@ describe('complete coplanar direct-transfer estimates', () => {
     expect(result.legs.map(({ edge }) => edge.deltaV)).toEqual([1968, 80, 90, 950, 3400])
   })
 
-  it('can improve an outbound budget only after paying its legacy arrival parking reset', () => {
-    const result = findMissionRoute(buildGraph(stockPack), 'stock:kerbin:surface', 'stock:eeloo:surface', 'one-way')
+  it('requires explicit Duna and Jool stops for the cheaper multi-planet Eeloo itinerary', () => {
+    const graph = buildGraph(stockPack)
+    const direct = findMissionRoute(graph, 'stock:kerbin:surface', 'stock:eeloo:surface', 'one-way')
+    expect(direct).toMatchObject({ status: 'success', totalDeltaV: 3400 + 950 + 1140 + 1370 + 620 })
+    if (direct.status !== 'success') throw new Error(direct.message)
+    expect(direct.nodeIds.some(id => id.startsWith('stock:duna:') || id.startsWith('stock:jool:'))).toBe(false)
+    const result = findMissionRoute(graph, 'stock:kerbin:surface', 'stock:eeloo:surface', 'one-way',
+      ['stock:duna:orbit', 'stock:jool:elliptical'])
     // Paid Kerbin→Duna low5,090, then complete1,414+297 pairs and620 descent.
     expect(result).toMatchObject({ status: 'success', totalDeltaV: 7421 })
     if (result.status !== 'success') throw new Error(result.message)
@@ -224,7 +231,7 @@ describe('complete coplanar direct-transfer estimates', () => {
     expect(result.legs.filter(({ edge }) => edge.directTransfer).map(({ edge }) => edge.deltaV)).toEqual([1414, 297])
   })
 
-  it('may optimize a homeworld journey through a user-selected ideal atmospheric arrival', () => {
+  it('does not add an atmospheric Duna visit to a Dres mission without an explicit stop', () => {
     const plan = [{ bodyId: 'stock:duna', capture: true, landing: false, landingDeltaV: 0 }]
     const baseline = withoutDirect(stockPack)
     const oldGraph = applyAtmosphericAssistance(buildGraph(baseline), baseline, plan).graph
@@ -232,7 +239,11 @@ describe('complete coplanar direct-transfer estimates', () => {
     const from = 'stock:kerbin:surface'
     const to = 'stock:dres:surface'
     expect(findMissionRoute(oldGraph, from, to, 'one-way')).toMatchObject({ status: 'success', totalDeltaV: 6690 })
-    const result = findMissionRoute(assisted, from, to, 'one-way')
+    const direct = findMissionRoute(assisted, from, to, 'one-way')
+    expect(direct).toMatchObject({ status: 'success', totalDeltaV: 6690 })
+    if (direct.status !== 'success') throw new Error(direct.message)
+    expect(direct.nodeIds.some(id => id.startsWith('stock:duna:'))).toBe(false)
+    const result = findMissionRoute(assisted, from, to, 'one-way', ['stock:duna:orbit'])
     expect(result).toMatchObject({ status: 'success', totalDeltaV: 6442 })
     if (result.status !== 'success') throw new Error(result.message)
     expect(result.nodeIds).toContain('stock:duna:orbit')

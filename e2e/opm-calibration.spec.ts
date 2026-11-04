@@ -69,8 +69,9 @@ test('shows the recalculated Kerbin increment and separate high-ellipse capture 
   await expect(breakdown(page)).toHaveCount(4)
   await expect(breakdown(page).last()).toContainText('1,534 m/s')
   await missionModeButton(page, 'round-trip').click()
-  // The powered return can use the complete Sarnus → Jool high-orbit pair.
-  await expect(total(page)).toHaveText('7,759 m/s')
+  // The selected Kerbin–Sarnus itinerary returns along its own reference branch.
+  await expect(total(page)).toHaveText('8,140 m/s')
+  await expect(page.locator('[data-route-edge="true"][data-edge-id*="stock:jool:"]')).toHaveCount(0)
 })
 
 test('uses the retrograde Thatmo capture while retaining its explicitly separate surface allowance', async ({ page }) => {
@@ -81,7 +82,7 @@ test('uses the retrograde Thatmo capture while retaining its explicitly separate
   await expect(breakdown(page).filter({ hasText: 'Thatmo low orbit' })).toContainText('641 m/s')
   await expect(breakdown(page).filter({ hasText: 'Thatmo surface' })).toContainText('950 m/s')
   await missionModeButton(page, 'return-only').click()
-  await expect(total(page)).toHaveText('9,109 m/s')
+  await expect(total(page)).toHaveText('9,677 m/s')
 })
 
 test('applies optional atmospheric choices to modern captures without discounting the return ascent', async ({ page }) => {
@@ -93,14 +94,14 @@ test('applies optional atmospheric choices to modern captures without discountin
   await expect(page.getByTestId('atmospheric-reference')).toContainText('11,927')
   await expect(page.getByTestId('atmospheric-change')).toContainText('4,779')
   await missionModeButton(page, 'round-trip').click()
-  await expect(total(page)).toHaveText('18,694 m/s')
+  await expect(total(page)).toHaveText('19,075 m/s')
   await missionModeButton(page, 'return-only').click()
-  await expect(total(page)).toHaveText('11,546 m/s')
+  await expect(total(page)).toHaveText('11,927 m/s')
   await page.getByLabel('Show breakdown', { exact: true }).check()
   await expect(breakdown(page).first()).toContainText('2,600 m/s')
 })
 
-test('exports modern source costs independently of assistance and permits a modeled Stock Eeloo shortcut', async ({ page }) => {
+test('exports modern source costs independently of assistance and preserves the requested Stock Eeloo itinerary', async ({ page }) => {
   await plan(page, 'stock:kerbin:surface', 'opm:tekto:surface')
   await idealTektoArrival(page)
   await button(page, 'Custom planet packs').click()
@@ -120,7 +121,8 @@ test('exports modern source costs independently of assistance and permits a mode
   await button(page, 'Stock').click()
   await button(page, 'Reset mission').click()
   await plan(page, 'stock:kerbin:surface', 'stock:eeloo:surface')
-  await expect(total(page)).toHaveText('7,421 m/s')
-  await expect(page.locator('[data-route-edge="true"][data-edge-id="direct:stock:jool:elliptical->stock:eeloo:orbit"]')).toHaveCount(1)
+  await expect(total(page)).toHaveText('7,480 m/s')
+  await expect(page.locator('[data-route-edge="true"][data-edge-id*="stock:jool:"]')).toHaveCount(0)
+  await expect(page.locator('[data-route-edge="true"][data-edge-id*="stock:duna:"]')).toHaveCount(0)
   await expect(button(page, 'Analytic estimates')).toHaveCount(0)
 })

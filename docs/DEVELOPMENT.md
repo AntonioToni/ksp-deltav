@@ -115,6 +115,22 @@ incompatible encounter chaining and avoids choosing a cheap stage that makes the
 remaining mission more expensive. Return-only mode reverses the itinerary and
 starts independently at the destination.
 
+The search compares route labels lexicographically: first the number of parking
+arrivals at unrequested planet/moon bodies, then total Delta-V. For each active
+ordered stage, intended bodies are its endpoint bodies and their ancestors, so
+required parent-system transits do not receive this penalty. This is a preference
+rather than a graph filter: unavoidable homeworld/map links and Kcalbeloh
+gateways remain usable. Explicit mission stops request their associated bodies
+for those stages. Edge prices, arrival-context rules, and reserve arithmetic
+are unchanged. A lower numerical sum through an unrelated reference orbit does
+not establish compatible transfer timing or parking-plane orientation.
+
+The preference counts arrival into an unrelated planet/moon parking or surface
+state from another body or from that body's encounter state. Moving between
+that body's parking and surface states does not add another visit. Central star,
+black-hole, and barycenter references are not planetary parking detours. Hand-built graphs
+without body hierarchy retain their original Delta-V-only behavior.
+
 Compiled graphs also retain body hierarchy. A complete sibling-moon pair stays
 inside one physical parent's system, so it may preserve a pending parent arrival
 while moving between moons. It never clears that context or creates a free
@@ -213,7 +229,9 @@ encounter-arrival context blocks a direct departure until the required low orbit
 is reached; a complete direct arrival establishes its own bound reference state.
 Atmospheric assistance leaves
 their bundled departure-plus-capture price intact, while separate eligible
-captures or landing allowances can change the globally cheapest itinerary.
+captures or landing allowances can change the lowest budget within the selected
+itinerary preference. They do not bypass the preference to add an unrequested
+planetary parking detour.
 
 The map hides direct connections until they belong to the selected route.
 `maneuverPoints` supplies their canonical obstacle-aware geometry, shared by

@@ -149,7 +149,7 @@ function createKcalbelohPack(base: PlanetPack, opm: boolean, wormholes = true): 
       ...base.assumptions.map(note => `${base.shortName ?? base.name} base: ${note}`),
       `Kcalbeloh source configuration: v1.1.8, stock-sized 1× scale, HomeSwitch disabled, Wormholes ${wormholes ? 'enabled' : 'disabled'}. RSS/KSRSS rescaling, Principia, and alternate homeworld configurations are not included.`,
       mapEstimate,
-      'Published pair costs connect explicit circular parking or central reference states. Each pair charges both printed burns once; reversed edges share the same nominal allowance. Shortest paths are only the lowest estimates in the supplied graph.',
+      'Published pair costs connect explicit circular parking or central reference states. Each pair charges both printed burns once; reversed edges share the same nominal allowance. Routes first avoid unrequested planet or moon parking visits, then minimize the budget within that itinerary. Necessary reference gateways remain available; use mission stops to request other layovers.',
       'Stellar and Simetra–Simeht circumbinary references are separate states, with their source distances in their labels. They are not landable surfaces or asserted low atmospheric orbits. No free links to nearby planet parking orbits are inferred.',
       `Unpriced connections remain unavailable until their complete directional allowance is entered. ${wormholes ? 'Wormhole, reference-to-planet, and missing binary links' : 'Reference-to-planet and missing binary links'} are not assigned fabricated default fuel costs. Forward and return allowances are independent.`,
       wormholes

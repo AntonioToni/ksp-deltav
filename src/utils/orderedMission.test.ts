@@ -225,7 +225,7 @@ describe('ordered mission modes and stages', () => {
 
   it.each([
     { pack: stockPack, start: 'stock:kerbin:surface', goal: 'stock:mun:surface', stop: 'stock:kerbin:orbit', outbound: 5120, inbound: 5120 },
-    { pack: opmPack, start: 'stock:kerbin:surface', goal: 'opm:tekto:surface', stop: 'opm:sarnus:orbit', outbound: 11927, inbound: 11546 },
+    { pack: opmPack, start: 'stock:kerbin:surface', goal: 'opm:tekto:surface', stop: 'opm:sarnus:orbit', outbound: 11927, inbound: 11927 },
     { pack: rssPack, start: 'rss:earth:surface', goal: 'rss:moon:surface', stop: 'rss:earth:orbit', outbound: 14660, inbound: 14660 },
   ])('prices both $pack.shortName directions through required reference-orbit stops', ({ pack, start, goal, stop, outbound, inbound }) => {
     const graph = buildGraph(pack)
@@ -237,6 +237,12 @@ describe('ordered mission modes and stages', () => {
       expect(result.totalDeltaV).toBe(total)
       expect(result.outboundStages).toHaveLength(mode === 'return-only' ? 0 : 2)
       expect(result.returnStages).toHaveLength(mode === 'one-way' ? 0 : 2)
+      if (pack.id === 'opm') {
+        // Sarnus is requested and Tekto's parent; Jool is neither.
+        expect(result.nodeIds.some(id => id.startsWith('stock:jool:'))).toBe(false)
+        expect(result.outboundStages.map(stage => stage.totalDeltaV)).toEqual(mode === 'return-only' ? [] : [7470, 4457])
+        expect(result.returnStages.map(stage => stage.totalDeltaV)).toEqual(mode === 'one-way' ? [] : [4457, 7470])
+      }
       expect(calculateBudget(result.totalDeltaV, 20).totalDeltaV).toBe(Math.ceil(total * 1.2))
     }
   })

@@ -257,7 +257,7 @@ test('keeps a large RSS mission budget and reserve text visible at 320 pixels', 
 })
 
 for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }]) {
-  test(`fits the maximum 16-maneuver RSS return leg above controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+  test(`fits the contextual 14-maneuver RSS return leg above controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
     await packButton(page, 'RSS').click()
     await node(page, 'rss:rhea:surface').click()
@@ -269,9 +269,12 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
     await detailsToggle(page).check()
     await page.getByRole('tab', { name: 'Return', exact: true }).click()
     const journey = expectedMission(rssPack, 'rss:rhea:surface', 'rss:umbriel:surface', 'round-trip').returnRoute!
-    expect(journey.legs).toHaveLength(16)
-    // Independent sums: 26,345 outward + 38,605 return, with 100% reserve.
-    await expect(page.getByTestId('route-total')).toHaveText('129,900 m/s')
+    expect(journey.legs).toHaveLength(14)
+    // Independent reference sums: 26,470 outward + 38,730 return, with 100% reserve.
+    // Required parent/Earth parking remains; unrelated Titan/Titania stops do not.
+    await expect(page.getByTestId('route-total')).toHaveText('130,400 m/s')
+    await expect(page.locator('[data-route-edge="true"][data-edge-id*="rss:titan:"]')).toHaveCount(0)
+    await expect(page.locator('[data-route-edge="true"][data-edge-id*="rss:titania:"]')).toHaveCount(0)
     await expectBreakdownPages(page, rssPack, journey)
     await assertDetailsAboveDock(page)
     await assertSettingsVisible(page)

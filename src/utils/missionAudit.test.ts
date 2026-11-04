@@ -9,7 +9,8 @@ import { findMissionRoute, type MissionMode } from './mission'
 /** Enumerate the complete arrival/visit state space, then relax every arc.
  * This Bellman–Ford oracle shares no search or stage-slicing code with the
  * production Dijkstra solver. The transition rules express the documented
- * parking-orbit requirement, independently of the shortest-path algorithm.
+ * parking-orbit requirement and itinerary preference, independently of the
+ * shortest-path algorithm.
  */
 function exhaustiveMinimum(nodes: RouteNode[], edges: ManeuverEdge[], itinerary: string[], bodies: CelestialBody[]): number {
   const contexts: (string | null)[] = [null, ...new Set(nodes.map(node => node.bodyId))]
@@ -20,8 +21,26 @@ function exhaustiveMinimum(nodes: RouteNode[], edges: ManeuverEdge[], itinerary:
     while (visit < itinerary.length && itinerary[visit] === id) visit++
     return visit
   }
-  const costs = new Map([[key(itinerary[0]!, null, consumeVisits(itinerary[0]!, 1)), 0]])
-  const arcs: [string, string, number][] = []
+  // Expand the required pair's hierarchy by fixed-point closure. This oracle
+  // does not import the production stage policy or its ancestor traversal.
+  const intended = itinerary.map((id, index) => {
+    const ids = new Set([byId.get(id)!.bodyId, byId.get(itinerary[Math.max(0, index - 1)]!)!.bodyId])
+    for (let pass = 0; pass < bodies.length; pass++) {
+      let changed = false
+      for (const body of bodies) if (ids.has(body.id) && body.parentId && !ids.has(body.parentId)) {
+        ids.add(body.parentId)
+        changed = true
+      }
+      if (!changed) break
+    }
+    return ids
+  })
+  type Objective = { parkingVisits: number; deltaV: number }
+  const better = (candidate: Objective, current: Objective | undefined) => current === undefined
+    || candidate.parkingVisits < current.parkingVisits
+    || candidate.parkingVisits === current.parkingVisits && candidate.deltaV < current.deltaV
+  const costs = new Map<string, Objective>([[key(itinerary[0]!, null, consumeVisits(itinerary[0]!, 1)), { parkingVisits: 0, deltaV: 0 }]])
+  const arcs: [string, string, number, number][] = []
   for (let visit = 1; visit < itinerary.length; visit++) {
     for (const waitingForOrbit of contexts) for (const edge of edges) {
       const from = byId.get(edge.from)!
@@ -44,22 +63,33 @@ function exhaustiveMinimum(nodes: RouteNode[], edges: ManeuverEdge[], itinerary:
       }
       const nextContext = localParent !== null ? waitingForOrbit : completeBoundArrival ? null : arrivesAtAnotherEncounter ? to.bodyId
         : to.kind === 'orbit' && to.bodyId === waitingForOrbit ? null : waitingForOrbit
-      arcs.push([key(from.id, waitingForOrbit, visit), key(to.id, nextContext, consumeVisits(to.id, visit)), edge.deltaV])
+      const parkingVisits = destination && ['planet', 'moon'].includes(destination.kind)
+        && !intended[visit]!.has(destination.id)
+        && ['orbit', 'elliptical', 'reference', 'surface'].includes(to.kind)
+        && (from.bodyId !== to.bodyId || from.kind === 'encounter') ? 1 : 0
+      arcs.push([key(from.id, waitingForOrbit, visit), key(to.id, nextContext, consumeVisits(to.id, visit)), parkingVisits, edge.deltaV])
     }
   }
   const stateCount = nodes.length * contexts.length * (itinerary.length + 1)
   for (let pass = 0; pass < stateCount - 1; pass++) {
     let improved = false
-    for (const [from, to, deltaV] of arcs) {
-      const candidate = (costs.get(from) ?? Infinity) + deltaV
-      if (candidate < (costs.get(to) ?? Infinity)) {
+    for (const [from, to, parkingVisits, deltaV] of arcs) {
+      const prior = costs.get(from)
+      if (!prior) continue
+      const candidate = { parkingVisits: prior.parkingVisits + parkingVisits, deltaV: prior.deltaV + deltaV }
+      if (better(candidate, costs.get(to))) {
         costs.set(to, candidate)
         improved = true
       }
     }
     if (!improved) break
   }
-  return Math.min(...contexts.map(context => costs.get(key(itinerary.at(-1)!, context, itinerary.length)) ?? Infinity))
+  let best: Objective | undefined
+  for (const context of contexts) {
+    const candidate = costs.get(key(itinerary.at(-1)!, context, itinerary.length))
+    if (candidate && better(candidate, best)) best = candidate
+  }
+  return best?.deltaV ?? Infinity
 }
 
 function seededRandom(seed: number) {
