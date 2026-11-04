@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { stockPack } from '../src/data/stock'
 import { expectedMission, expectBreakdownPages } from './helpers/breakdownPages'
+import { missionModeButton } from './helpers/missionMode'
 
 const state = (page: Page, body: string, kind: string) =>
   page.locator(`[data-node-id="stock:${body}:${kind}"]`)
@@ -241,21 +242,26 @@ test('shows atmospheric braking opportunities independently of the selected rout
 })
 
 for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 390 }, { width: 667, height: 375 }]) {
-  test(`fits the longest supported 10-maneuver breakdown above controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+  test(`fits the contextual 10-maneuver return breakdown above controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
-    await state(page, 'mun', 'surface').click()
-    await state(page, 'eeloo', 'surface').click()
+    await state(page, 'mun', 'orbit').click()
+    await state(page, 'laythe', 'surface').click()
+    await expect(page.getByTestId('route-total')).toHaveText('7,950 m/s')
+    await missionModeButton(page, 'round-trip').click()
     const slider = page.getByRole('slider', { name: 'Redundancy', exact: true })
     await slider.focus()
     await slider.press('End')
     await expect(slider).toHaveAttribute('aria-valuenow', '100')
     await breakdownToggle(page).check()
+    await page.getByRole('tab', { name: 'Return', exact: true }).click()
 
     const list = breakdown(page)
     const panel = page.getByRole('region', { name: 'Maneuver breakdown panel', exact: true })
-    const journey = expectedMission(stockPack, 'stock:mun:surface', 'stock:eeloo:surface', 'one-way').outbound!
+    const journey = expectedMission(stockPack, 'stock:mun:orbit', 'stock:laythe:surface', 'round-trip').returnRoute!
     expect(journey.legs).toHaveLength(10)
-    await expect(page.getByTestId('route-total')).toHaveText('11,482 m/s')
+    // Outward 7,950 + contextual return 13,510, including Jool's 2,780 m/s
+    // low capture and raise; 100% reserve doubles that complete round trip.
+    await expect(page.getByTestId('route-total')).toHaveText('42,920 m/s')
     await expectBreakdownPages(page, stockPack, journey)
     await assertOnScreen(panel, page)
     const panelBounds = await panel.boundingBox()

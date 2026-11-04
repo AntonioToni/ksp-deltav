@@ -143,9 +143,9 @@ test('clears mission options without changing the active planet pack', async ({ 
   await node(page, 'opm:tekto:surface').click()
   await expect(page.getByTestId('route-total')).toHaveText('11,927 m/s')
   await missionModeButton(page, 'round-trip').click()
-  await expect(page.getByTestId('route-total')).toHaveText('23,473 m/s')
+  await expect(page.getByTestId('route-total')).toHaveText('23,854 m/s')
   await addTwentyPercentReserve(page)
-  await expect(page.getByTestId('route-total')).toHaveText('28,168 m/s')
+  await expect(page.getByTestId('route-total')).toHaveText('28,625 m/s')
   await detailsToggle(page).check()
   await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
   await expect(packButton(page, 'OPM')).toHaveAttribute('aria-pressed', 'true')
@@ -191,7 +191,7 @@ for (const viewport of [
   { width: 700, height: 651 }, { width: 700, height: 749 },
   { width: 900, height: 750 }, { width: 1280, height: 751 },
 ]) {
-  test(`fits the maximum 13-maneuver OPM return leg above usable controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+  test(`fits the contextual 12-maneuver OPM return leg above usable controls at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
     await packButton(page, 'OPM').click()
     await node(page, 'stock:mun:surface').click()
@@ -205,9 +205,9 @@ for (const viewport of [
     await page.getByRole('tab', { name: 'Return', exact: true }).click()
 
     const journey = expectedMission(opmPack, 'stock:mun:surface', 'opm:tal:surface', 'round-trip').returnRoute!
-    expect(journey.legs).toHaveLength(13)
-    // Independent sums: 7,423 outward + 6,821 return; 100% reserve doubles their sum.
-    await expect(page.getByTestId('route-total')).toHaveText('28,488 m/s')
+    expect(journey.legs).toHaveLength(12)
+    // Both 7,423 m/s directions use Tal/Wal/Urlum/Kerbin/Mun; reserve doubles their sum.
+    await expect(page.getByTestId('route-total')).toHaveText('29,692 m/s')
     const pageSize = viewport.width <= 699 || viewport.height <= 750 ? 8 : 17
     await expectBreakdownPages(page, opmPack, journey, pageSize)
     const panel = await page.getByRole('region', { name: 'Maneuver breakdown panel', exact: true }).boundingBox()
