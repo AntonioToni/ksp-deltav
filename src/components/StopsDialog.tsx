@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import {
   Autocomplete, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
-  IconButton, Stack, TextField, Typography,
+  IconButton, Stack, TextField, Tooltip, Typography,
 } from '@mui/material'
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
 import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded'
@@ -70,9 +70,21 @@ function StopsContent({ pack, waypointIds, startId, endId, onChange, onSelectOnM
               <Box component="span" sx={{ width: 22, height: 22, display: 'grid', placeItems: 'center', borderRadius: '50%', bgcolor: '#92d5c61a', color: '#a5e4d5', fontSize: 12, fontWeight: 700 }}>{index + 1}</Box>
               <Typography title={label} sx={{ fontSize: 12, lineHeight: 1.2, overflowWrap: 'anywhere' }}>{label}</Typography>
               <Stack direction="row" spacing={0}>
-                <IconButton size="small" aria-label={`Move stop ${index + 1} up`} disabled={index === 0} onClick={() => move(index, -1)} sx={{ p: .5, width: 28, height: 28 }}><ArrowUpwardRounded sx={{ fontSize: 16 }} /></IconButton>
-                <IconButton size="small" aria-label={`Move stop ${index + 1} down`} disabled={index === waypointIds.length - 1} onClick={() => move(index, 1)} sx={{ p: .5, width: 28, height: 28 }}><ArrowDownwardRounded sx={{ fontSize: 16 }} /></IconButton>
-                <IconButton size="small" aria-label={`Remove stop ${index + 1}`} onClick={() => onChange(waypointIds.filter((_, row) => row !== index))} sx={{ p: .5, width: 28, height: 28 }}><CloseRounded sx={{ fontSize: 16 }} /></IconButton>
+                <Tooltip title={index === 0 ? 'Already the first stop' : 'Move up'} describeChild disableInteractive>
+                  <Box component="span" sx={{ display: 'inline-flex' }}>
+                    <IconButton size="small" aria-label={`Move stop ${index + 1} up`} disabled={index === 0} onClick={() => move(index, -1)} sx={{ p: .5, width: 32, height: 32 }}><ArrowUpwardRounded sx={{ fontSize: 16 }} /></IconButton>
+                  </Box>
+                </Tooltip>
+                <Tooltip title={index === waypointIds.length - 1 ? 'Already the last stop' : 'Move down'} describeChild disableInteractive>
+                  <Box component="span" sx={{ display: 'inline-flex' }}>
+                    <IconButton size="small" aria-label={`Move stop ${index + 1} down`} disabled={index === waypointIds.length - 1} onClick={() => move(index, 1)} sx={{ p: .5, width: 32, height: 32 }}><ArrowDownwardRounded sx={{ fontSize: 16 }} /></IconButton>
+                  </Box>
+                </Tooltip>
+                <Tooltip title="Remove stop" describeChild disableInteractive>
+                  <Box component="span" sx={{ display: 'inline-flex' }}>
+                    <IconButton size="small" aria-label={`Remove stop ${index + 1}`} onClick={() => onChange(waypointIds.filter((_, row) => row !== index))} sx={{ p: .5, width: 32, height: 32, '&:hover': { color: '#f0b9aa', bgcolor: '#d98b7520' } }}><CloseRounded sx={{ fontSize: 16 }} /></IconButton>
+                  </Box>
+                </Tooltip>
               </Stack>
             </Box>
           })}

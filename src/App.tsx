@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Box, Button, Checkbox, FormControlLabel, IconButton, Paper, Popper, Slider, Stack, Tab, Tabs,
+  Box, Button, Checkbox, ClickAwayListener, FormControlLabel, IconButton, Paper, Popper, Slider, Stack, Tab, Tabs,
   ToggleButton, ToggleButtonGroup, Tooltip, Typography, useMediaQuery,
 } from '@mui/material'
 import RocketLaunchRounded from '@mui/icons-material/RocketLaunchRounded'
@@ -84,6 +84,7 @@ export default function App() {
   const [waypointIds, setWaypointIds] = useState<string[]>([])
   const [showStops, setShowStops] = useState(false)
   const [redundancy, setRedundancy] = useState(0)
+  const [showReserveHelp, setShowReserveHelp] = useState(false)
   const [missionMode, setMissionMode] = useState<MissionMode>('one-way')
   const roundTrip = missionMode === 'round-trip'
   const returnOnly = missionMode === 'return-only'
@@ -290,6 +291,7 @@ export default function App() {
     setWaypointIds([])
     setShowStops(false)
     setRedundancy(0)
+    setShowReserveHelp(false)
     setAtmosphericPlan([])
     setConnectionPlan([])
     setShowAllowances(false)
@@ -406,13 +408,14 @@ export default function App() {
               const nodeId = endpoint === 'start' ? startId : endId
               const color = endpoint === 'start' ? 'primary' : 'secondary'
               const label = endpoint === 'start' ? 'Origin' : 'Destination'
+              const active = selection === endpoint
               return <Box key={endpoint} sx={{ gridColumn: index === 0 ? 1 : 3, gridRow: 1, minWidth: 0 }}>
                 <Button fullWidth variant="outlined" color={color} aria-label={`Choose ${label.toLowerCase()}`} aria-describedby={`${endpoint}-state`} aria-pressed={selection === endpoint} onClick={() => setSelection(endpoint)} sx={{
                   px: 1, py: .75, minHeight: 44, justifyContent: 'flex-start', textAlign: 'left', borderRadius: 1.25, overflow: 'hidden',
-                  borderColor: selection === endpoint ? `${color}.main` : 'divider',
-                  bgcolor: selection === endpoint ? endpoint === 'start' ? 'rgba(115,200,250,.055)' : 'rgba(231,189,123,.055)' : 'rgba(14,17,26,.15)',
-                  backgroundImage: selection === endpoint ? `linear-gradient(120deg, ${endpoint === 'start' ? 'rgba(115,200,250,.055)' : 'rgba(231,189,123,.055)'}, transparent)` : 'none',
-                  boxShadow: 'inset 0 1px 0 #ffffff05',
+                  borderColor: active ? `${color}.main` : 'divider',
+                  bgcolor: active ? endpoint === 'start' ? 'rgba(115,200,250,.085)' : 'rgba(231,189,123,.085)' : 'rgba(14,17,26,.15)',
+                  backgroundImage: active ? `linear-gradient(120deg, ${endpoint === 'start' ? 'rgba(115,200,250,.055)' : 'rgba(231,189,123,.055)'}, transparent)` : 'none',
+                  boxShadow: active ? `inset 3px 0 0 ${endpoint === 'start' ? '#73c8fa' : '#e7bd7b'}, inset 0 1px 0 #ffffff08` : 'inset 0 1px 0 #ffffff05',
                 }}>
                   <Box sx={{ minWidth: 0 }}>
                     <Typography component="span" sx={{ display: 'block', fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', lineHeight: 1.2, opacity: .9, whiteSpace: 'nowrap', '@media (min-width: 700px) and (max-width: 899px), (max-height: 500px) and (max-width: 699px)': { fontSize: 9, letterSpacing: '.04em' } }}>{endpoint === 'start' ? 'A' : 'B'} · {label}</Typography>
@@ -421,12 +424,21 @@ export default function App() {
                 </Button>
               </Box>
             })}
-            <Tooltip title="Reverse the endpoints and stop order"><span style={{ gridColumn: 2, gridRow: 1 }}><IconButton aria-label="Swap origin and destination" disabled={!startId || !endId} onClick={() => { setStartId(endId); setEndId(startId); setWaypointIds(ids => [...ids].reverse()); resetDetails() }} size="small"><SwapHorizRounded sx={{ fontSize: 20 }} /></IconButton></span></Tooltip>
+            <Tooltip title={!startId || !endId ? 'Choose both endpoints to swap them.' : 'Reverse the endpoints and stop order'}><span style={{ gridColumn: 2, gridRow: 1 }}><IconButton aria-label="Swap origin and destination" disabled={!startId || !endId} onClick={() => { setStartId(endId); setEndId(startId); setWaypointIds(ids => [...ids].reverse()); resetDetails() }} size="small" sx={{ color: startId && endId ? 'primary.main' : 'text.disabled', '&.Mui-disabled': { color: 'text.disabled' } }}><SwapHorizRounded sx={{ fontSize: 20 }} /></IconButton></span></Tooltip>
           </Box>
 
           <Box sx={{ gridArea: 'reserve', minWidth: 0, px: .5 }}>
-            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <Typography component="label" htmlFor="redundancy-slider" sx={{ fontSize: 11, color: 'text.secondary' }}>Redundancy</Typography>
+            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: .25 }}>
+                <Typography component="label" htmlFor="redundancy-slider" sx={{ fontSize: 11, color: 'text.secondary' }}>Redundancy</Typography>
+                <ClickAwayListener onClickAway={() => setShowReserveHelp(false)}>
+                  <Box component="span" sx={{ display: 'inline-flex' }}>
+                    <Tooltip describeChild open={showReserveHelp} onOpen={() => setShowReserveHelp(true)} onClose={() => setShowReserveHelp(false)} enterTouchDelay={0} leaveTouchDelay={3000} title="Adds a percentage to the complete Delta-V budget. This is a planning margin, not a fuel-mass percentage.">
+                      <IconButton aria-label="About redundancy" aria-expanded={showReserveHelp} onClick={() => setShowReserveHelp(true)} size="small" sx={{ width: 20, height: 20, p: 0 }}><InfoOutlined sx={{ fontSize: 13 }} /></IconButton>
+                    </Tooltip>
+                  </Box>
+                </ClickAwayListener>
+              </Box>
               <Typography sx={{ fontSize: 12, fontWeight: 500, color: 'primary.main', fontVariantNumeric: 'tabular-nums' }}>+{redundancy}%</Typography>
             </Stack>
             <Slider id="redundancy-slider" aria-label="Redundancy" min={0} max={100} step={5} value={redundancy} onChange={(_, value) => { if (typeof value === 'number') setRedundancy(value) }} getAriaValueText={value => `${value}% redundancy`} valueLabelDisplay="auto" valueLabelFormat={value => `+${value}%`} size="small" sx={{ display: 'block', width: 'calc(100% - 12px)', mx: '6px', py: 1.5, '& .MuiSlider-thumb': { width: 13, height: 13 } }} />
