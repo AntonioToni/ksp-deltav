@@ -4,7 +4,8 @@ import { findLowestCostPath } from '../utils/findRoute'
 import { validatePlanetPack } from '../utils/validatePlanetPack'
 import { opmPack } from './opm'
 import { planetPacks } from './planetPacks'
-import { rssPack } from './rss'
+import { rssPack, rssReferencePack } from './rss'
+import { rssOuterSource } from './rssOuterReferences'
 import { stockPack } from './stock'
 
 describe('the reference-based RSS pack', () => {
@@ -26,21 +27,23 @@ describe('the reference-based RSS pack', () => {
       .toMatchObject({ parentId: 'opm:sarnus', kind: 'moon' })
   })
 
-  it('covers 33 reference-supported bodies, 102 states, and 330 directed maneuvers', () => {
+  it('covers 33 bodies and 102 states with separately attributed reference and modeled maneuvers', () => {
     expect(validatePlanetPack(rssPack)).toEqual([])
     expect(rssPack.bodies).toHaveLength(33)
     expect(rssPack.nodes).toHaveLength(102)
-    expect(rssPack.maneuvers).toHaveLength(330)
-    expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'rss-community-solar-system-map')).toHaveLength(202)
+    expect(rssPack.maneuvers).toHaveLength(506)
+    expect(rssReferencePack.maneuvers).toHaveLength(202)
+    expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'rss-community-solar-system-map')).toHaveLength(122)
+    expect(rssPack.maneuvers.filter(edge => edge.sourceId === rssOuterSource.id)).toHaveLength(80)
     expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'sibling-moon-transfer-model')).toHaveLength(76)
-    expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'direct-interplanetary-model')).toHaveLength(52)
+    expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'direct-interplanetary-model')).toHaveLength(228)
     expect(rssPack.bodies.filter(body => body.kind === 'moon')).toHaveLength(21)
     expect(rssPack.bodies.filter(body => body.kind === 'planet')).toHaveLength(11)
     expect(rssPack.nodes.filter(node => node.kind === 'elliptical')).toHaveLength(10)
     for (const edge of rssPack.maneuvers.filter(edge => !edge.directTransfer)) {
       expect(Number.isInteger(edge.deltaV), edge.id).toBe(true)
       expect(edge.deltaV, edge.id).toBeGreaterThan(0)
-      expect(edge.sourceId).toBe('rss-community-solar-system-map')
+      expect(['rss-community-solar-system-map', rssOuterSource.id]).toContain(edge.sourceId)
       expect(edge.assumptions.length, edge.id).toBeGreaterThan(0)
     }
   })
@@ -65,8 +68,8 @@ describe('the reference-based RSS pack', () => {
     ])
   })
 
-  it('consolidates transfer rails without incorrectly treating increments as Earth-direct costs', () => {
-    const edge = (from: string, to: string) => rssPack.maneuvers.find(item => item.from === from && item.to === to)
+  it('preserves the original rail transcription independently of the modern outer overlay', () => {
+    const edge = (from: string, to: string) => rssReferencePack.maneuvers.find(item => item.from === from && item.to === to)
     expect(edge('rss:earth:orbit', 'rss:earth:encounter')?.deltaV).toBe(3210)
     expect(edge('rss:earth:orbit', 'rss:moon:encounter')?.deltaV).toBe(3120)
     expect(edge('rss:moon:encounter', 'rss:moon:orbit')?.deltaV).toBe(820)
@@ -112,8 +115,7 @@ describe('the reference-based RSS pack', () => {
     ['pluto:surface', 21300],
     ['charon:surface', 20700],
   ])('sums the pinned diagram from Earth surface to %s as %i m/s', (destination, expected) => {
-    const sourceMap = { ...rssPack, maneuvers: rssPack.maneuvers.filter(edge => !edge.directTransfer) }
-    const route = findLowestCostPath(buildGraph(sourceMap), 'rss:earth:surface', `rss:${destination}`)
+    const route = findLowestCostPath(buildGraph(rssReferencePack), 'rss:earth:surface', `rss:${destination}`)
     expect(route.status).toBe('success')
     if (route.status !== 'success') throw new Error(route.message)
     expect(route.totalDeltaV).toBe(expected)
@@ -121,9 +123,10 @@ describe('the reference-based RSS pack', () => {
     expect(route.legs.at(-1)?.cumulativeDeltaV).toBe(expected)
   })
 
-  it('does not advertise legacy orbits at or inside current RSS atmospheres', () => {
-    for (const body of ['saturn', 'uranus', 'neptune', 'pluto', 'triton']) {
-      expect(rssPack.nodes.find(node => node.id === `rss:${body}:orbit`)?.altitudeKm).toBeUndefined()
+  it('replaces omitted legacy altitude labels with explicit modern model choices', () => {
+    for (const [body, altitudeKm] of [['saturn', 2500], ['uranus', 2000], ['neptune', 1500], ['pluto', 150], ['triton', 150]] as const) {
+      expect(rssReferencePack.nodes.find(node => node.id === `rss:${body}:orbit`)?.altitudeKm).toBeUndefined()
+      expect(rssPack.nodes.find(node => node.id === `rss:${body}:orbit`)?.altitudeKm).toBe(altitudeKm)
     }
     expect(rssPack.nodes.find(node => node.id === 'rss:earth:orbit')?.altitudeKm).toBe(250)
     expect(rssPack.nodes.find(node => node.id === 'rss:venus:orbit')?.altitudeKm).toBe(400)

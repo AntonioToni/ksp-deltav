@@ -13,7 +13,7 @@ with arbitrary mod patches.
 | Stock body physics | [KSPTOT constants](https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini) | 48 radius, gravity, and atmosphere fields across 16 physical presets, with km → m and km³/s² → m³/s² conversions. |
 | OPM | [Official 2.2.12 configs](https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs) | All 16 contextual body records, including inherited Eeloo physics and nested Tal/Karen parents. Only Tekto/Thatmo surface allowances retain the [historical map](https://github.com/Kowgan/ksp_cheat_sheets/blob/ca2d4910dd98e5fd14277b04ec686e61cd6967ce/delta_v_map_outer_planets/DvMap_OP_2_A4.svg). |
 | Kcalbeloh | [Official 1.1.8 configs](https://github.com/jcyuan06/Kcalbeloh-System/tree/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem) and [reference map](https://github.com/jcyuan06/Kcalbeloh-System/blob/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/Kcalbeloh%20dv%20and%20Transfer%20Windows%20Map.png) | All 33 config contexts, 22 parking rows, and 33 complete transfer pairs. Two parking rows have no surface budget. All N.A. binary links remain unpriced. Both Stock and OPM compositions retain the same add-on data. |
-| RSS | [Official configs](https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus) and [community map](https://github.com/davidson16807/mission-planner/blob/dc472f56101b260baee8814a94de985f44a6c9b2/rss-dvmap.webp) | All 32 physical presets and all implemented maneuver-map figures. Giant equatorial-radius patches and Titan's final gravity assignment were included. Five incompatible historical orbit-altitude labels remain omitted. |
+| RSS | [Official configs](https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus) and [community map](https://github.com/davidson16807/mission-planner/blob/dc472f56101b260baee8814a94de985f44a6c9b2/rss-dvmap.webp) | All 32 physical presets and all implemented maneuver-map figures. Giant equatorial-radius patches and Titan's final gravity assignment were included. The initial review omitted five incompatible historical orbit-altitude labels; the separately modeled replacements are recorded below. |
 
 The OPM/Kcalbeloh config comparison covered **49 files and 330 fields**:
 radius, gravity, atmosphere, orbit, hierarchy, and explicit SOI overrides where
@@ -168,20 +168,22 @@ the correction does not certify all possible moon trajectories.
 
 ### RSS direct planetary transfers — 3 November 2026
 
-The existing circular, coplanar complete-pair model now includes compatible RSS
-states using the same official physical/configuration revision
-`75139b961567f4dab61af83fe162a7e52026558b`. It adds **52 directed planetary edges**
+That revision extended the circular, coplanar complete-pair model to compatible
+RSS states using the same official physical/configuration revision
+`75139b961567f4dab61af83fe162a7e52026558b`. It added **52 directed planetary edges**
 across six non-home planets and eight endpoints: low orbit at Mercury, Venus,
 Mars, Vesta, Ceres, and Jupiter, plus high orbit at Vesta and Jupiter. The pack
-retains all **102 states**, **202 original map edges**, and **76 sibling edges**,
-for **330 priced maneuvers**. No local reference-map cost or altitude is changed.
+retained all **102 states**, **202 original map edges**, and **76 sibling edges**,
+for **330 priced maneuvers**. No local reference-map cost or altitude was changed
+by that extension.
 
-Eligibility is deliberately limited. Mercury/Venus/Mars/Ceres map low-to-high
+Eligibility was deliberately limited. Mercury/Venus/Mars/Ceres map low-to-high
 increments imply unbound states with the pinned modern gravity, so these high
-endpoints are excluded. Saturn/Uranus/Neptune/Pluto have incompatible or omitted
-low-altitude references, so their direct pairs are not generated. Earth keeps
-its original homeworld branches. Existing map paths remain available for
-unsupported pairs; extending them needs reviewed reference orbits first.
+endpoints were excluded. Saturn/Uranus/Neptune/Pluto had incompatible or omitted
+low-altitude references, so their direct pairs were not generated. Earth kept
+its original homeworld branches. Existing map paths remained available for
+unsupported pairs. The later outer-system extension below adds reviewed
+reference orbits and recalculates affected orbital segments.
 
 Independent component-wise Hohmann/vis-viva calculations give these complete
 low-to-low edge totals: **Mars → Venus 7,850 m/s**, **Mercury → Mars 16,894 m/s**,
@@ -212,8 +214,9 @@ Route search now prefers the fewest unrequested planet/moon parking arrivals,
 then minimizes Delta-V. Each ordered stage treats its endpoints and their
 ancestor bodies as intended. Necessary parent-system passages and unavoidable
 homeworld, map, or Kcalbeloh gateway paths remain available. Explicit mission
-stops still request deliberate detours. All individual maneuver costs, endpoint
-burn formulas, reference states, and original map figures are unchanged.
+stops still request deliberate detours. That search-preference correction left
+individual maneuver costs, endpoint burn formulas, reference states, and original
+map figures unchanged.
 
 Targeted RSS regressions are:
 
@@ -248,6 +251,64 @@ connections; that value is a connectivity fixture, not a fuel reference. The
 remaining gateway visits were necessary under those entered connections.
 These checks validate route selection and graph consistency under the stated
 model, not all-pair physical trajectory feasibility.
+
+### RSS outer-system references and direct routes — 10 November 2026
+
+Ceres surface → Miranda low orbit exposed a remaining coverage gap: the supplied
+graph returned through Earth low orbit, giving a **22,730 m/s** map itinerary.
+Uranus and the other three outer planets had no compatible advertised parking
+altitudes for direct-transfer generation. That fallback was not a physical
+requirement to revisit Earth. Simply removing the Earth capture/reset would
+have combined incompatible encounter energies and underpriced the transfer.
+
+The correction defines explicit planner parking altitudes of **2,500 km at
+Saturn**, **2,000 km at Uranus**, **1,500 km at Neptune**, and **150 km at Pluto
+and Triton**, above their pinned atmospheres. Outer high ellipses use the
+selected parking periapsis and apoapsis **0.5 × SOI**. These are modeled
+reference choices, not altitude claims from the historical map.
+
+The separate `rss-outer-orbit-model` source identifies **80 recalculated
+directed orbital segments**: affected Earth departure rails, local high capture
+and circularization, parent-high-to-moon transfers, and moon captures. The
+original **202 map edges** remain in the separate `rssReferencePack` comparison
+fixture. The active pack retains **122 map edges**, adds **80 outer-model
+edges**, **76 sibling edges**, and **228 complete planetary edges**, for
+**506 maneuvers over the same 102 states**. Stock, OPM, and relay physical
+constants are unchanged.
+
+Moon encounter calculations use configured inclination at an assumed node of
+the parent-centered RSS/Kopernicus reference plane. This includes Triton's
+retrograde **156.834°** orbit. The parent high-to-transfer periapsis speed
+difference and the moon's own powered capture are both charged. The Earth
+departure increment subtracts only the separately charged **3,210 m/s** escape
+component from the rounded complete Earth injection burn.
+
+For the reported example, **Ceres surface → Miranda low orbit** is now
+**14,758 m/s**: **270 map ascent + 5,720 complete modeled Ceres-to-Uranus-high
+transfer + 1,854 modeled moon transfer + 6,914 modeled Miranda capture**. The
+route includes neither Earth nor Uranus low orbit.
+
+Independent vis-viva and relative-velocity checks matched all **80 local
+outer-model segments** and **228 directed planetary records**. Route regressions
+exercised **888 origin/target/mode combinations**: eight reported origins ×
+37 outer-system targets × three mission modes. A further **2,442 one-way
+journeys** covered 66 bound origins outside the Earth system × the same
+37 targets. These routes avoided unrequested Earth low-orbit visits. The full
+unit suite passed **959 tests across 38 files**; full ESLint and the production
+build also passed.
+
+Production browser checks passed **66 cases across desktop and mobile** in the
+RSS direct-transfer, RSS, and requested-itinerary suites. Manual screenshot
+checks at **320 × 568**, **667 × 375**, and **2560 × 1440** showed no page
+overflow, script errors, or console errors.
+
+Pluto/Triton surface allowances remain separately identified historical
+atmospheric estimates, uncalibrated for the new parking altitude. These checks
+validate the stated reference model and graph accounting; they do not establish
+dated nodal alignment, parking-plane compatibility between legs, ring or
+atmospheric-entry clearance, or vehicle-specific flight performance. Full
+reference choices and equations are in the
+[data guide](DATA.md#rss-outer-system-reference-model).
 
 ### RSS SOI correction
 

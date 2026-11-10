@@ -275,10 +275,11 @@ orbits. Stock has **66
 directed edges** among Moho, Eve, Duna, Dres, Jool, and Eeloo, including the high
 states at Eve, Duna, and Jool. OPM has **226 directed edges**: Eeloo becomes a
 Sarnus moon and leaves that list, while Sarnus, Urlum, Neidon, and Plock join it
-with their own high states. RSS adds **52 directed edges** over eight existing
-reference states: low orbit at Mercury, Venus, Mars, Vesta, Ceres, and Jupiter,
-plus high orbit at Vesta and Jupiter. Kerbin and Earth retain their original
-homeworld branches. No new route states are added.
+with their own high states. RSS adds **228 directed edges** over 16 reference
+states: low orbit at its ten non-home planets, plus high orbit at Vesta, Jupiter,
+Saturn, Uranus, Neptune, and Pluto. Earth retains its existing inner-system
+branches; the four outer-system branches use the separately documented modern
+reference model. No new route states are added.
 
 Each pair is a `transfer` edge marked `directTransfer: true`. Its price includes
 both departure from the first planet's stated bound orbit and powered capture
@@ -305,10 +306,12 @@ with the relay catalog. They use the pinned
 OPM uses the pinned [official 2.2.12 constants](https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs)
 from `opmReference.ts`. RSS uses the pinned
 [official RSS configs](https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus)
-through `rssPhysics.ts`. The model uses each selected node's existing parking
-altitude: Stock/RSS map references where compatible with the pinned physical
-facts, and the explicit OPM choices listed below. Adding these links does not
-reprice the original map segments.
+through `rssPhysics.ts`. The model uses each selected node's stated parking
+altitude: retained Stock/RSS map references where compatible with the pinned
+physical facts, and the explicit OPM and outer RSS choices documented below.
+Generating direct pairs does not reprice local segments. The separate
+[RSS outer-system model](#rss-outer-system-reference-model) replaces affected
+historical orbital segments before the pairs are generated.
 
 The pure functions in `src/utils/orbitalBudgets.ts` calculate a circular,
 coplanar Hohmann reference. For planets A and B with stellar semi-major axes
@@ -343,7 +346,8 @@ For a low circular endpoint, `vReferenceAtPeriapsis = sqrt(mu / rp)`, reproducin
 the formula above. For a high elliptical endpoint, its bound periapsis speed is
 higher, so establishing that high state avoids the low circularization burn.
 
-Stock and RSS infer the reference speed from the map's same-body low-to-high
+Stock and the retained RSS Vesta/Jupiter references infer the reference speed
+from the map's same-body low-to-high
 increment:
 `vReferenceAtPeriapsis = sqrt(mu / rp) + circularizationIncrement`. The Stock
 increments are **1,300 m/s at Eve**, **360 at Duna**, and **2,780 at Jool**. This calibrates
@@ -352,8 +356,9 @@ elements from the source map. The implied ellipse must be bound, with apoapsis
 above periapsis and inside the nominal SOI. Approximate implied Stock apoapsis radii
 are **75.23 Mm**, **26.68 Mm**, and **2,127.74 Mm** respectively.
 
-OPM's Sarnus, Urlum, Neidon, and Plock high states already have explicit geometry:
-periapsis at the selected low-orbit radius and apoapsis at **0.5 × SOI**. Their
+OPM's Sarnus, Urlum, Neidon, and Plock high states, and RSS's Saturn, Uranus,
+Neptune, and Pluto high states, have explicit geometry: periapsis at the selected
+low-orbit radius and apoapsis at **0.5 × SOI**. Their
 reference speed follows vis-viva from that geometry. The endpoint burn is
 calculated before rounding; subtracting two already-rounded segment costs would
 introduce a possible 1 m/s error. Both endpoints still round upward separately.
@@ -419,16 +424,18 @@ use their parent's existing reference branches; this is not a direct
 moon-to-moon flyby solver. The added links do not supply Kerbol–Kcalbeloh
 interstellar trajectories, new wormhole budgets, or new Kcalbeloh reference pairs.
 
-RSS retains its Earth-centered source graph and adds complete direct pairs only
-at compatible reference states. Low-orbit altitudes are **100 km at Mercury**,
+RSS retains its inner-system source branches and adds complete direct pairs at
+documented reference states. Retained low-orbit altitudes are **100 km at Mercury**,
 **400 km at Venus**, **200 km at Mars**, **20 km at Vesta and Ceres**, and
 **2,000 km at Jupiter**. Vesta and Jupiter also have supported inferred high
 states. Mercury, Venus, Mars, and Ceres have low-to-high map increments that
 would imply unbound high states under the pinned modern gravity constants;
-those high endpoints are excluded rather than adjusting the reference figures.
-Saturn, Uranus, Neptune, and Pluto lack a compatible advertised low-orbit
-altitude, so their direct pairs remain outside this model. Their source-map
-branches and selectable states are still available.
+those historical high endpoints remain excluded. Saturn, Uranus, Neptune, and
+Pluto instead use explicitly selected modern low and high reference orbits,
+with their affected local budgets recalculated under the
+[outer-system model](#rss-outer-system-reference-model). All ten non-home
+planets therefore have direct low-orbit pairs, and supported high arrivals can
+continue onto their moon branches without an Earth layover.
 
 Complete low-to-low RSS edge examples are **Mars → Venus 7,850 m/s**,
 **Mercury → Mars 16,894 m/s**, **Mars → Jupiter 21,608 m/s**, and
@@ -981,15 +988,15 @@ all supported states, and source export does not include session-entered costs.
 
 `src/data/rss.ts` adds the **RSS** pack with independent `rss:` IDs and Earth as
 its interplanetary transfer hub. It contains **33 bodies, 102 selectable states,
-and 330 directed maneuvers**: 202 original map segments, 76 modeled sibling
-transfers, and 52 direct planetary transfers. Version
-`community-map-dc472f5+rss-75139b9.3` identifies this shared-physics and
-direct-transfer extension. No Stock KSP costs are scaled or
+and 506 directed maneuvers**: 122 retained map segments, 80 modeled outer-system
+orbital segments, 76 modeled sibling transfers, and 228 direct planetary
+transfers. Its version identifies the pinned map/configuration and model
+revision. No Stock KSP costs are scaled or
 copied into RSS. The RSS dataset does not change the Stock or OPM packs.
 
 ### Sources and scope
 
-The numeric reference is the community **Delta-V Map of the Solar System**,
+Retained map figures come from the community **Delta-V Map of the Solar System**,
 preserved as [rss-dvmap.webp](https://github.com/davidson16807/mission-planner/blob/dc472f56101b260baee8814a94de985f44a6c9b2/rss-dvmap.webp)
 at `davidson16807/mission-planner` commit
 `dc472f56101b260baee8814a94de985f44a6c9b2`. The diagram has no visible version,
@@ -1003,10 +1010,13 @@ pinned to `75139b961567f4dab61af83fe162a7e52026558b`.
 
 The shared physical and orbital facts in `src/data/rssPhysics.ts` use that same
 pinned configuration. Direct planetary pairs use the Sun's gravity and the
-supported planets' radii, gravity, stellar semi-major axes, and existing reference
+supported planets' radii, gravity, stellar semi-major axes, and stated reference
 altitudes. The sibling model uses each moon's radius, gravity,
 atmosphere, semi-major axis, inclination, ascending node, and stated parking
-altitude. Modern physical facts do not reprice the historical map segments.
+altitude. The outer-system model recalculates affected orbital connections at
+its explicit modern references. The original 202-edge map graph is retained
+separately as `rssReferencePack` for source comparisons; it is not the current
+planner's orbital model.
 
 Coverage is the intersection of the diagram and the named bodies in those base
 RSS configs:
@@ -1031,9 +1041,101 @@ the sibling and planetary alternatives are separately identified analytic
 estimates. Route minima apply only to this combined graph, rather than every
 trajectory or alternative in the source.
 
+### RSS outer-system reference model
+
+Historical diagram parking altitudes at Saturn, Uranus, Neptune, Pluto, and
+Triton lie at or inside their modern configured atmospheres. Omitting those
+altitude labels previously excluded the four outer planets from direct
+planetary generation, so cross-system journeys could fall back to the
+Earth-centered map and include an Earth low-orbit stop. That was missing model
+coverage, not a physical need to revisit Earth.
+
+The current pack uses the following **planner-selected circular references**,
+measured above the pinned effective body radius. These are choices for the
+reference calculation, not parking orbits prescribed by RSS or guarantees about
+terrain, rings, or flight feasibility.
+
+| Body | Diagram altitude (km) | Pinned atmosphere depth (km) | Modeled parking altitude (km) |
+| --- | ---: | ---: | ---: |
+| Saturn | 2,000 | 2,000 | 2,500 |
+| Uranus | 1,000 | 1,400 | 2,000 |
+| Neptune | 1,000 | 1,250 | 1,500 |
+| Pluto | 100 | 110 | 150 |
+| Triton | 100 | 110 | 150 |
+
+Saturn, Uranus, Neptune, and Pluto each have an explicit bound high ellipse:
+periapsis is the selected low-orbit radius and apoapsis is **0.5 × nominal SOI**.
+Its speed is calculated from vis-viva before rounding. The model does not reuse
+the historical map's low-to-high increment to define these new high states.
+Both the low and high references participate in complete direct planetary pairs.
+
+The separate source **`rss-outer-orbit-model`**, shown as **Analytic model** in
+Budget assumptions, identifies 80 recalculated directed orbital segments:
+Earth-to-outer-planet transfer increments, local high capture/circularization,
+outer parent-to-moon transfers, and those moons' encounter-to-low-orbit captures.
+Historical map figures are not relabeled as calculated values. The remaining
+map records retain their source and costs.
+
+For an Earth branch, the Sun-centered Hohmann reference supplies both the Earth
+departure excess speed and the outer planet arrival excess speed. Earth's
+separate **3,210 m/s** escape edge is retained. The modeled transfer increment
+is `ceil(full Earth parking-orbit injection) - 3210`, so it does not charge that
+escape component twice. Arrival capture into the stated high ellipse and
+optional low-orbit circularization are calculated separately. Each local
+segment rounds upward to whole m/s.
+
+A moon branch starts from its parent's high ellipse. At the shared periapsis,
+it changes speed to the parent-centered transfer ellipse reaching the moon's
+circularized semi-major axis. With parent gravity `mu`, high-ellipse periapsis
+and apoapsis `rp` and `ra`, and moon orbital radius `rMoon`:
+
+```text
+aHigh = (rp + ra) / 2
+aTransfer = (rp + rMoon) / 2
+vHigh = sqrt(mu × (2/rp - 1/aHigh))
+vTransferDeparture = sqrt(mu × (2/rp - 1/aTransfer))
+parentBurn = abs(vHigh - vTransferDeparture)
+vMoon = sqrt(mu / rMoon)
+vTransferArrival = sqrt(mu × (2/rMoon - 1/aTransfer))
+vInfinityMoon = sqrt(vMoon² + vTransferArrival²
+                    - 2 × vMoon × vTransferArrival × cos(inclination))
+```
+
+The nominal parent reference is the prograde `i = 0` plane of the parent-centered
+RSS/Kopernicus orbital reference frame, not the parent's equator or its orbit
+around the Sun. The moon is met at an assumed orbital node; its configured
+inclination enters the relative arrival speed. Triton's **156.834° retrograde
+inclination** is therefore not treated as a prograde encounter. The separate
+moon capture uses `parkingOrbitBurn` at that moon's stated low orbit, including
+its gravity and this same relative speed. Reverse edges reuse the corresponding
+nominal costs.
+
+For **Ceres surface → Miranda low orbit**, the modeled route is **Ceres low
+orbit → Uranus high elliptical orbit → Miranda encounter → Miranda low orbit**
+after the Ceres ascent. Its **14,758 m/s** estimate comprises **270 m/s from the
+map** for ascent, **5,720 m/s modeled** for complete Ceres-to-Uranus-high departure
+and capture, **1,854 m/s modeled** for the parent-to-moon transfer, and
+**6,914 m/s modeled** for Miranda capture. There is no Earth or Uranus low-orbit
+stop. Miranda's **78.588754684°** configured inclination contributes to its
+modeled encounter speed; retaining its old coplanar map capture would mix
+different reference conditions.
+
+This is a reference budget with unconstrained parking-plane orientation and
+timing between stitched legs. It does not solve dated nodal alignment, optimize
+plane changes, match finite SOI boundaries, simulate rings or third bodies, or
+validate atmospheric entry. Direct planetary pairs retain the circular,
+coplanar stellar-orbit assumptions described above.
+
+Surface allowances remain separate. Pluto and Triton retain historical
+**890 m/s** and **1,050 m/s** ascent allowances, with powered descent reusing
+those figures as a placeholder. They are not recalibrated for the new 150 km
+parking references, verified landing budgets, or upper bounds. Their atmosphere
+metadata remains true and unsupported atmospheric-braking markers remain off.
+
 ### Numeric interpretation and graph normalization
 
-The diagram prints **km/s**. Every numeric segment is converted into integer
+The following source-only examples describe the historical map graph. The
+diagram prints **km/s**. Every numeric segment is converted into integer
 **m/s** before storage. Labels along a shared rail are consecutive increments,
 not independent departure totals. The arrays retained beside each record in
 `rss.ts` make those sums auditable.
@@ -1067,8 +1169,11 @@ atmospheric savings.
 ### Assumptions and modern-atmosphere limitations
 
 The diagram assumes idealized Hohmann transfers and low-periapsis burns. This
-pack does not simulate launch windows, inclination changes, gravity assists,
-finite-thrust losses, vehicle performance, or travel time. The diagram also
+pack does not solve launch windows, optimized plane changes, gravity assists,
+finite-thrust losses, vehicle performance, or travel time. Outer-system moon
+encounter speeds do include the configured inclination in their nominal relative
+velocity, as documented above; this does not optimize parking-plane alignment
+between successive legs. The diagram also
 suggests a rough low-thrust multiplier; the planner does not apply it because
 it does not model a specific propulsion system. Add a mission margin and verify
 the vehicle-specific trajectory independently.
@@ -1081,27 +1186,19 @@ Triton have atmospheres in the official RSS configs, but the reference does not
 mark atmospheric-braking opportunities there; they retain `hasAtmosphere: true`
 and explicitly set `supportsAtmosphericBraking: false`.
 
-Some historical parking altitudes are incompatible with modern RSS atmosphere
-depths. The planner omits those altitude claims rather than silently claiming
-that source budgets were recalculated at a safe modern altitude:
-
-| Body | Diagram parking altitude (km) | Pinned RSS atmosphere depth (km) |
-| --- | ---: | ---: |
-| Saturn | 2,000 | 2,000 (boundary, no clearance) |
-| Uranus | 1,000 | 1,400 |
-| Neptune | 1,000 | 1,250 |
-| Pluto | 100 | 110 |
-| Triton | 100 | 110 |
-
-Other advertised atmospheric parking altitudes clear the pinned atmosphere:
+The five incompatible historical parking references are replaced by the
+explicitly labeled [outer-system model](#rss-outer-system-reference-model),
+including its recalculated orbital budgets. Other advertised atmospheric
+parking altitudes clear the pinned atmosphere:
 Earth 250/140 km, Venus 400/145 km, Mars 200/125 km, Jupiter 2000/1550 km, and
-Titan 1000/600 km (parking altitude / atmosphere depth). The underlying costs
+Titan 1000/600 km (parking altitude / atmosphere depth). Retained source costs
 remain community-map estimates, not contemporary flight-tested RSS budgets.
 
 Earth remains the supplied source-map interplanetary hub. Complete direct
-planetary alternatives connect the compatible states listed under
-[direct transfers](#direct-interplanetary-transfers), avoiding an Earth layover
-when the graph supports it. Other reference paths can still include Earth or
+planetary alternatives connect all supported non-home planets at the references
+listed under [direct transfers](#direct-interplanetary-transfers), avoiding an
+Earth layover for those cross-system low/high and moon journeys. Reference paths
+to unsupported encounter states can still include Earth or
 parent-planet parking visits because more direct trajectories are missing from
 this graph; those visits are itinerary assumptions, not physical requirements
 for every RSS flight. Encounter energies cannot be chained as invented free
@@ -1111,12 +1208,14 @@ parent and do not need an Earth stop.
 ### RSS source-map regression landmarks
 
 `src/data/rss.test.ts` checks all 102 supported states in both directions,
-legacy arrival-reset policy, safe altitude metadata, pack isolation, and
-independent reference sums. Direct-transfer tests separately check supported
-endpoints and complete-pair arithmetic. The following are sums of the unchanged source-map branches from
-Earth surface, without plane changes or atmospheric savings. The optimized full
-pack can use supported modeled sibling or planetary transfers while preferring
-the selected itinerary. These source sums are not a promise of identical
+legacy arrival-reset policy, stated altitude metadata, pack isolation, and
+independent historical reference sums. Direct-transfer and outer-reference
+tests separately check modeled endpoints and arithmetic. The following are sums
+of the historical source-only `rssReferencePack` branches from Earth surface,
+without plane changes or atmospheric savings. The current planner uses the
+outer-system replacements and modeled sibling/planetary transfers while
+preferring the selected itinerary. These historical source sums are not current
+outer-system budget references or a promise of identical
 displayed mission totals for every ordered-stop or atmospheric configuration.
 
 | Destination | Budget (m/s) |

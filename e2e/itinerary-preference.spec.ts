@@ -127,15 +127,16 @@ for (const example of examples) {
 }
 
 test('uses the destination moon branch without inserting unrelated Titan or Titania parking', async ({ page }) => {
-  for (const example of [{ body: 'rhea', parent: 'saturn', unrelated: 'titan', total: 26880 }, { body: 'umbriel', parent: 'uranus', unrelated: 'titania', total: 24930 }]) {
+  for (const example of [{ body: 'rhea', parent: 'saturn', unrelated: 'titan', total: 22791 }, { body: 'umbriel', parent: 'uranus', unrelated: 'titania', total: 22581 }]) {
     await button(page, 'Reset mission').click()
     await plan(page, 'rss:mercury:orbit', `rss:${example.body}:orbit`)
     await expect(total(page)).toHaveText(formatted(example.total))
-    await expect(selected(page)).toHaveCount(9)
+    await expect(selected(page)).toHaveCount(3)
     await expect(selected(page).and(page.locator(`[data-edge-id*="rss:${example.unrelated}:"]`))).toHaveCount(0)
     await expect(page.locator(`[data-route-edge="true"][data-edge-id="rss:${example.parent}:elliptical->rss:${example.body}:encounter"]`)).toHaveCount(1)
-    // The supplied RSS outer-planet graph still needs its documented Earth parking reset.
-    await expect(page.getByTestId('route-status')).toContainText('Earth parking-orbit layover')
+    await expect(direct(page)).toHaveAttribute('data-edge-id', `direct:rss:mercury:orbit->rss:${example.parent}:elliptical`)
+    await expect(selected(page).and(page.locator('[data-edge-id*="rss:earth:"]'))).toHaveCount(0)
+    await expect(page.getByTestId('route-status')).not.toContainText('Earth parking-orbit layover')
     await direction(page, 'rss:mercury:orbit', `rss:${example.body}:orbit`)
   }
 })

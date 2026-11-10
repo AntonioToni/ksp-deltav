@@ -2,6 +2,7 @@ import type { CelestialBody, ManeuverEdge, ManeuverKind, NodeKind, PlanetPack, R
 import { withSiblingTransfers } from './siblingTransfers'
 import { withDirectTransfers } from './directTransfers'
 import { rssCentralMu, rssPhysicalReferences, rssPhysicsSource } from './rssPhysics'
+import { rssOuterOrbitReferences, withRssOuterReferences } from './rssOuterReferences'
 
 const mapSourceId = 'rss-community-solar-system-map'
 const mapCommit = 'dc472f56101b260baee8814a94de985f44a6c9b2'
@@ -254,14 +255,15 @@ moonTransfer('pluto', 'charon', 'elliptical', [40])
 localBudget('charon', 'orbit', 'encounter', [20, 160])
 surfaceBudget('charon', 420)
 
-export const rssPack: PlanetPack = withDirectTransfers(withSiblingTransfers({
+/** Unmodified historical map, retained for source transcription checks. */
+export const rssReferencePack: PlanetPack = {
   id: 'rss',
   name: 'Real Solar System',
   shortName: 'RSS',
   transferHubBodyId: 'rss:earth',
   dataNotice: 'Map + model estimates',
-  version: 'community-map-dc472f5+rss-75139b9.3',
-  description: 'Real Solar System planning estimates for the 33 shared map/config bodies: original Solar System map budgets plus separately modeled direct planetary and inclination-aware sibling-moon transfers at compatible reference orbits.',
+  version: 'community-map-dc472f5+rss-75139b9.reference',
+  description: 'Historical community Solar System map budgets for the 33 shared map/config bodies, without modern orbital recalibration.',
   sources: [
     {
       id: mapSourceId,
@@ -278,18 +280,30 @@ export const rssPack: PlanetPack = withDirectTransfers(withSiblingTransfers({
   assumptions: [
     'All budgets are in m/s, converted from the community diagram’s km/s. The mirrored diagram has no visible version/date or authorship credit; its exact repository revision is pinned for reproducibility, without claiming official RSS calibration.',
     'Coverage is the 33 named base RSS bodies also present in the diagram. Optional expansion bodies, diagram-only minor moons/dwarf planets, GEO, Lagrange points, and solar approach/landing missions are outside this pack.',
-    'The source graph follows the main transfer rails. Direct sibling-moon alternatives use the separately sourced analytic orbital-node model; they are not transcriptions of the diagram’s transfer insets.',
+    'The source graph follows the main transfer rails; it is a transcription of the diagram, without added direct planetary or sibling-moon estimates.',
     'The source assumes idealized Hohmann transfers, low-periapsis burns, and favorable geometry. Launch windows, flight duration, inclination changes, gravity assists, finite-thrust losses, and spacecraft performance are not modeled; add a mission margin.',
     'Transfer-rail increments are summed from Earth rather than treated as independent Earth departure costs. Intermediate rail nodes represent energy references, not planetary or moon visits. Destination capture and Earth escape (3210 m/s) are separate maneuvers.',
     'Earth-to-Moon transfer is 3120 m/s; the Moon encounter-to-low-orbit budget is 140 + 680 = 820 m/s. Every other supported moon branches from its parent’s high elliptical capture orbit, not its low orbit.',
     'No atmospheric assistance is credited. Atmospheric powered-descent allowances reuse source ascent budgets and are placeholders rather than verified landing calculations. Opposite directed edges reuse the source’s idealized budget convention.',
     'Current RSS atmospheres differ from the diagram. Historical parking altitudes at/inside modern atmospheres are omitted for Saturn, Uranus, Neptune, Pluto, and Triton; costs are not silently recalculated for a new altitude. Pluto and Triton retain their true atmosphere metadata, with atmospheric-braking markers disabled because the reference does not support those opportunities.',
-    'Complete analytic direct planetary transfers connect the verified low orbits at Mercury, Venus, Mars, Vesta, Ceres, and Jupiter, plus the verified Vesta and Jupiter high elliptical references. They add alternatives without repricing the community diagram.',
-    'Direct planetary estimates exclude the historical high states at Mercury, Venus, Mars, and Ceres: their rounded map increments imply unbound orbits with the pinned modern physical constants. Saturn, Uranus, Neptune, and Pluto lack compatible low-orbit altitudes, so their historical states retain reference-map routes rather than invented direct estimates.',
     'Original interplanetary branches use Earth as the transfer hub. Their encounter arrivals require a low parking-orbit reset before another interplanetary departure. Complete modeled pairs instead pay departure and capture into the stated bound orbits; neither route assumes a free compatible flyby.',
     'Sun has no selectable states. Jupiter, Saturn, Uranus, and Neptune have no landable surface states. Ceres, Vesta, and Pluto use the domain’s generic planet category for star-orbiting bodies; this is not an IAU classification claim.',
   ],
   bodies,
   nodes,
   maneuvers,
-}, rssPhysicalReferences, [rssPhysicsSource]), rssPhysicalReferences, rssCentralMu, [rssPhysicsSource])
+}
+
+const outerReferences = new Map(rssOuterOrbitReferences.map(reference => [reference.bodyId, reference]))
+export const rssPack: PlanetPack = withDirectTransfers(withSiblingTransfers(withRssOuterReferences({
+  ...rssReferencePack,
+  version: 'community-map-dc472f5+rss-75139b9.4',
+  description: 'Real Solar System planning estimates for 33 shared map/config bodies: historical map figures, recalculated modern outer-system orbital budgets, and complete direct planetary and sibling-moon transfers.',
+  assumptions: [
+    ...rssReferencePack.assumptions,
+    'Complete analytic direct planetary transfers connect all ten non-Earth planets’ low orbits, plus the Vesta, Jupiter, Saturn, Uranus, Neptune, and Pluto high references. Saturn, Uranus, Neptune, Pluto, and Triton use explicitly modeled modern parking references rather than unsafe historical altitude labels.',
+    'Direct planetary estimates still exclude the historical high states at Mercury, Venus, Mars, and Ceres: their rounded map increments imply unbound orbits with the pinned modern physical constants. Their low-orbit direct transfers remain available.',
+  ],
+}), rssPhysicalReferences, [rssPhysicsSource]), rssPhysicalReferences.map(reference =>
+  outerReferences.get(reference.bodyId) ?? reference,
+), rssCentralMu, [rssPhysicsSource])

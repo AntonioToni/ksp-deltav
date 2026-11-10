@@ -6,30 +6,40 @@ import { findLowestCostPath } from '../utils/findRoute'
 import { findMissionRoute } from '../utils/mission'
 import { validatePlanetPack } from '../utils/validatePlanetPack'
 import { directTransferSource, withDirectTransfers } from './directTransfers'
-import { rssPack } from './rss'
+import { rssPack, rssReferencePack } from './rss'
+import { rssOuterOrbitReferences } from './rssOuterReferences'
 import { rssCentralMu, rssPhysicalReferences, rssPhysicsSource } from './rssPhysics'
 
 const directEdges = rssPack.maneuvers.filter(edge => edge.sourceId === directTransferSource.id)
 const nodeById = new Map(rssPack.nodes.map(node => [node.id, node]))
 const physicsById = new Map(rssPhysicalReferences.map(reference => [reference.bodyId, reference]))
 const highIncrements: Readonly<Record<string, number>> = { 'rss:vesta': 100, 'rss:jupiter': 17210 }
+const outerPlanets = new Set(['rss:saturn', 'rss:uranus', 'rss:neptune', 'rss:pluto'])
+const transferReferences = rssPhysicalReferences.map(reference =>
+  rssOuterOrbitReferences.find(candidate => candidate.bodyId === reference.bodyId) ?? reference,
+)
 
 function endpoint(node: RouteNode) {
   const physics = physicsById.get(node.bodyId)!
   const low = rssPack.nodes.find(candidate => candidate.bodyId === node.bodyId && candidate.kind === 'orbit')!
   const radius = physics.radiusM + low.altitudeKm! * 1000
   const circularSpeed = Math.sqrt(physics.gravitationalParameter / radius)
-  return { physics, radius, speed: circularSpeed + (node.kind === 'elliptical' ? highIncrements[node.bodyId]! : 0) }
+  const speed = node.kind !== 'elliptical' ? circularSpeed : outerPlanets.has(node.bodyId)
+    ? Math.sqrt(physics.gravitationalParameter * (2 / radius - 2 / (radius + physics.sphereOfInfluenceM / 2)))
+    : circularSpeed + highIncrements[node.bodyId]!
+  return { physics, radius, speed }
 }
 
 describe('RSS direct planetary transfer references', () => {
-  it('adds 52 complete pairs over six planets and eight compatible endpoints without adding states', () => {
+  it('adds 228 complete directed pairs over all ten non-home planets without adding states', () => {
     expect(validatePlanetPack(rssPack)).toEqual([])
     expect(rssPack.nodes).toHaveLength(102)
-    expect(directEdges).toHaveLength(52)
+    expect(directEdges).toHaveLength(228)
     expect([...new Set(directEdges.map(edge => edge.from))].sort()).toEqual([
       'rss:ceres:orbit', 'rss:jupiter:elliptical', 'rss:jupiter:orbit', 'rss:mars:orbit',
-      'rss:mercury:orbit', 'rss:venus:orbit', 'rss:vesta:elliptical', 'rss:vesta:orbit',
+      'rss:mercury:orbit', 'rss:neptune:elliptical', 'rss:neptune:orbit',
+      'rss:pluto:elliptical', 'rss:pluto:orbit', 'rss:saturn:elliptical', 'rss:saturn:orbit',
+      'rss:uranus:elliptical', 'rss:uranus:orbit', 'rss:venus:orbit', 'rss:vesta:elliptical', 'rss:vesta:orbit',
     ])
     expect(rssPack.sources.find(source => source.id === directTransferSource.id)?.budgetType).toBe('model')
     expect(rssPack.sources).toContainEqual(rssPhysicsSource)
@@ -82,17 +92,17 @@ describe('RSS direct planetary transfer references', () => {
     expect(rssPack.maneuvers.find(edge => edge.from === low.id && edge.to === `rss:${body}:elliptical`)?.deltaV).toBe(increment)
   })
 
-  it('keeps unlocated historical outer-planet orbits outside the model', () => {
+  it('uses explicit modeled outer references while preserving the historical map without invented altitude claims', () => {
     for (const body of ['saturn', 'uranus', 'neptune', 'pluto']) {
-      expect(nodeById.get(`rss:${body}:orbit`)?.altitudeKm).toBeUndefined()
+      expect(rssReferencePack.nodes.find(node => node.id === `rss:${body}:orbit`)?.altitudeKm).toBeUndefined()
+      expect(nodeById.get(`rss:${body}:orbit`)?.altitudeKm).toBeGreaterThan(0)
       expect(directEdges.some(edge => nodeById.get(edge.from)?.bodyId === `rss:${body}`
-        || nodeById.get(edge.to)?.bodyId === `rss:${body}`)).toBe(false)
+        || nodeById.get(edge.to)?.bodyId === `rss:${body}`)).toBe(true)
     }
-    expect(rssPack.assumptions.join(' ')).toContain('retain reference-map routes rather than invented direct estimates')
   })
 
-  it('retains bound apoapses inside the SOI for the two supported high references', () => {
-    for (const body of ['vesta', 'jupiter']) {
+  it('retains bound apoapses inside the SOI for every supported high reference', () => {
+    for (const body of ['vesta', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto']) {
       const { physics, radius, speed } = endpoint(nodeById.get(`rss:${body}:elliptical`)!)
       const semiMajorAxis = 1 / (2 / radius - speed ** 2 / physics.gravitationalParameter)
       const apoapsis = 2 * semiMajorAxis - radius
@@ -101,16 +111,16 @@ describe('RSS direct planetary transfer references', () => {
     }
   })
 
-  it('does not mutate or reprice original map and sibling records when adding pairs', () => {
+  it('does not mutate or reprice the outer overlay, retained map, or sibling records when adding pairs', () => {
     const baseline = { ...rssPack, maneuvers: rssPack.maneuvers.filter(edge => edge.sourceId !== directTransferSource.id) }
     const snapshot = structuredClone(baseline)
-    const generated = withDirectTransfers(baseline, rssPhysicalReferences, rssCentralMu, [rssPhysicsSource])
+    const generated = withDirectTransfers(baseline, transferReferences, rssCentralMu, [rssPhysicsSource])
     expect(baseline).toEqual(snapshot)
     expect(generated.maneuvers.filter(edge => edge.sourceId !== directTransferSource.id)).toEqual(baseline.maneuvers)
     expect(generated.nodes).toEqual(baseline.nodes)
     expect(generated.maneuvers).toEqual(rssPack.maneuvers)
-    expect(withDirectTransfers(generated, rssPhysicalReferences, rssCentralMu, [rssPhysicsSource])).toEqual(generated)
-    expect(baseline.maneuvers.filter(edge => edge.sourceId === 'rss-community-solar-system-map')).toHaveLength(202)
+    expect(withDirectTransfers(generated, transferReferences, rssCentralMu, [rssPhysicsSource])).toEqual(generated)
+    expect(baseline.maneuvers.filter(edge => edge.sourceId === 'rss-community-solar-system-map')).toHaveLength(122)
     expect(baseline.maneuvers.filter(edge => edge.sourceId === 'sibling-moon-transfer-model')).toHaveLength(76)
   })
 })

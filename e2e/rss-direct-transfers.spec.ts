@@ -9,6 +9,7 @@ const flow = (page: Page) => page.locator('[data-route-animation="true"]')
 const total = (page: Page) => page.getByTestId('route-total')
 const info = (page: Page) => page.getByRole('dialog', { name: 'About these estimates', exact: true })
 const rows = (page: Page) => page.getByRole('list', { name: 'Maneuver breakdown', exact: true }).getByRole('listitem')
+const formatted = (value: number) => `${value.toLocaleString('en-US')} m/s`
 let browserErrors: string[]
 
 test.beforeEach(async ({ page }) => {
@@ -71,7 +72,12 @@ async function direction(page: Page, from: string, to: string, via: string[] = [
   expect(paths).toHaveLength(1)
   samePoint(paths[0].start, points[from])
   samePoint(paths[0].end, points[to])
-  for (const id of via) expect(paths[0].vertices.some(point => Math.hypot(point.x - points[id].x, point.y - points[id].y) < .01), `Flow should pass through ${id}`).toBe(true)
+  let previousVertex = -1
+  for (const id of via) {
+    const vertex = paths[0].vertices.findIndex((point, index) => index > previousVertex && Math.hypot(point.x - points[id].x, point.y - points[id].y) < .01)
+    expect(vertex, `Flow should pass through ${id} in itinerary order`).toBeGreaterThan(previousVertex)
+    previousVertex = vertex
+  }
 }
 
 async function noEarthVisit(page: Page) {
@@ -108,7 +114,7 @@ test('adds only the selected RSS direct band and identifies its modeled cost and
   await expect(info(page)).toContainText('Each complete pair includes departure and powered arrival')
   await info(page).getByRole('tab', { name: 'Sources & assumptions', exact: true }).click()
   await expect(info(page).getByRole('link', { name: 'Coplanar direct planetary transfers · analytic reference model', exact: true })).toHaveAttribute('href', /docs\/DATA.md#direct-interplanetary-transfers$/)
-  await expect(info(page)).toContainText('Saturn, Uranus, Neptune, and Pluto lack compatible low-orbit altitudes')
+  await expect(info(page).locator('a[href$="docs/DATA.md#rss-outer-system-reference-model"]')).toBeVisible()
   await expect(info(page)).toContainText('historical high states at Mercury, Venus, Mars, and Ceres')
   await info(page).getByRole('button', { name: 'Close', exact: true }).click()
   await page.getByLabel('Show breakdown', { exact: true }).check()
@@ -203,15 +209,123 @@ test('preserves complete RSS capture budgets when atmospheric assistance is sele
   await expect(rows(page).first()).toHaveAttribute('data-budget-basis', 'model')
 })
 
-test('retains RSS reference paths for unsupported outer parking states and Earth missions', async ({ page }) => {
-  await plan(page, 'rss:mars:orbit', 'rss:saturn:orbit')
-  await expect(total(page)).toHaveText('23,640 m/s')
-  await expect(direct(page)).toHaveCount(0)
-  await expect(page.getByTestId('route-status')).toContainText('Earth parking-orbit layover')
+test('prices direct arrivals at all four modern outer parking references while preserving Earth–Moon budgets', async ({ page }) => {
+  // Independently calculated complete departure + capture burns, rounded per endpoint.
+  for (const [body, cost, altitude] of [
+    ['saturn', 16109, 2500], ['uranus', 13033, 2000],
+    ['neptune', 13981, 1500], ['pluto', 9928, 150],
+  ] as const) {
+    await button(page, 'Reset mission').click()
+    await plan(page, 'rss:mars:orbit', `rss:${body}:orbit`)
+    await expect(total(page)).toHaveText(formatted(cost))
+    await expect(selected(page)).toHaveCount(1)
+    await expect(direct(page)).toHaveAttribute('data-edge-id', `direct:rss:mars:orbit->rss:${body}:orbit`)
+    await expect(node(page, `rss:${body}:orbit`).locator('title')).toContainText(`${altitude} km`)
+    await noEarthVisit(page)
+  }
   await button(page, 'Reset mission').click()
   await plan(page, 'rss:earth:surface', 'rss:moon:surface')
   await expect(total(page)).toHaveText('14,660 m/s')
   await expect(direct(page)).toHaveCount(0)
+})
+
+test('takes the reported Ceres–Miranda journey through a paid Uranus high capture in every mission mode', async ({ page }) => {
+  const from = 'rss:ceres:surface', to = 'rss:miranda:orbit', high = 'rss:uranus:elliptical'
+  await plan(page, from, to)
+  // 270 map ascent + 5,434/286 direct endpoint burns + 1,854 local transfer
+  // + 6,914 powered moon capture at the configured nodal inclination.
+  await expect(total(page)).toHaveText('14,758 m/s')
+  await expect(selected(page)).toHaveCount(4)
+  await expect(direct(page)).toHaveAttribute('data-edge-id', 'direct:rss:ceres:orbit->rss:uranus:elliptical')
+  await expect(selected(page).and(page.locator('[data-edge-id*="rss:uranus:orbit"]'))).toHaveCount(0)
+  await noEarthVisit(page)
+  await direction(page, from, to, [high])
+  await page.getByLabel('Show breakdown', { exact: true }).check()
+  await expect(rows(page)).toContainText(['Ceres low orbit', 'Uranus elliptical capture orbit', 'Miranda encounter', 'Miranda low orbit'])
+  await expect(rows(page)).toContainText(['270 m/s', '5,720 m/s', '1,854 m/s', '6,914 m/s'])
+  await expect(rows(page).first()).toHaveAttribute('data-budget-basis', 'reference')
+  for (const index of [1, 2, 3]) await expect(rows(page).nth(index)).toHaveAttribute('data-budget-basis', 'model')
+  await button(page, 'Budget assumptions').click()
+  await expect(info(page).locator('[data-budget-summary-kind="reference"]')).toContainText('270 m/s')
+  await expect(info(page).locator('[data-budget-summary-kind="model"]')).toContainText('14,488 m/s')
+  await expect(info(page).locator('[data-budget-summary-kind="model"]')).toContainText('3 maneuvers')
+  await info(page).getByRole('tab', { name: 'Sources & assumptions', exact: true }).click()
+  await expect(info(page).locator('a[href$="docs/DATA.md#rss-outer-system-reference-model"]')).toBeVisible()
+  await info(page).getByRole('button', { name: 'Close', exact: true }).click()
+  await missionModeButton(page, 'return-only').click()
+  await expect(total(page)).toHaveText('14,758 m/s')
+  await expect(direct(page)).toHaveAttribute('data-edge-id', 'direct:rss:uranus:elliptical->rss:ceres:orbit')
+  await direction(page, to, from, [high])
+  await noEarthVisit(page)
+  await missionModeButton(page, 'round-trip').click()
+  await expect(total(page)).toHaveText('29,516 m/s')
+  await direction(page, from, from, [high])
+  await noEarthVisit(page)
+})
+
+test('keeps ordered Vesta and Uranus high stops in the corrected outer-system flow', async ({ page }) => {
+  const from = 'rss:ceres:surface', to = 'rss:miranda:orbit'
+  const vesta = 'rss:vesta:orbit', high = 'rss:uranus:elliptical'
+  await plan(page, from, to)
+  await addStop(page, 'Vesta low orbit')
+  await addStop(page, 'Uranus elliptical capture orbit')
+  await expect(total(page)).toHaveText('16,707 m/s')
+  await expect(direct(page)).toHaveCount(2)
+  await expect(node(page, vesta)).toHaveAttribute('data-waypoint-indexes', '1')
+  await expect(node(page, high)).toHaveAttribute('data-waypoint-indexes', '2')
+  await direction(page, from, to, [vesta, high])
+  await noEarthVisit(page)
+  await page.getByLabel('Show breakdown', { exact: true }).check()
+  for (const [index, cost] of [1372, 6567, 8768].entries()) {
+    if (index) await button(page, 'Next stage').click()
+    await expect(page.getByTestId('stage-total')).toHaveText(formatted(cost))
+  }
+  await missionModeButton(page, 'return-only').click()
+  await expect(total(page)).toHaveText('16,707 m/s')
+  await direction(page, to, from, [high, vesta])
+  await expect(page.getByTestId('stage-total')).toHaveText('8,768 m/s')
+  await missionModeButton(page, 'round-trip').click()
+  await expect(total(page)).toHaveText('33,414 m/s')
+  await direction(page, from, from, [vesta, high])
+  await noEarthVisit(page)
+})
+
+test('retains an Earth parking visit when the user explicitly requests it', async ({ page }) => {
+  await plan(page, 'rss:ceres:surface', 'rss:miranda:orbit')
+  await expect(total(page)).toHaveText('14,758 m/s')
+  await addStop(page, 'Earth low orbit')
+  await expect(node(page, 'rss:earth:orbit')).toHaveAttribute('data-waypoint-indexes', '1')
+  await expect(selected(page).and(page.locator('[data-edge-id="rss:earth:encounter->rss:earth:orbit"]'))).toHaveCount(1)
+  await expect(selected(page).and(page.locator('[data-edge-id="rss:earth:orbit->rss:earth:encounter"]'))).toHaveCount(1)
+  await direction(page, 'rss:ceres:surface', 'rss:miranda:orbit', ['rss:earth:orbit', 'rss:uranus:elliptical'])
+  await page.getByLabel('Show breakdown', { exact: true }).check()
+  await expect(page.getByTestId('stage-total')).toHaveText('9,710 m/s')
+})
+
+test('fits the corrected Uranus moon branch and breakdown on narrow, landscape, and large desktop maps', async ({ page }, testInfo) => {
+  for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }, { width: 2560, height: 1440 }]) {
+    await page.setViewportSize(viewport)
+    await button(page, 'Reset mission').click()
+    await plan(page, 'rss:ceres:surface', 'rss:miranda:orbit')
+    await expect(total(page)).toHaveText('14,758 m/s')
+    await direction(page, 'rss:ceres:surface', 'rss:miranda:orbit', ['rss:uranus:elliptical'])
+    await noEarthVisit(page)
+    await page.getByLabel('Show breakdown', { exact: true }).check()
+    await expect(rows(page)).toHaveCount(4)
+    const panel = await page.getByRole('region', { name: 'Maneuver breakdown panel', exact: true }).boundingBox()
+    const dock = await page.getByRole('contentinfo').boundingBox()
+    expect(panel).not.toBeNull()
+    expect(dock).not.toBeNull()
+    if (panel && dock) {
+      expect(panel.x).toBeGreaterThanOrEqual(0)
+      expect(panel.y).toBeGreaterThanOrEqual(0)
+      expect(panel.x + panel.width).toBeLessThanOrEqual(viewport.width + 1)
+      expect(panel.y + panel.height).toBeLessThanOrEqual(dock.y + 1)
+    }
+    for (const row of await rows(page).all()) await expect(row).toBeInViewport({ ratio: .99999 })
+    await pageFits(page)
+    if (testInfo.project.name === 'desktop') await page.screenshot({ path: `/tmp/rss-uranus-${viewport.width}.png`, animations: 'disabled' })
+  }
 })
 
 test('fits RSS direct paths and their animations on narrow, landscape, and desktop maps', async ({ page }, testInfo) => {

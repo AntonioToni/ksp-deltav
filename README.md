@@ -89,9 +89,10 @@ For example, **Duna low orbit → Dres
 low orbit** is an analytic **1,532 m/s** estimate. **Duna low orbit → Gilly low
 orbit** can use Eve's high orbit, avoiding a Kerbin layover. Open **Budget
 assumptions** to distinguish modeled transfers from published map figures.
-RSS coverage includes Mercury, Venus, Mars, Vesta, Ceres, and Jupiter; its
-remaining planets retain their source-map routes until compatible reference
-orbits are available.
+RSS coverage includes every supported non-home planet, including Saturn,
+Uranus, Neptune, and Pluto. Their outer systems use explicit modern reference
+orbits and calculated orbital budgets. Direct bound-orbit transfers and their
+moon branches avoid an unrequested Earth layover.
 
 Supported moons sharing a parent also have direct low-orbit transfers. These
 use the moons' orbital radii and relative orbital planes, together with their
@@ -186,10 +187,11 @@ are not modeled.
 
 **Direct planetary transfers use circular, coplanar planetary orbits.** Spacecraft endpoints
 can be low circular or supported high elliptical reference orbits. Stock and RSS
-high-orbit energy is inferred from the map's rounded circularization increment
-only when it implies a valid bound orbit; OPM high orbits use their explicit
-reference geometry. Each pair includes powered departure
-and arrival capture, rounded separately. Planetary eccentricity, inclination, and
+high-orbit energy at the retained map references is inferred from the rounded
+circularization increment only when it implies a valid bound orbit. OPM and the
+four outer RSS planets use explicit high-orbit geometry. Each pair includes
+powered departure and arrival capture, rounded separately. Planetary
+eccentricity, inclination, and
 dated encounter geometry are omitted. The same nominal pair reverses its two
 components for the return. These are analytic estimates, rather than new
 published map budgets.
@@ -227,9 +229,13 @@ individual Simetra/Simeht low orbits lack priced map states; see the
 [data guide](docs/DATA.md#kcalbeloh-configurations) for exact coverage and supported
 installation settings.
 
-**RSS uses a community Solar System reference** covering 33 base-mod bodies.
-Some reference orbit altitudes differ from modern RSS; incompatible altitude
-claims are omitted. See the data guide for coverage and calculation assumptions.
+**RSS combines a community Solar System reference with analytic models** for
+33 base-mod bodies. Saturn, Uranus, Neptune, Pluto, and Triton use selected
+parking altitudes above their modern atmospheres. Their affected orbital
+budgets are recalculated and labeled as models; retained map figures and
+atmospheric surface allowances remain separate. See the
+[data guide](docs/DATA.md#rss-outer-system-reference-model) for reference choices
+and calculation assumptions.
 
 **Relay coverage is equatorial.** A visible surface receiver and a working local
 ring do not establish a connection back to the homeworld's Deep Space Network
@@ -264,8 +270,7 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 - Additional planet packs, rescaled systems, and alternative starting-homeworld
   configurations.
-- Additional compatible RSS reference orbits and direct-transfer coverage,
-  including the outer planets and currently unsupported high-orbit states.
+- Explicit RSS high-orbit reference models for Mercury, Venus, Mars, and Ceres.
 - Interplanetary signal planning: antenna pairs, changing planet-to-planet
   distances, best/worst-case signal strength, and occlusion checks.
 - Advanced relay planning: inclined and polar constellations for coverage beyond
