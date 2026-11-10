@@ -3,6 +3,7 @@ import { withSiblingTransfers } from './siblingTransfers'
 import { withDirectTransfers } from './directTransfers'
 import { rssCentralMu, rssPhysicalReferences, rssPhysicsSource } from './rssPhysics'
 import { rssOuterOrbitReferences, withRssOuterReferences } from './rssOuterReferences'
+import { rssInnerOrbitReferences, withRssInnerReferences } from './rssInnerReferences'
 
 const mapSourceId = 'rss-community-solar-system-map'
 const mapCommit = 'dc472f56101b260baee8814a94de985f44a6c9b2'
@@ -294,16 +295,16 @@ export const rssReferencePack: PlanetPack = {
   maneuvers,
 }
 
-const outerReferences = new Map(rssOuterOrbitReferences.map(reference => [reference.bodyId, reference]))
-export const rssPack: PlanetPack = withDirectTransfers(withSiblingTransfers(withRssOuterReferences({
+const modeledReferences = new Map([...rssOuterOrbitReferences, ...rssInnerOrbitReferences].map(reference => [reference.bodyId, reference]))
+export const rssPack: PlanetPack = withDirectTransfers(withSiblingTransfers(withRssInnerReferences(withRssOuterReferences({
   ...rssReferencePack,
-  version: 'community-map-dc472f5+rss-75139b9.4',
-  description: 'Real Solar System planning estimates for 33 shared map/config bodies: historical map figures, recalculated modern outer-system orbital budgets, and complete direct planetary and sibling-moon transfers.',
+  version: 'community-map-dc472f5+rss-75139b9.5',
+  description: 'Real Solar System planning estimates for 33 shared map/config bodies: historical map figures, explicit inner/outer high-orbit reference models, and complete direct planetary and sibling-moon transfers.',
   assumptions: [
     ...rssReferencePack.assumptions,
-    'Complete analytic direct planetary transfers connect all ten non-Earth planets’ low orbits, plus the Vesta, Jupiter, Saturn, Uranus, Neptune, and Pluto high references. Saturn, Uranus, Neptune, Pluto, and Triton use explicitly modeled modern parking references rather than unsafe historical altitude labels.',
-    'Direct planetary estimates still exclude the historical high states at Mercury, Venus, Mars, and Ceres: their rounded map increments imply unbound orbits with the pinned modern physical constants. Their low-orbit direct transfers remain available.',
+    'Complete analytic direct planetary transfers connect all ten non-Earth planets’ low and high reference orbits. Vesta and Jupiter retain compatible map-inferred high references; Mercury, Venus, Mars, Ceres, Saturn, Uranus, Neptune, and Pluto use explicit bound ellipse geometry.',
+    'Historical high-state increments at Mercury, Venus, Mars, and Ceres implied unbound orbits with the pinned modern constants. Explicit reference ellipses and recalculated local budgets replace those increments; the original source-map transcription is retained separately for validation.',
   ],
-}), rssPhysicalReferences, [rssPhysicsSource]), rssPhysicalReferences.map(reference =>
-  outerReferences.get(reference.bodyId) ?? reference,
+})), rssPhysicalReferences, [rssPhysicsSource]), rssPhysicalReferences.map(reference =>
+  modeledReferences.get(reference.bodyId) ?? reference,
 ), rssCentralMu, [rssPhysicsSource])

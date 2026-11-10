@@ -96,7 +96,9 @@ describe('custom planet pack JSON', () => {
   })
 
   it('retains RSS modeled planetary pairs and bound high-orbit semantics through storage and export', () => {
-    const imported = parse({ ...rssPack, id: 'custom-rss-transfers' })
+    const exported = `${JSON.stringify({ ...rssPack, id: 'custom-rss-transfers' }, null, 2)}\n`
+    expect(new TextEncoder().encode(exported).byteLength).toBeLessThanOrEqual(MAX_PACK_BYTES)
+    const imported = parsePlanetPackJson(exported)
     if (imported.status !== 'success') throw new Error(imported.errors.join('\n'))
     const store = storage()
     expect(saveCustomPacks(store, [imported.pack])).toBeNull()

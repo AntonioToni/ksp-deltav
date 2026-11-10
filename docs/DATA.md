@@ -275,11 +275,12 @@ orbits. Stock has **66
 directed edges** among Moho, Eve, Duna, Dres, Jool, and Eeloo, including the high
 states at Eve, Duna, and Jool. OPM has **226 directed edges**: Eeloo becomes a
 Sarnus moon and leaves that list, while Sarnus, Urlum, Neidon, and Plock join it
-with their own high states. RSS adds **228 directed edges** over 16 reference
-states: low orbit at its ten non-home planets, plus high orbit at Vesta, Jupiter,
-Saturn, Uranus, Neptune, and Pluto. Earth retains its existing inner-system
-branches; the four outer-system branches use the separately documented modern
-reference model. No new route states are added.
+with their own high states. RSS adds **360 directed edges** over 20 reference
+states: low and high orbit at each of its ten non-home planets. Mercury, Venus,
+Mars, Ceres, and the four outer planets use explicit bound high geometry; Vesta
+and Jupiter retain supported map-inferred high references. Earth branches to
+the eight explicitly modeled planets use the corresponding reference model.
+No new route states are added.
 
 Each pair is a `transfer` edge marked `directTransfer: true`. Its price includes
 both departure from the first planet's stated bound orbit and powered capture
@@ -297,6 +298,10 @@ These records use source ID **`direct-interplanetary-model`**, classified as
 **Analytic model** in Budget assumptions. They are computed planning estimates,
 separate from the published map figures. Only selected direct connections are
 drawn, and the route animation uses the same geometry and maneuver order.
+Common model conditions are stored once in the pack's assumptions. Individual
+records retain their endpoint references, component burns, physical constants,
+and source metadata. JSON export includes both levels, preserving the figures
+and conditions without repeating the full shared text for every pair.
 
 ### Reference data and calculation
 
@@ -308,9 +313,10 @@ from `opmReference.ts`. RSS uses the pinned
 [official RSS configs](https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus)
 through `rssPhysics.ts`. The model uses each selected node's stated parking
 altitude: retained Stock/RSS map references where compatible with the pinned
-physical facts, and the explicit OPM and outer RSS choices documented below.
+physical facts, and the explicit OPM and RSS choices documented below.
 Generating direct pairs does not reprice local segments. The separate
-[RSS outer-system model](#rss-outer-system-reference-model) replaces affected
+[RSS inner-system](#rss-inner-system-reference-model) and
+[outer-system](#rss-outer-system-reference-model) models replace affected
 historical orbital segments before the pairs are generated.
 
 The pure functions in `src/utils/orbitalBudgets.ts` calculate a circular,
@@ -356,9 +362,9 @@ elements from the source map. The implied ellipse must be bound, with apoapsis
 above periapsis and inside the nominal SOI. Approximate implied Stock apoapsis radii
 are **75.23 Mm**, **26.68 Mm**, and **2,127.74 Mm** respectively.
 
-OPM's Sarnus, Urlum, Neidon, and Plock high states, and RSS's Saturn, Uranus,
-Neptune, and Pluto high states, have explicit geometry: periapsis at the selected
-low-orbit radius and apoapsis at **0.5 × SOI**. Their
+OPM's Sarnus, Urlum, Neidon, and Plock high states, and RSS's Mercury, Venus,
+Mars, Ceres, Saturn, Uranus, Neptune, and Pluto high states, have explicit
+geometry: periapsis at the selected low-orbit radius and apoapsis at **0.5 × SOI**. Their
 reference speed follows vis-viva from that geometry. The endpoint burn is
 calculated before rounding; subtracting two already-rounded segment costs would
 introduce a possible 1 m/s error. Both endpoints still round upward separately.
@@ -411,6 +417,15 @@ Atmospheric choices can change the lowest budget within the selected itinerary.
 They do not make an unrequested intermediate planet the default merely because
 its capture is free in the idealized model.
 
+An ideal capture choice can select a high arrival followed by a separately
+adjusted circularization. In RSS, the one-way **Mars low orbit → Venus low orbit** route remains
+**7,850 m/s** with atmospheric options off. With **Ideal capture at Venus**, the
+route can instead use the complete **5,014 m/s** Mars-low-to-Venus-high pair,
+then the standalone Venus-high-to-low circularization at the idealized
+**0 m/s** powered allowance. The mission estimate is **5,014 m/s**; the bundled
+departure and powered high capture are still charged in full. This does not
+validate entry, capture cleanup, or the geometry of a real aerobraking flight.
+
 For example, with **Ideal capture at Duna**, Kerbin surface → Dres low orbit
 remains **6,260 m/s** by default. Adding **Duna low orbit** as an explicit stop
 gives a separate **6,012 m/s** estimate: **4,480 m/s** to reach that stop, then
@@ -424,18 +439,18 @@ use their parent's existing reference branches; this is not a direct
 moon-to-moon flyby solver. The added links do not supply Kerbol–Kcalbeloh
 interstellar trajectories, new wormhole budgets, or new Kcalbeloh reference pairs.
 
-RSS retains its inner-system source branches and adds complete direct pairs at
-documented reference states. Retained low-orbit altitudes are **100 km at Mercury**,
+RSS adds complete direct pairs at documented reference states. Retained
+low-orbit altitudes are **100 km at Mercury**,
 **400 km at Venus**, **200 km at Mars**, **20 km at Vesta and Ceres**, and
 **2,000 km at Jupiter**. Vesta and Jupiter also have supported inferred high
-states. Mercury, Venus, Mars, and Ceres have low-to-high map increments that
-would imply unbound high states under the pinned modern gravity constants;
-those historical high endpoints remain excluded. Saturn, Uranus, Neptune, and
-Pluto instead use explicitly selected modern low and high reference orbits,
-with their affected local budgets recalculated under the
+states. Mercury, Venus, Mars, and Ceres have historical low-to-high map increments
+that would imply unbound high states under the pinned modern gravity constants.
+The [inner-system model](#rss-inner-system-reference-model) replaces those
+high references and affected orbital budgets with explicit bound ellipses.
+Saturn, Uranus, Neptune, and Pluto use the
 [outer-system model](#rss-outer-system-reference-model). All ten non-home
-planets therefore have direct low-orbit pairs, and supported high arrivals can
-continue onto their moon branches without an Earth layover.
+planets therefore have direct low/high pairs, and high arrivals can continue
+onto their moon branches without an Earth layover.
 
 Complete low-to-low RSS edge examples are **Mars → Venus 7,850 m/s**,
 **Mercury → Mars 16,894 m/s**, **Mars → Jupiter 21,608 m/s**, and
@@ -988,11 +1003,11 @@ all supported states, and source export does not include session-entered costs.
 
 `src/data/rss.ts` adds the **RSS** pack with independent `rss:` IDs and Earth as
 its interplanetary transfer hub. It contains **33 bodies, 102 selectable states,
-and 506 directed maneuvers**: 122 retained map segments, 80 modeled outer-system
-orbital segments, 76 modeled sibling transfers, and 228 direct planetary
-transfers. Its version identifies the pinned map/configuration and model
-revision. No Stock KSP costs are scaled or
-copied into RSS. The RSS dataset does not change the Stock or OPM packs.
+and 638 directed maneuvers**: 90 retained map segments, 32 modeled inner-system
+orbital segments, 80 modeled outer-system orbital segments, 76 modeled sibling
+transfers, and 360 direct planetary transfers. Its version identifies the pinned
+map/configuration and model revision. No Stock KSP costs are scaled or copied
+into RSS. The RSS dataset does not change the Stock or OPM packs.
 
 ### Sources and scope
 
@@ -1013,8 +1028,8 @@ pinned configuration. Direct planetary pairs use the Sun's gravity and the
 supported planets' radii, gravity, stellar semi-major axes, and stated reference
 altitudes. The sibling model uses each moon's radius, gravity,
 atmosphere, semi-major axis, inclination, ascending node, and stated parking
-altitude. The outer-system model recalculates affected orbital connections at
-its explicit modern references. The original 202-edge map graph is retained
+altitude. The inner- and outer-system models recalculate affected orbital
+connections at their explicit bound references. The original 202-edge map graph is retained
 separately as `rssReferencePack` for source comparisons; it is not the current
 planner's orbital model.
 
@@ -1040,6 +1055,68 @@ moon-transfer alternatives shown elsewhere in the diagram are not transcribed;
 the sibling and planetary alternatives are separately identified analytic
 estimates. Route minima apply only to this combined graph, rather than every
 trajectory or alternative in the source.
+
+### RSS inner-system reference model
+
+Mercury, Venus, Mars, and Ceres keep their compatible circular parking altitudes:
+**100 km**, **400 km**, **200 km**, and **20 km** respectively. Their historical
+map low-to-high increments imply unbound orbits under the pinned modern gravity
+constants. The planner replaces those high references with explicit bound
+ellipses instead of clamping an invalid speed or reusing the old increment.
+
+For each body, the high ellipse's periapsis is the stated low-orbit radius and
+its apoapsis is **0.5 × nominal SOI**. These are selected planning references,
+not separately published map elements or flight-clearance guarantees. Both low
+and high states participate in complete planetary pairs, so a journey may start
+or finish at any of the four high states without an artificial low-orbit visit.
+
+| Body | Retained low altitude / high periapsis altitude (km) | Modeled high-to-low circularization (m/s) |
+| --- | ---: | ---: |
+| Mercury | 100 | 1,129 |
+| Venus | 400 | 2,837 |
+| Mars | 200 | 1,404 |
+| Ceres | 20 | 145 |
+
+These local circularization figures are rounded upward individually; they are
+not complete interplanetary departure or capture totals. A direct high endpoint
+uses the unrounded ellipse speed before its own endpoint burn is rounded.
+
+The source **`rss-inner-orbit-model`**, shown as **Analytic model** in Budget
+assumptions, identifies **32 recalculated directed orbital segments**: the four
+Earth transfer rails, each planet's high capture and circularization, Mars-high
+transfers to Phobos and Deimos, and the corresponding moon captures. Local
+segments use the same energy and rounding rules as the
+[outer-system model](#rss-outer-system-reference-model). Earth injection is
+rounded as a complete burn before subtracting the separately charged
+**3,210 m/s** Earth escape edge; destination capture uses the same stellar
+Hohmann arrival speed.
+
+Mars's moon branches leave its explicit high ellipse. Their departure burns
+compare that ellipse's periapsis speed with the moon-transfer ellipse, while
+Phobos and Deimos capture uses each moon's configured inclination at an assumed
+node of the nominal parent-centered `i = 0` reference plane. Both transfer and
+capture are paid. A high arrival does not include a free low circularization,
+plane change, or gravity assist; arrival context still applies across mission
+stops.
+
+For example, **Mercury high orbit → Venus high orbit** is a complete
+**5,523 m/s** direct-pair estimate, and **Ceres high orbit → Uranus high orbit**
+is **5,575 m/s**. **Earth low orbit → Mars high orbit** is **4,304 m/s**;
+continuing to Mars low orbit separately charges **1,404 m/s**, for **5,708 m/s**.
+The high arrival therefore does not silently include low circularization.
+
+**Mars high orbit → Phobos low orbit** is **1,964 m/s**: **700 m/s** to the
+Phobos encounter plus **1,264 m/s** capture. The Deimos counterpart is
+**1,216 m/s**: **306 + 910 m/s**. These use the stated inclined-encounter model,
+not the historical map's different high-orbit and encounter conditions.
+
+Low parking altitudes and surface allowances are unchanged. The new orbital
+model does not convert Mercury/Ceres vacuum map budgets into vehicle estimates,
+or validate the retained Venus/Mars atmospheric launch and landing allowances.
+Planetary orbits remain circularized and coplanar, and parking-plane alignment,
+dated encounters, finite-thrust losses, and vehicle performance are unsolved.
+The original **202-edge** map remains separately available as `rssReferencePack`
+for historical transcription checks.
 
 ### RSS outer-system reference model
 

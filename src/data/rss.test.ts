@@ -6,6 +6,7 @@ import { opmPack } from './opm'
 import { planetPacks } from './planetPacks'
 import { rssPack, rssReferencePack } from './rss'
 import { rssOuterSource } from './rssOuterReferences'
+import { rssInnerSource } from './rssInnerReferences'
 import { stockPack } from './stock'
 
 describe('the reference-based RSS pack', () => {
@@ -31,19 +32,20 @@ describe('the reference-based RSS pack', () => {
     expect(validatePlanetPack(rssPack)).toEqual([])
     expect(rssPack.bodies).toHaveLength(33)
     expect(rssPack.nodes).toHaveLength(102)
-    expect(rssPack.maneuvers).toHaveLength(506)
+    expect(rssPack.maneuvers).toHaveLength(638)
     expect(rssReferencePack.maneuvers).toHaveLength(202)
-    expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'rss-community-solar-system-map')).toHaveLength(122)
+    expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'rss-community-solar-system-map')).toHaveLength(90)
+    expect(rssPack.maneuvers.filter(edge => edge.sourceId === rssInnerSource.id)).toHaveLength(32)
     expect(rssPack.maneuvers.filter(edge => edge.sourceId === rssOuterSource.id)).toHaveLength(80)
     expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'sibling-moon-transfer-model')).toHaveLength(76)
-    expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'direct-interplanetary-model')).toHaveLength(228)
+    expect(rssPack.maneuvers.filter(edge => edge.sourceId === 'direct-interplanetary-model')).toHaveLength(360)
     expect(rssPack.bodies.filter(body => body.kind === 'moon')).toHaveLength(21)
     expect(rssPack.bodies.filter(body => body.kind === 'planet')).toHaveLength(11)
     expect(rssPack.nodes.filter(node => node.kind === 'elliptical')).toHaveLength(10)
     for (const edge of rssPack.maneuvers.filter(edge => !edge.directTransfer)) {
       expect(Number.isInteger(edge.deltaV), edge.id).toBe(true)
       expect(edge.deltaV, edge.id).toBeGreaterThan(0)
-      expect(['rss-community-solar-system-map', rssOuterSource.id]).toContain(edge.sourceId)
+      expect(['rss-community-solar-system-map', rssOuterSource.id, rssInnerSource.id]).toContain(edge.sourceId)
       expect(edge.assumptions.length, edge.id).toBeGreaterThan(0)
     }
   })
@@ -68,7 +70,7 @@ describe('the reference-based RSS pack', () => {
     ])
   })
 
-  it('preserves the original rail transcription independently of the modern outer overlay', () => {
+  it('preserves the original rail transcription independently of the modern orbital overlays', () => {
     const edge = (from: string, to: string) => rssReferencePack.maneuvers.find(item => item.from === from && item.to === to)
     expect(edge('rss:earth:orbit', 'rss:earth:encounter')?.deltaV).toBe(3210)
     expect(edge('rss:earth:orbit', 'rss:moon:encounter')?.deltaV).toBe(3120)

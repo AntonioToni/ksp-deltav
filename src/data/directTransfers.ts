@@ -31,6 +31,7 @@ const modelAssumptions = [
   'The complete pair includes powered departure and capture into the chosen circular or high elliptical reference orbit. Atmospheric assistance does not discount this bundled pair; atmospheric entry feasibility and cleanup burns are not simulated.',
   'The reverse direction reuses the same nominal summed cost with the endpoint burns exchanged. This is not a solved return transfer at a particular epoch.',
 ]
+const sharedModelAssumptions = `Direct planetary model: ${modelAssumptions.join(' ')}`
 
 /** Add reviewed direct pairs without changing existing reference records. */
 export function withDirectTransfers(
@@ -104,6 +105,9 @@ export function withDirectTransfers(
   for (const source of [...physicalSources, directTransferSource]) {
     if (!result.sources.some(existing => existing.id === source.id)) result.sources.push({ ...source })
   }
+  // Keep the common model once in exported packs; repeating it for every
+  // directed pair would make a complete RSS export exceed its import limit.
+  if (!result.assumptions.includes(sharedModelAssumptions)) result.assumptions.push(sharedModelAssumptions)
   const existingIds = new Map(result.maneuvers.map(edge => [edge.id, edge]))
   for (let fromIndex = 0; fromIndex < candidates.length; fromIndex++) {
     const from = candidates[fromIndex]!
@@ -135,7 +139,7 @@ export function withDirectTransfers(
             : `${departure.node.label} → ${arrival.node.label} direct transfer`,
           sourceId: directTransferSource.id,
           assumptions: [
-            ...modelAssumptions,
+            'Complete powered departure and capture. Atmospheric assistance does not discount this bundled pair. Orbital, rounding, and return assumptions are stated at pack level.',
             `${departureBurn} m/s departure at ${departure.body.name} (${departureRaw.toFixed(6)} m/s before rounding) plus ${arrivalBurn} m/s capture at ${arrival.body.name} (${arrivalRaw.toFixed(6)} m/s before rounding): ${deltaV} m/s total.`,
             `Departure reference: ${departure.referenceNote}`,
             `Arrival reference: ${arrival.referenceNote}`,

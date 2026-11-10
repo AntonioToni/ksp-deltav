@@ -89,10 +89,11 @@ For example, **Duna low orbit → Dres
 low orbit** is an analytic **1,532 m/s** estimate. **Duna low orbit → Gilly low
 orbit** can use Eve's high orbit, avoiding a Kerbin layover. Open **Budget
 assumptions** to distinguish modeled transfers from published map figures.
-RSS coverage includes every supported non-home planet, including Saturn,
-Uranus, Neptune, and Pluto. Their outer systems use explicit modern reference
-orbits and calculated orbital budgets. Direct bound-orbit transfers and their
-moon branches avoid an unrequested Earth layover.
+RSS coverage includes low and high reference orbits at every supported non-home
+planet. Mercury, Venus, Mars, and Ceres now have explicitly modeled bound high
+orbits, alongside the modern outer-system references. Mars's moon connections
+use the same stated high orbit and encounter speeds. Direct bound-orbit transfers
+and their moon branches avoid an unrequested Earth layover.
 
 Supported moons sharing a parent also have direct low-orbit transfers. These
 use the moons' orbital radii and relative orbital planes, together with their
@@ -188,8 +189,9 @@ are not modeled.
 **Direct planetary transfers use circular, coplanar planetary orbits.** Spacecraft endpoints
 can be low circular or supported high elliptical reference orbits. Stock and RSS
 high-orbit energy at the retained map references is inferred from the rounded
-circularization increment only when it implies a valid bound orbit. OPM and the
-four outer RSS planets use explicit high-orbit geometry. Each pair includes
+circularization increment only when it implies a valid bound orbit. OPM and eight
+RSS planets use explicit high-orbit geometry; RSS Vesta and Jupiter retain their
+bound map-inferred references. Each pair includes
 powered departure and arrival capture, rounded separately. Planetary
 eccentricity, inclination, and
 dated encounter geometry are omitted. The same nominal pair reverses its two
@@ -231,11 +233,13 @@ installation settings.
 
 **RSS combines a community Solar System reference with analytic models** for
 33 base-mod bodies. Saturn, Uranus, Neptune, Pluto, and Triton use selected
-parking altitudes above their modern atmospheres. Their affected orbital
-budgets are recalculated and labeled as models; retained map figures and
-atmospheric surface allowances remain separate. See the
-[data guide](docs/DATA.md#rss-outer-system-reference-model) for reference choices
-and calculation assumptions.
+parking altitudes above their modern atmospheres. Mercury, Venus, Mars, and
+Ceres retain their stated low altitudes and use explicit bound high ellipses.
+Affected orbital budgets are recalculated and labeled as models; retained map
+figures and atmospheric surface allowances remain separate. See the
+[inner-system](docs/DATA.md#rss-inner-system-reference-model) and
+[outer-system](docs/DATA.md#rss-outer-system-reference-model) reference models
+for choices and calculation assumptions.
 
 **Relay coverage is equatorial.** A visible surface receiver and a working local
 ring do not establish a connection back to the homeworld's Deep Space Network
@@ -270,7 +274,6 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 - Additional planet packs, rescaled systems, and alternative starting-homeworld
   configurations.
-- Explicit RSS high-orbit reference models for Mercury, Venus, Mars, and Ceres.
 - Interplanetary signal planning: antenna pairs, changing planet-to-planet
   distances, best/worst-case signal strength, and occlusion checks.
 - Advanced relay planning: inclined and polar constellations for coverage beyond

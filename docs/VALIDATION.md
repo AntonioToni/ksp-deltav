@@ -271,7 +271,7 @@ The separate `rss-outer-orbit-model` source identifies **80 recalculated
 directed orbital segments**: affected Earth departure rails, local high capture
 and circularization, parent-high-to-moon transfers, and moon captures. The
 original **202 map edges** remain in the separate `rssReferencePack` comparison
-fixture. The active pack retains **122 map edges**, adds **80 outer-model
+fixture. That revision retained **122 map edges**, added **80 outer-model
 edges**, **76 sibling edges**, and **228 complete planetary edges**, for
 **506 maneuvers over the same 102 states**. Stock, OPM, and relay physical
 constants are unchanged.
@@ -283,7 +283,7 @@ difference and the moon's own powered capture are both charged. The Earth
 departure increment subtracts only the separately charged **3,210 m/s** escape
 component from the rounded complete Earth injection burn.
 
-For the reported example, **Ceres surface → Miranda low orbit** is now
+For the reported example, **Ceres surface → Miranda low orbit** became
 **14,758 m/s**: **270 map ascent + 5,720 complete modeled Ceres-to-Uranus-high
 transfer + 1,854 modeled moon transfer + 6,914 modeled Miranda capture**. The
 route includes neither Earth nor Uranus low orbit.
@@ -310,6 +310,73 @@ atmospheric-entry clearance, or vehicle-specific flight performance. Full
 reference choices and equations are in the
 [data guide](DATA.md#rss-outer-system-reference-model).
 
+### RSS inner-system high references — 10 November 2026
+
+Mercury, Venus, Mars, and Ceres previously lacked modeled direct high endpoints:
+their historical low-to-high increments imply unbound orbits under the pinned
+modern gravity constants. This extension replaces those reference states with
+explicit ellipses whose periapsis is the retained low-orbit radius and whose
+apoapsis is **0.5 × nominal SOI**. Circular parking altitudes remain **100 km at
+Mercury**, **400 km at Venus**, **200 km at Mars**, and **20 km at Ceres**.
+
+The separate **`rss-inner-orbit-model`** source identifies **32 recalculated
+directed orbital records**: four Earth-rail pairs, eight local high-capture and
+circularization pairs, two Mars-high-to-moon transfer pairs, and two moon-capture
+pairs. Phobos and Deimos encounter speeds use their configured inclinations at
+the same nominal parent-centered `i = 0` reference plane used by the outer model.
+Departure, capture, and every requested stop remain paid; no invalid high-state
+speed is clamped and no free encounter flyby is introduced.
+
+The shared `rssOrbitReferences.ts` calculation preserves the existing outer
+reference geometry and orbital budgets. The original **202 map records** remain
+separate for transcription checks. The active pack has **90 retained map**,
+**32 inner-model**, **80 outer-model**, **76 sibling**, and **360 direct
+planetary records**: **638 maneuvers over the same 102 states**. All ten
+non-home planets now supply both low and high planetary endpoints.
+
+Independent vis-viva calculations give high-to-low circularization budgets of
+**1,129 / 2,837 / 1,404 / 145 m/s** at Mercury/Venus/Mars/Ceres. Complete direct
+high-pair landmarks are **Mercury → Venus 5,523 m/s** and **Ceres → Uranus
+5,575 m/s**. Earth low orbit → Mars high orbit is **4,304 m/s**, with the
+separate **1,404 m/s** circularization producing **5,708 m/s** to Mars low orbit.
+Mars high orbit → Phobos low orbit is **700 + 1,264 = 1,964 m/s**; the Deimos
+counterpart is **306 + 910 = 1,216 m/s**. The explicitly requested Ceres surface
+→ Earth low-orbit stage is recalculated to **9,699 m/s**, including its retained
+**270 m/s** surface allowance.
+
+The atmospheric regression keeps the default **Mars low orbit → Venus low
+orbit** estimate at **7,850 m/s**. With ideal Venus capture, the selected route
+uses the unchanged complete **5,014 m/s** Mars-low-to-Venus-high pair, followed
+by a separate ideal **0 m/s** powered circularization. The complete pair's
+departure and high capture remain charged. This checks the supported idealized
+route choice, not an atmospheric entry or cleanup trajectory.
+
+Independent component-wise calculations matched all **32 new inner-model
+records** and all **360 complete planetary pairs**. Fourteen new inner-reference
+tests include **216 high-reference origin/route/mode combinations**. The existing
+**80 outer-model** checks and **3,330 outer-route/mode** cases continue to pass;
+the **14,758 m/s Ceres surface → Miranda low-orbit** example is unchanged.
+The full unit suite passed **973 tests across 39 files**, together with ESLint,
+TypeScript, the production build, and diff checks.
+
+Production browser checks validated **74 cases across desktop and mobile** in
+the RSS direct-transfer, RSS, and requested-itinerary suites. SVG checks cover
+painted route strokes, animated dash movement, and the static selected route
+under reduced motion. Screenshots at **320 × 568**, **667 × 375**, and
+**2560 × 1440** showed the new high-orbit routes and controls without page
+scrolling or clipping; no browser console errors were reported.
+
+Common planetary-model conditions are deduplicated at pack level in exported
+JSON. Each maneuver still retains its component figures, endpoint definitions,
+and source metadata. The formatted RSS export, including its final newline and
+a renamed custom-pack ID, imports under the unchanged **1 MiB** size limit.
+
+Surface allowances retain their source figures and low-orbit altitudes. As with
+the outer extension, these are reference-model budgets, not verified dated
+trajectories, optimized plane changes, parking-plane alignment, atmospheric
+entry, or vehicle-specific flight estimates. Reference choices and assumptions
+are in the [data guide](DATA.md#rss-inner-system-reference-model).
+
 ### RSS SOI correction
 
 RSS relay presets used the raw Laplace SOI for two small moons. Default
@@ -321,8 +388,9 @@ override. The active `2R` floors give:
 | Enceladus | 488,586.743 | 504,200 |
 | Miranda | 459,755.119 | 471,400 |
 
-Only these two preset SOIs changed. Explicit overrides remain intact. Historical
-RSS maneuver costs were not recalculated from modern physical constants.
+Only these two preset SOIs changed. Explicit overrides remain intact. That SOI
+correction did not recalculate RSS maneuver costs from modern physical
+constants; the later orbital-reference extensions are recorded above.
 
 ### RSS CommNet configuration
 
