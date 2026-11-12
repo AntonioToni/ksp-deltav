@@ -419,6 +419,72 @@ overhauls or an arbitrary RSS/RO/RP-1 installation. RealAntennas and RemoteTech
 remain unsupported. See the [RSS radio note](RELAYS.md#rss-radio-configuration)
 for profile selection and installation assumptions.
 
+### Interplanetary signal references — 12 November 2026
+
+The single-link signal model uses the existing pinned Stock, OPM, RSS, and
+Kcalbeloh orbit facts. Its common-parent catalog contains **7 Stock**, **10 OPM**,
+**11 RSS**, **20 Stock/Kcalbeloh**, and **23 OPM/Kcalbeloh** planetary records.
+The Kcalbeloh contribution comprises four planets around Kcalbeloh, two around
+Maelg, four around Sunorc, and three around Aralc-A. Moons, wormholes,
+binary-center children, singleton centers, and cross-star pairs are not inferred
+as same-center planetary links. Unknown custom packs use manual geometry.
+
+The added central-radius references are **261,600,000 m for Kerbol**, converted
+from the pinned KSPTOT Sun record's 261,600 km, and **696,342,000 m for the RSS
+Sun**, from its pinned official `RSSKopernicus/Sun.cfg`. Kcalbeloh centers reuse
+the already patched stellar radii in the shared facts. The signal model's
+default occlusion sphere uses full physical radius rather than guessing a
+normal game factor from the planner's stellar atmosphere flags.
+
+The pinned CommNet calculator's `endpoint.rs` corroborates the stock curve:
+`R = sqrt(PA × PB) × multiplier`; `x = clamp(1 − distance/R, 0, 1)`;
+`strength = 3x² − 2x³`. Independent scalar reference values at normalized
+distances **0.25**, **0.5**, and **0.75** are **0.84375**, **0.5**, and
+**0.15625**. Exact maximum range gives zero signal.
+
+For two RA-100 endpoints under Stock CommNet at range multiplier 1, the
+circular Kerbin–Duna references specify:
+
+| Relative phase | Distance (m) | Range-only strength | Effective result |
+| --- | ---: | ---: | --- |
+| 0° | 7,126,315,008 | 98.5488501% | Clear |
+| 90° | 24,789,698,808.500137 | 84.6109236% | Clear |
+| 180° | 34,325,995,520 | 72.7408663% | 0%, blocked by Kerbol |
+
+Full-radius Kerbol tangency occurs at approximately **178.1746266685°**. These
+fixtures distinguish range attenuation from central occlusion and its marginal
+boundary. The nearest/farthest strengths are circular-reference, unoccluded
+values, not universally attainable extrema for eccentric or inclined orbits.
+
+The pure engine has **80 independent tests**, including **219 phase/configuration
+scenarios**, **nine dense line-of-sight sample comparisons**, the quarter-range
+strength fixtures, endpoint reversal/scaling properties, and antenna arrays
+under Stock/RSS/CustomBarnKit profiles. Tiny positive effective occluders still
+block exact opposition; a radius that underflows the supported numerical range
+is rejected rather than treated as a clear path. **15 catalog tests** cover
+source values, same-parent eligibility, pack/configuration coverage, and
+unrecognized custom packs.
+
+The full **1,068-unit-test suite across 41 files**, ESLint, strict TypeScript
+checks, and the production build passed for this extension. These results
+establish the stated reference calculations and retained behavior, not an
+in-game radio measurement.
+
+Production browser validation covers **26 Signals cases across desktop and
+mobile**, plus **84 existing relay, antenna-array, RSS-radio, and Kcalbeloh relay
+cases**. Checks include central-body blocking, range-only versus effective
+strength, manual geometry and invalid-input recovery, DSN endpoint restrictions,
+arrays and radio scaling, same-center catalog choices, and preservation of
+mission and workspace inputs. Views at **320 × 568**, **667 × 375**, and
+**2560 × 1440** keep controls and plots accessible without page overflow; narrow
+layouts use the dialog's internal scroll. The phase control and its current
+distance/signal labels and values fit together on the phone layout.
+
+The feature does not certify endpoint-local visibility, other-body obstruction,
+a dated trajectory, deployed hardware, relay forwarding, control capability,
+or a complete route to the home DSN. Its sources and formulas are documented in
+the [signal guide](RELAYS.md#interplanetary-signals).
+
 ## Calculation checks
 
 - Ordered mission routing was compared with an independent Bellman–Ford search
@@ -472,7 +538,8 @@ not replace an upstream comparison or launch KSP.
 Passing checks establishes the stated data transcription and mathematical
 behavior within the supplied models. Map budgets can be historical or rough;
 analytic reference orbits circularize eccentric systems and omit dated encounter
-geometry. Neither validates vehicle losses, terrain clearance, atmospheric entry
+geometry. Signal-reference phases likewise are not dated ephemerides or complete
+network paths. These models do not validate vehicle losses, terrain clearance, atmospheric entry
 heating/guidance, capture cleanup burns, binary dynamics, or a complete path to
 the home DSN. A reserve does not calculate omitted physics. Imported figures and
 personal allowances remain their authors' planning assumptions.

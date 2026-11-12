@@ -1,16 +1,17 @@
-# CommNet relay planning
+# CommNet relay and signal planning
 
 Open **Relays** in the planner's header (the satellite icon on phones) to design
 a circular, equally spaced relay constellation around a body in the active
-planet pack. The body selector includes physical planets and moons; stellar
+planet pack, or choose **Signals** for a single interplanetary link. The local
+relay body selector includes physical planets and moons; stellar
 primaries, barycenters, and wormholes are excluded. This workspace is separate
 from the Delta-V route: opening it, editing a constellation, or closing it does
 not change your mission endpoints,
 stops, atmospheric choices, or budget.
 
-Inputs remain available when the workspace is closed and reopened in the same
-session. Changing planet packs resets the workspace; reloading the page resets
-the relay inputs.
+Local relay and signal inputs remain available when switching sections or
+closing and reopening the workspace in the same session. Changing planet packs
+resets the workspace; reloading the page resets its inputs.
 
 ## Using the workspace
 
@@ -110,6 +111,109 @@ multiplier 1:
 Four Communotron 16 antennas instead have effective power **2 Mm**, while four
 Communotron 16-S antennas remain at **0.5 Mm**. These are stock CommNet power
 ratings and derived ranges, not signal-strength percentages.
+
+## Interplanetary signals
+
+Open **Relays → Signals** to compare one antenna link between vessels near two
+planets. The radio model uses stock CommNet range, strength, and antenna-combining
+rules with the selected Stock/RSS power profile. It does not simulate a complete
+network path or place a ground station on the visible side of a planet.
+
+1. Under **Signal geometry**, choose **Reference planets** and select **Planet A**
+   and **Planet B**. The second list contains other supported planets around
+   the same center. The reference geometry uses their
+   pinned semi-major axes as circular radii in one plane.
+2. Choose **Antenna A** and **Antenna B**, mixed arrays, or final custom effective
+   powers in **Power A** and **Power B**.
+   A DSN preset may represent the known homeworld endpoint in reference mode.
+   It is a station-power choice, not proof of an unobstructed DSN connection.
+3. Move **Relative phase**, or choose **Closest** or **Opposite**, to change the
+   modeled angle. The orbit diagram and strength chart update together. These
+   angles are not dates, transfer-window angles, or the planets' current positions.
+4. Compare the current distance, maximum antenna range, **Signal now**, and
+   circular-reference nearest/farthest range-only strengths. The
+   phase chart distinguishes range attenuation from central-body blockage.
+5. Choose **Signal geometry → Manual orbits** for an unknown custom pack or a
+   different reference configuration. Enter **Orbit radius A** and **Orbit radius B**
+   in **Gm**, and **Central radius** in **km**. Manual values are user assumptions;
+   no physical orbit data is inferred from Delta-V map costs or imported body names.
+
+**Radio setup** and the **Range multiplier** are shared with local relay
+planning. Changing the radio setup preserves part identities and array counts,
+then recalculates their powers from that setup's catalog. Custom powers remain
+already-effective values and are never scaled again. Both direct and relay
+antennas can be single-link endpoints; testing relay forwarding is a separate
+problem. Arrays combine antennas on one craft, never across the two endpoints.
+
+### Circular-reference distance and strength
+
+Let `a` and `b` be the two circular reference radii, `theta` their relative
+angle, and `PA` and `PB` the effective endpoint powers:
+
+```text
+distance² = a² + b² − 2ab cos(theta)
+circular nearest distance  = abs(a − b)
+circular farthest distance = a + b
+maximum range R = sqrt(PA × PB) × rangeMultiplier
+x = clamp(1 − distance/R, 0, 1)
+range-only strength = 3x² − 2x³
+```
+
+Strength is a fraction from 0 to 1, displayed as a percentage. At the exact
+antenna range it is zero; a link at that limit is marked marginal rather than
+as a robust connection. The model does not use an inverse-square strength
+percentage. A distance of one quarter, one half, or three quarters of maximum
+range gives **84.375%**, **50%**, or **15.625%** respectively before occlusion.
+
+The nearest/farthest cards are **circular-reference, range-only** comparisons.
+Eccentricity and inclination can produce other distances in an actual
+installation; these cards are not universal best/worst bounds for those
+trajectories. The displayed current effective strength additionally checks the
+central body's line of sight. At opposite alignment, the central body blocks
+the ray, making effective strength **0%** even when the distance-only value is
+positive. The charts therefore should not be read as uninterrupted coverage
+over a dated orbital period.
+
+For example, using one **RA-100 at each endpoint**, **Stock CommNet**, and range
+multiplier 1, a Kerbin–Duna reference has maximum range **100 Gm**:
+
+| Relative phase | Distance (Gm) | Range-only strength | Central-body result |
+| --- | ---: | ---: | --- |
+| 0° | 7.126315008 | 98.5488501% | Clear |
+| 90° | 24.789698809 | 84.6109236% | Clear |
+| 180° | 34.325995520 | 72.7408663% | Kerbol blocks the ray; effective strength 0% |
+
+Both endpoint selectors initially use one RA-100 and the phase starts at **90°**.
+For the Kerbin–Duna pair, the displayed values therefore round to **24.79 Gm**
+and **84.61%**. Open **Signal assumptions and sources** for the selected
+reference and radio-source links.
+
+### Occlusion and reference coverage
+
+The line-of-sight check uses the closest point on the finite segment between
+the two endpoint positions. It compares that distance from the center with
+`centralRadius × occlusionFactor`. Penetration blocks the link; exact limb
+tangency is marginal. The default factor is **1**, using the full physical
+radius. An entered factor changes the effective occluder, not the physical
+orbit radii. The Signals model does not guess a normal game factor from the
+planner's stellar atmosphere metadata; technical stellar atmospheres make that
+classification unsuitable for this purpose.
+
+Reference pairs cover **7 Stock**, **10 OPM**, and **11 RSS** planetary bodies.
+The Stock/Kcalbeloh and OPM/Kcalbeloh configurations offer **20** and **23**
+respectively. Kcalbeloh's supported local groups are Kcalbeloh (four planets),
+Maelg (two), Sunorc (four), and Aralc-A (three). The catalog requires a common
+supported physical center and at least two eligible planets in its group.
+Moons, binary-center children, wormholes, cross-star links, and Aralc-B's
+singleton group are excluded from automatic reference pairs. Custom and
+rescaled configurations can use manually supplied circular geometry.
+
+The model checks the selected central occluder only. It does not check the
+endpoint planets' local horizons, spacecraft orbital positions, other planets,
+companion stars, rings or accretion structures, relativistic propagation,
+deployed antennas, control capability, or a complete path through relays back
+to the DSN. RealAntennas and RemoteTech remain separate unsupported radio models.
+These are single-link planning estimates using the stated geometry.
 
 ## What the results mean
 
@@ -343,8 +447,8 @@ homeworlds, or other physics patches may require edits.
 - Antenna powers, relay flags, and DSN levels: [Igaguri's CommNet calculator data](https://github.com/IgaguriMK/ksp-commnet-calculator-core/blob/2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80/resources/antennas.yaml),
   pinned to `2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80`. Its
   [`endpoint.rs`](https://github.com/IgaguriMK/ksp-commnet-calculator-core/blob/2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80/src/endpoint.rs)
-  corroborates the endpoint range formula. The antenna metadata supplies the
-  combinability flags and Communotron 16 exponent exception.
+  corroborates the endpoint range and signal-strength formulas. The antenna
+  metadata supplies the combinability flags and Communotron 16 exponent exception.
 - Antenna combination semantics: [Kerbalism's stock CommNet adapter](https://github.com/Kerbalism/Kerbalism4/blob/bc3d7ccbbe5f4b20455b3de7d25b6e9812f8672f/src/Kerbalism/Comms/CommHandlerEditorCommNet.cs),
   pinned to `bc3d7ccbbe5f4b20455b3de7d25b6e9812f8672f`. This corroborates
   combining only eligible antennas with a power-weighted exponent, then
@@ -356,9 +460,10 @@ homeworlds, or other physics patches may require edits.
 For example, Suluco's preset is radius **520 km**, `mu = 2.253960436e12 m³/s²`,
 atmosphere height **65 km**, and SOI radius approximately **31,359.322 km**.
 A **700 km** circular orbit has an ideal period of about **5,639.576 s**
-(**1 h 34 min 0 s** when displayed). The model treats binary-system bodies as
-individual spheres; other bodies' occlusion, perturbations, and changing
-interplanetary signal paths are not calculated.
+(**1 h 34 min 0 s** when displayed). The local relay model treats binary-system
+bodies as individual spheres; other bodies' occlusion and perturbations are not
+calculated there. The separate Signals section checks one common-center
+interplanetary reference link with the limits described above.
 
 Preset values are reference facts for the pinned versions. Relay coverage and
 deployment calculations remain separate from the OPM analytic maneuver model

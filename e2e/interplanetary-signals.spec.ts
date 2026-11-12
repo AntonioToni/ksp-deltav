@@ -1,0 +1,412 @@
+import { readFile } from 'node:fs/promises'
+import { expect, test, type Locator, type Page } from '@playwright/test'
+import { missionModeButton } from './helpers/missionMode'
+
+const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
+const planner = (page: Page) => page.getByRole('dialog', { name: 'CommNet relay planner', exact: true })
+const signal = (page: Page) => planner(page).getByTestId('interplanetary-planner')
+const combo = (page: Page, name: string) => planner(page).getByRole('combobox', { name, exact: true })
+const field = (page: Page, name: string) => planner(page).getByRole('spinbutton', { name, exact: true })
+const metric = (page: Page, id: string) => planner(page).getByTestId(id)
+// MUI gives group headings the option role too, but only actual choices have a value.
+const selectableOptions = (page: Page) => page.locator('[role="option"][data-value]')
+const phase = (page: Page) => planner(page).getByRole('slider', { name: 'Relative phase', exact: true })
+const arrayEditor = (page: Page, endpoint: 'A' | 'B') => page.getByRole('dialog', { name: `Endpoint ${endpoint} antenna array`, exact: true })
+let browserErrors: string[]
+
+test.beforeEach(async ({ page }) => {
+  browserErrors = []
+  page.on('pageerror', error => browserErrors.push(error.message))
+  page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()) })
+  await page.goto('./')
+  await expect(button(page, 'CommNet relay planner')).toBeVisible()
+})
+
+test.afterEach(() => {
+  expect(browserErrors, 'Interplanetary planning should not produce browser errors').toEqual([])
+})
+
+async function openSignals(page: Page) {
+  await button(page, 'CommNet relay planner').click()
+  await expect(planner(page)).toBeVisible()
+  await section(page, 'Signals')
+  await expect(signal(page)).toBeVisible()
+}
+
+async function section(page: Page, name: 'Network' | 'Deployment' | 'Body data' | 'Signals') {
+  await planner(page).getByRole('tab', { name, exact: true }).click()
+}
+
+async function choose(page: Page, label: string, option: string) {
+  await combo(page, label).click()
+  await page.getByRole('option', { name: option, exact: true }).click()
+}
+
+async function setPhase(page: Page, value: number) {
+  await phase(page).focus()
+  await phase(page).press('Home')
+  for (let index = 0; index < Math.floor(value / 10); index++) await phase(page).press('PageUp')
+  for (let index = 0; index < value % 10; index++) await phase(page).press('ArrowRight')
+  await expect(phase(page)).toHaveAttribute('aria-valuenow', String(value))
+}
+
+async function closePlanner(page: Page) {
+  await planner(page).getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(planner(page)).not.toBeVisible()
+}
+
+async function pageFits(page: Page) {
+  expect(await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight, x: scrollX, y: scrollY })))
+    .toEqual({ ...page.viewportSize()!, x: 0, y: 0 })
+}
+
+async function onScreen(locator: Locator, page: Page) {
+  const bounds = await locator.boundingBox()
+  expect(bounds).not.toBeNull()
+  if (!bounds) return
+  const viewport = page.viewportSize()!
+  expect(bounds.x).toBeGreaterThanOrEqual(-1)
+  expect(bounds.y).toBeGreaterThanOrEqual(-1)
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width + 1)
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height + 1)
+}
+
+async function configuration(page: Page, name: string) {
+  await button(page, 'Custom planet packs').click()
+  const manager = page.getByRole('dialog', { name: 'Planet packs', exact: true })
+  await manager.getByRole('tab', { name: 'Add-ons', exact: true }).click()
+  await manager.getByRole('button', { name: `Use ${name}`, exact: true }).click()
+  await expect(manager).not.toBeVisible()
+}
+
+test('separates circular range-only strength from central-body blocking and exposes its sources', async ({ page }) => {
+  await openSignals(page)
+  await expect(combo(page, 'Planet A')).toHaveText('Kerbin')
+  await expect(combo(page, 'Planet B')).toHaveText('Duna')
+  await expect(combo(page, 'Antenna A')).toHaveText('RA-100')
+  await expect(combo(page, 'Antenna B')).toHaveText('RA-100')
+  // Independent pinned SMA facts and stock smoothstep at a 100 Gm pair range.
+  await expect(metric(page, 'signal-distance')).toHaveText('24.79 Gm')
+  await expect(metric(page, 'signal-strength')).toHaveText('84.61%')
+  await expect(metric(page, 'signal-range')).toHaveText('100 Gm')
+  await expect(metric(page, 'signal-best')).toHaveText('98.55%')
+  await expect(metric(page, 'signal-worst')).toHaveText('72.74%')
+  await expect(metric(page, 'signal-link-status')).toHaveText('Link available')
+  await expect(signal(page).getByText(/Circular-reference envelope.*range only.*before occlusion/)).toBeVisible()
+  await expect(signal(page).getByText(/circular reference model, not a date/)).toBeVisible()
+  const orbit = metric(page, 'signals-orbit-diagram')
+  const chart = metric(page, 'signals-strength-chart')
+  await expect(orbit).toHaveAttribute('role', 'img')
+  await expect(chart).toHaveAttribute('aria-label', 'Signal strength by relative phase')
+  await expect(chart.locator('[data-signal-curve]')).toHaveCount(2)
+  await expect(chart.locator('[data-signal-occlusion-band]')).toHaveCount(1)
+  const curves = await chart.locator('[data-signal-curve]').evaluateAll(elements => elements.map(element => element.getAttribute('d')))
+  expect(curves[0]).not.toEqual(curves[1])
+  expect(curves.join(' ')).not.toMatch(/NaN|Infinity/)
+  await planner(page).getByRole('button', { name: 'Closest', exact: true }).click()
+  await expect(metric(page, 'signal-distance')).toHaveText('7.126 Gm')
+  await expect(metric(page, 'signal-strength')).toHaveText('98.55%')
+  await expect(orbit).toHaveAttribute('data-signal-phase', '0')
+  await planner(page).getByRole('button', { name: 'Opposite', exact: true }).click()
+  await expect(metric(page, 'signal-distance')).toHaveText('34.326 Gm')
+  await expect(metric(page, 'signal-strength')).toHaveText('0%')
+  await expect(metric(page, 'signal-link-status')).toHaveText('Blocked by Kerbol')
+  await expect(metric(page, 'signal-worst')).toHaveText('72.74%')
+  await expect(orbit.locator('[data-signal-link-status]')).toHaveAttribute('data-signal-link-status', 'blocked')
+  await signal(page).getByText('Signal assumptions and sources', { exact: true }).click()
+  await expect(planner(page).getByRole('link', { name: 'Stock CommNet signal-strength curve · pinned calculator reference', exact: true }))
+    .toHaveAttribute('href', /2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80\/src\/endpoint.rs$/)
+  await expect(planner(page).getByRole('link', { name: /KSPTOT Kerbol physical radius/ })).toHaveAttribute('href', /9972b57398742263af12374652799db210395499/)
+})
+
+test('supports manual radii, keyboard phase, exact antenna boundaries, and invalid-input recovery', async ({ page }) => {
+  await openSignals(page)
+  await choose(page, 'Antenna A', 'RA-15')
+  await choose(page, 'Antenna B', 'RA-15')
+  await expect(metric(page, 'signal-link-status')).toHaveText('Out of antenna range')
+  await planner(page).getByRole('button', { name: 'Closest', exact: true }).click()
+  await expect(metric(page, 'signal-strength')).toHaveText('53.73%')
+  await choose(page, 'Signal geometry', 'Manual orbits')
+  await expect(field(page, 'Orbit radius A')).toHaveValue('13.599840256')
+  await expect(field(page, 'Orbit radius B')).toHaveValue('20.726155264')
+  await expect(field(page, 'Central radius')).toHaveValue('261600')
+  await field(page, 'Orbit radius A').fill('10')
+  await field(page, 'Orbit radius B').fill('20')
+  await field(page, 'Central radius').fill('100000')
+  for (const endpoint of ['A', 'B']) {
+    await choose(page, `Antenna ${endpoint}`, 'Custom power')
+    await field(page, `Power ${endpoint}`).fill('10000000000')
+  }
+  await expect(metric(page, 'signal-distance')).toHaveText('10 Gm')
+  await expect(metric(page, 'signal-range')).toHaveText('10 Gm')
+  await expect(metric(page, 'signal-strength')).toHaveText('0%')
+  await expect(metric(page, 'signal-link-status')).toHaveText('Link at boundary')
+  await field(page, 'Power A').fill('100000000000')
+  await field(page, 'Power B').fill('100000000000')
+  await expect(metric(page, 'signal-strength')).toHaveText('97.2%')
+  await phase(page).focus()
+  await phase(page).press('End')
+  await expect(phase(page)).toHaveAttribute('aria-valuenow', '360')
+  await expect(metric(page, 'signals-orbit-diagram')).toHaveAttribute('data-signal-phase', '0')
+  await expect(metric(page, 'signals-strength-chart').locator('[data-signal-phase-marker]')).toHaveAttribute('data-signal-phase-marker', '360')
+  await expect(metric(page, 'signal-strength')).toHaveText('97.2%')
+  await setPhase(page, 90)
+  await expect(metric(page, 'signal-distance')).toHaveText('22.361 Gm')
+  await expect(metric(page, 'signal-strength')).toHaveText('87.24%')
+  await field(page, 'Orbit radius A').fill('0')
+  await expect(field(page, 'Orbit radius A')).toHaveAttribute('aria-invalid', 'true')
+  await expect(metric(page, 'signal-distance')).toHaveCount(0)
+  await field(page, 'Orbit radius A').fill('10')
+  await field(page, 'Occlusion factor').fill('1.1')
+  await expect(field(page, 'Occlusion factor')).toHaveAttribute('aria-invalid', 'true')
+  await expect(metric(page, 'signal-distance')).toHaveCount(0)
+  await field(page, 'Occlusion factor').fill('1')
+  await field(page, 'Range multiplier').fill('0')
+  await expect(field(page, 'Range multiplier')).toHaveAttribute('aria-invalid', 'true')
+  await expect(metric(page, 'signal-distance')).toHaveCount(0)
+  await field(page, 'Range multiplier').fill('1')
+  await expect(metric(page, 'signal-distance')).toHaveText('22.361 Gm')
+})
+
+test('keeps DSN powers attached to the home endpoint when swapping or changing planets', async ({ page }) => {
+  await openSignals(page)
+  await combo(page, 'Antenna B').click()
+  await expect(page.getByRole('option', { name: /DSN level/ })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await choose(page, 'Antenna A', 'DSN level 3')
+  await expect(metric(page, 'signal-range')).toHaveText('158.114 Gm')
+  const strengthBefore = await metric(page, 'signal-strength').textContent()
+  await planner(page).getByRole('button', { name: 'Swap signal endpoints', exact: true }).click()
+  await expect(combo(page, 'Planet A')).toHaveText('Duna')
+  await expect(combo(page, 'Planet B')).toHaveText('Kerbin')
+  await expect(combo(page, 'Antenna A')).toHaveText('RA-100')
+  await expect(combo(page, 'Antenna B')).toHaveText('DSN level 3')
+  await expect(phase(page)).toHaveAttribute('aria-valuenow', '270')
+  await expect(metric(page, 'signal-strength')).toHaveText(strengthBefore!)
+  await expect(metric(page, 'signal-range')).toHaveText('158.114 Gm')
+  await choose(page, 'Planet B', 'Eve')
+  await expect(combo(page, 'Antenna B')).toHaveText('RA-100')
+  await expect(metric(page, 'signal-range')).toHaveText('100 Gm')
+  await combo(page, 'Antenna B').click()
+  await expect(page.getByRole('option', { name: /DSN level/ })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+})
+
+test('edits one mixed endpoint array, cancels drafts, and rescales part powers once', async ({ page }) => {
+  await openSignals(page)
+  await choose(page, 'Antenna A', 'Antenna array…')
+  let dialog = arrayEditor(page, 'A')
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('spinbutton', { name: 'Antenna count 1', exact: true }).fill('2')
+  await dialog.getByRole('button', { name: 'Add antenna', exact: true }).click()
+  await dialog.getByRole('combobox', { name: 'Antenna 2', exact: true }).click()
+  await page.getByRole('option', { name: 'RA-15', exact: true }).click()
+  // Same exponent .75: strongest100Gm × (2×100Gm+15Gm)/100Gm ^ .75.
+  await expect(dialog.getByTestId('antenna-array-count')).toHaveText('3')
+  await expect(dialog.getByTestId('antenna-array-power')).toHaveText('177.6 Gm')
+  await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
+  await expect(combo(page, 'Antenna A')).toHaveText('Array (3)')
+  await expect(metric(page, 'signal-power-a')).toHaveText('Effective power 177.553 Gm')
+  await expect(metric(page, 'signal-range')).toHaveText('133.249 Gm')
+  await choose(page, 'Antenna A', 'Antenna array…')
+  dialog = arrayEditor(page, 'A')
+  await dialog.getByRole('spinbutton', { name: 'Antenna count 1', exact: true }).fill('4')
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(metric(page, 'signal-range')).toHaveText('133.249 Gm')
+  await choose(page, 'Radio setup', 'RSS CommNet (without CBK)')
+  await expect(combo(page, 'Antenna A')).toHaveText('Array (3)')
+  await expect(metric(page, 'signal-power-a')).toHaveText('Effective power 3.551 Tm')
+  await expect(metric(page, 'signal-range')).toHaveText('2.665 Tm')
+  await choose(page, 'Antenna B', 'Antenna array…')
+  dialog = arrayEditor(page, 'B')
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByTestId('antenna-array-power')).toHaveText('2,000 Gm')
+  await expect(dialog.getByTestId('antenna-array-power')).toHaveAttribute('title', '2,000,000,000,000 m')
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(combo(page, 'Antenna B')).toHaveText('RA-100')
+})
+
+test('applies RSS vessel scaling and the conditional DSN patch without scaling custom powers', async ({ page }) => {
+  await button(page, 'RSS').click()
+  await openSignals(page)
+  await expect(combo(page, 'Planet A')).toHaveText('Earth')
+  await expect(combo(page, 'Planet B')).toHaveText('Mars')
+  await expect(combo(page, 'Radio setup')).toHaveText('RSS CommNet (without CBK)')
+  await expect(metric(page, 'signal-power-a')).toHaveText('Effective power 2 Tm')
+  await expect(metric(page, 'signal-range')).toHaveText('2 Tm')
+  await choose(page, 'Antenna A', 'DSN level 3')
+  await expect(metric(page, 'signal-range')).toHaveText('707.107 Gm')
+  await choose(page, 'Radio setup', 'RSS + CustomBarnKit')
+  await expect(metric(page, 'signal-range')).toHaveText('10 Tm')
+  await choose(page, 'Antenna A', 'Custom power')
+  await field(page, 'Power A').fill('100000000000')
+  await expect(metric(page, 'signal-range')).toHaveText('447.214 Gm')
+  await choose(page, 'Radio setup', 'RSS CommNet (without CBK)')
+  await expect(field(page, 'Power A')).toHaveValue('100000000000')
+  await expect(metric(page, 'signal-range')).toHaveText('447.214 Gm')
+  await choose(page, 'Radio setup', 'Stock CommNet')
+  await expect(field(page, 'Power A')).toHaveValue('100000000000')
+  await expect(metric(page, 'signal-range')).toHaveText('100 Gm')
+  await section(page, 'Network')
+  await expect(combo(page, 'Radio setup')).toHaveText('Stock CommNet')
+  await expect(combo(page, 'Relay body')).toHaveText('Earth')
+})
+
+test('keeps OPM reparenting correct and starts fresh Signals state after a pack switch', async ({ page }) => {
+  await openSignals(page)
+  await planner(page).getByRole('button', { name: 'Opposite', exact: true }).click()
+  await choose(page, 'Antenna A', 'Custom power')
+  await field(page, 'Power A').fill('123456789')
+  await closePlanner(page)
+  await button(page, 'OPM').click()
+  await openSignals(page)
+  await expect(phase(page)).toHaveAttribute('aria-valuenow', '90')
+  await expect(combo(page, 'Antenna A')).toHaveText('RA-100')
+  await expect(metric(page, 'signal-range')).toHaveText('100 Gm')
+  await combo(page, 'Planet A').click()
+  await expect(selectableOptions(page)).toHaveCount(10)
+  await expect(page.getByRole('option', { name: 'Eeloo', exact: true })).toHaveCount(0)
+  await page.getByRole('option', { name: 'Sarnus', exact: true }).click()
+  await expect(combo(page, 'Planet A')).toHaveText('Sarnus')
+  await expect(metric(page, 'signal-distance')).not.toHaveText('—')
+})
+
+for (const pack of ['Stock + Kcalbeloh', 'OPM + Kcalbeloh']) {
+  test(`keeps reference pairs in one physical center in ${pack}`, async ({ page }) => {
+    await configuration(page, pack)
+    await openSignals(page)
+    await combo(page, 'Planet A').click()
+    await expect(selectableOptions(page)).toHaveCount(pack === 'Stock + Kcalbeloh' ? 20 : 23)
+    for (const excluded of ['Simetra', 'Simeht', 'Noira', 'Arorua', 'Aralc-B', 'WH-3141 A', 'WH-3141 B', 'Tot']) {
+      await expect(page.getByRole('option', { name: excluded, exact: true })).toHaveCount(0)
+    }
+    await page.getByRole('option', { name: 'Onrefni', exact: true }).click()
+    await combo(page, 'Planet B').click()
+    await expect(page.getByRole('option')).toHaveText(['Rouqea', 'Iomena', 'Uleg'])
+    await page.getByRole('option', { name: 'Rouqea', exact: true }).click()
+    await planner(page).getByRole('button', { name: 'Opposite', exact: true }).click()
+    await expect(metric(page, 'signal-link-status')).toHaveText('Blocked by Kcalbeloh')
+    await choose(page, 'Planet A', 'Mehtna')
+    await expect(combo(page, 'Planet B')).toHaveText('Meiuqer')
+    await combo(page, 'Planet B').click()
+    await expect(page.getByRole('option')).toHaveText(['Meiuqer'])
+    await page.getByRole('option', { name: 'Meiuqer', exact: true }).click()
+    await expect(metric(page, 'signal-link-status')).toHaveText('Blocked by Maelg')
+    await choose(page, 'Planet A', 'Suluco')
+    await combo(page, 'Planet B').click()
+    await expect(page.getByRole('option')).toHaveText(['Sedah', 'Sera', 'Noi'])
+    await page.getByRole('option', { name: 'Sera', exact: true }).click()
+    await expect(metric(page, 'signal-link-status')).toHaveText('Blocked by Sunorc')
+  })
+}
+
+test('requires user-supplied signal geometry for an unfamiliar imported system', async ({ page }) => {
+  const pack = JSON.parse(await readFile('docs/examples/custom-pack.json', 'utf8')) as { name: string }
+  await button(page, 'Custom planet packs').click()
+  const manager = page.getByRole('dialog', { name: 'Planet packs', exact: true })
+  await manager.getByRole('tab', { name: 'Custom packs', exact: true }).click()
+  await manager.getByLabel('Import planet pack', { exact: true }).setInputFiles({ name: 'manual-signals.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(pack)) })
+  await manager.getByRole('button', { name: `Use ${pack.name}`, exact: true }).click()
+  await openSignals(page)
+  await expect(combo(page, 'Signal geometry')).toHaveText('Manual orbits')
+  await expect(field(page, 'Orbit radius A')).toHaveValue('')
+  await expect(field(page, 'Orbit radius B')).toHaveValue('')
+  await expect(field(page, 'Central radius')).toHaveValue('')
+  await expect(metric(page, 'signal-strength')).toHaveCount(0)
+  await field(page, 'Orbit radius A').fill('10')
+  await field(page, 'Orbit radius B').fill('20')
+  await field(page, 'Central radius').fill('100000')
+  await expect(metric(page, 'signal-distance')).toHaveText('22.361 Gm')
+  await expect(metric(page, 'signal-strength')).toHaveText('87.24%')
+  await signal(page).getByText('Signal assumptions and sources', { exact: true }).click()
+  await expect(planner(page).getByRole('link', { name: /Kerbol physical radius/ })).toHaveCount(0)
+  await expect(signal(page).getByText(/Manual geometry is user supplied/)).toBeVisible()
+})
+
+test('preserves mission and local relay inputs across Signals tabs and reopening', async ({ page }) => {
+  for (const id of ['stock:kerbin:surface', 'stock:mun:surface']) {
+    const node = page.locator(`[data-node-id="${id}"]`)
+    await node.focus(); await node.press('Enter')
+  }
+  await missionModeButton(page, 'round-trip').click()
+  const reserve = page.getByRole('slider', { name: 'Redundancy', exact: true })
+  await reserve.focus()
+  for (let index = 0; index < 4; index++) await reserve.press('ArrowRight')
+  await expect(page.getByTestId('route-total')).toHaveText('12,288 m/s')
+  await button(page, 'CommNet relay planner').click()
+  await choose(page, 'Relay body', 'Kerbin')
+  await field(page, 'Orbit altitude').fill('900')
+  await section(page, 'Signals')
+  await planner(page).getByRole('button', { name: 'Closest', exact: true }).click()
+  await choose(page, 'Antenna A', 'Custom power')
+  await field(page, 'Power A').fill('100000000000')
+  await field(page, 'Range multiplier').fill('2')
+  await expect(metric(page, 'signal-range')).toHaveText('200 Gm')
+  await section(page, 'Network')
+  await expect(combo(page, 'Relay body')).toHaveText('Kerbin')
+  await expect(field(page, 'Orbit altitude')).toHaveValue('900')
+  await section(page, 'Body data')
+  await expect(field(page, 'Range multiplier')).toHaveValue('2')
+  await section(page, 'Signals')
+  await expect(phase(page)).toHaveAttribute('aria-valuenow', '0')
+  await expect(field(page, 'Power A')).toHaveValue('100000000000')
+  await closePlanner(page)
+  await expect(page.getByTestId('route-total')).toHaveText('12,288 m/s')
+  await expect(missionModeButton(page, 'round-trip')).toHaveAttribute('aria-pressed', 'true')
+  await button(page, 'CommNet relay planner').focus()
+  await button(page, 'CommNet relay planner').press('Enter')
+  await expect(planner(page).getByRole('tab', { name: 'Signals', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(field(page, 'Power A')).toHaveValue('100000000000')
+  await expect(metric(page, 'signal-range')).toHaveText('200 Gm')
+  await page.keyboard.press('Escape')
+  await expect(planner(page)).not.toBeVisible()
+  await expect(button(page, 'CommNet relay planner')).toBeFocused()
+})
+
+for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }, { width: 2560, height: 1440 }]) {
+  test(`keeps Signals controls, charts, and close actions usable at ${viewport.width}×${viewport.height}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(viewport)
+    await openSignals(page)
+    await onScreen(planner(page), page)
+    for (const name of ['Network', 'Deployment', 'Body data', 'Signals']) {
+      await onScreen(planner(page).getByRole('tab', { name, exact: true }), page)
+    }
+    await onScreen(planner(page).getByRole('button', { name: 'Close', exact: true }), page)
+    await onScreen(planner(page).getByRole('button', { name: 'Close relay planner', exact: true }), page)
+    for (const label of ['Signal geometry', 'Radio setup', 'Planet A', 'Planet B', 'Antenna A', 'Antenna B']) {
+      await combo(page, label).scrollIntoViewIfNeeded()
+      await onScreen(combo(page, label), page)
+    }
+    await signal(page).getByRole('heading', { name: 'Interplanetary signals', exact: true }).scrollIntoViewIfNeeded()
+    if (testInfo.project.name === 'desktop') await page.screenshot({ path: `/tmp/signals-controls-${viewport.width}.png`, animations: 'disabled' })
+    for (const id of ['signals-orbit-diagram', 'signals-strength-chart']) {
+      await metric(page, id).scrollIntoViewIfNeeded()
+      await onScreen(metric(page, id), page)
+      if (testInfo.project.name === 'desktop') await page.screenshot({ path: `/tmp/signals-${id}-${viewport.width}.png`, animations: 'disabled' })
+    }
+    const opposite = planner(page).getByRole('button', { name: 'Opposite', exact: true })
+    await opposite.scrollIntoViewIfNeeded()
+    if (testInfo.project.name === 'mobile') await opposite.tap(); else await opposite.click()
+    await expect(metric(page, 'signal-strength')).toHaveText('0%')
+    await expect(metric(page, 'signal-link-status')).toHaveText('Blocked by Kerbol')
+    await phase(page).scrollIntoViewIfNeeded()
+    await onScreen(phase(page), page)
+    if (viewport.width === 320) {
+      // Bring the feedback region into view deliberately: nearest-target scrolling
+      // can leave the already-visible slider beside a clipped preceding metric.
+      await phase(page).evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest' }))
+      await expect(signal(page).getByText('Current separation', { exact: true })).toBeInViewport({ ratio: .99999 })
+      await expect(signal(page).getByText('Signal now', { exact: true })).toBeInViewport({ ratio: .99999 })
+      await expect(metric(page, 'signal-distance')).toBeInViewport({ ratio: .99999 })
+      await expect(metric(page, 'signal-strength')).toBeInViewport({ ratio: .99999 })
+      // MUI clips the native range input; verify the rendered rail/thumb control.
+      await expect(signal(page).locator('.MuiSlider-root')).toBeInViewport({ ratio: .99999 })
+      await page.screenshot({ path: `/tmp/signals-phase-feedback-${testInfo.project.name}-320.png`, animations: 'disabled' })
+    }
+    await pageFits(page)
+    await closePlanner(page)
+    await pageFits(page)
+    await onScreen(button(page, 'Choose origin'), page)
+    await onScreen(button(page, 'Choose destination'), page)
+  })
+}

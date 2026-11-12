@@ -14,6 +14,8 @@ interface AntennaArrayDialogProps {
   entries: readonly AntennaArrayEntry[]
   antennas?: readonly CommNetAntenna[]
   radioLabel?: string
+  title?: string
+  description?: string
   onApply: (entries: AntennaArrayEntry[]) => void
   onClose: () => void
 }
@@ -39,7 +41,7 @@ function validCount(text: string): boolean {
   return text.trim() !== '' && Number.isInteger(count) && count >= 1 && count <= 100
 }
 
-function ArrayContent({ role, entries, antennas: catalog = vesselAntennas, radioLabel, onApply, onClose, headingId, descriptionId }: Omit<AntennaArrayDialogProps, 'open'> & { headingId: string; descriptionId: string }) {
+function ArrayContent({ role, entries, antennas: catalog = vesselAntennas, radioLabel, title: customTitle, description, onApply, onClose, headingId, descriptionId }: Omit<AntennaArrayDialogProps, 'open'> & { headingId: string; descriptionId: string }) {
   const antennas = role === 'relay' ? catalog.filter(antenna => antenna.relay) : catalog
   const [draft, setDraft] = useState<DraftEntry[]>(() => entries.map((entry, index) => ({ key: index, antennaId: entry.antennaId, count: String(entry.count) })))
   const nextKey = useRef(entries.length)
@@ -48,7 +50,7 @@ function ArrayContent({ role, entries, antennas: catalog = vesselAntennas, radio
   const available = antennas.filter(antenna => !draft.some(entry => entry.antennaId === antenna.id))
   const enteredCount = draft.reduce((sum, entry) => sum + (validCount(entry.count) ? Number(entry.count) : 0), 0)
   const atLimit = available.length === 0 || enteredCount >= 100
-  const title = role === 'relay' ? 'Relay antenna array' : 'Surface antenna array'
+  const title = customTitle ?? (role === 'relay' ? 'Relay antenna array' : 'Surface antenna array')
 
   function update(key: number, changes: Partial<Omit<DraftEntry, 'key'>>) {
     setDraft(previous => previous.map(entry => entry.key === key ? { ...entry, ...changes } : entry))
@@ -68,9 +70,9 @@ function ArrayContent({ role, entries, antennas: catalog = vesselAntennas, radio
     <Box id={descriptionId} sx={{ px: 1.5, pb: .75 }}>
       {radioLabel && <Typography sx={{ mb: .25, fontSize: 11, lineHeight: 1.4, color: 'primary.light' }}>{radioLabel}</Typography>}
       <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>
-        {role === 'relay'
+        {description ?? (role === 'relay'
           ? 'This loadout is fitted to each relay. Antennas on separate satellites do not combine.'
-          : 'This loadout describes one surface craft. Direct and relay antennas may combine for this endpoint.'}
+          : 'This loadout describes one surface craft. Direct and relay antennas may combine for this endpoint.')}
       </Typography>
     </Box>
     <DialogContent sx={{ px: 1.5, pt: .5, pb: .75, minWidth: 0, minHeight: 0, overflowY: 'auto' }}>
@@ -118,11 +120,11 @@ function ArrayContent({ role, entries, antennas: catalog = vesselAntennas, radio
   </>
 }
 
-export default function AntennaArrayDialog({ open, role, entries, antennas = vesselAntennas, radioLabel, onApply, onClose }: AntennaArrayDialogProps) {
+export default function AntennaArrayDialog({ open, role, entries, antennas = vesselAntennas, radioLabel, title, description, onApply, onClose }: AntennaArrayDialogProps) {
   const id = useId().replace(/:/g, '')
   const headingId = `${id}-antenna-array-heading`
   const descriptionId = `${id}-antenna-array-description`
   return <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" aria-labelledby={headingId} aria-describedby={descriptionId} sx={{ '& .MuiDialog-paper': { m: 1, width: 'calc(100% - 16px)', maxHeight: 'calc(100dvh - 16px)' } }}>
-    <ArrayContent key={`${role}:${open}`} role={role} entries={entries} antennas={antennas} radioLabel={radioLabel} onApply={onApply} onClose={onClose} headingId={headingId} descriptionId={descriptionId} />
+    <ArrayContent key={`${role}:${open}`} role={role} entries={entries} antennas={antennas} radioLabel={radioLabel} title={title} description={description} onApply={onApply} onClose={onClose} headingId={headingId} descriptionId={descriptionId} />
   </Dialog>
 }

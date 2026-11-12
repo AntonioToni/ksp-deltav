@@ -347,7 +347,7 @@ export default function App() {
             </Button>
             </Box>
           </Tooltip>
-          <Tooltip title="CommNet relay coverage and deployment planning">
+          <Tooltip title="CommNet relay coverage, deployment, and interplanetary signals">
             <Button aria-label="CommNet relay planner" aria-haspopup="dialog" aria-expanded={showRelays} onClick={() => {
               if (selection === 'stop') setSelection(previousSelection.current)
               setShowStops(false)

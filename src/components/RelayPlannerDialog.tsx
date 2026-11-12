@@ -15,6 +15,7 @@ import { calculateRelayPlan, type RelayNetworkInput } from '../utils/relay'
 import { suggestRelayAltitudeKm } from '../utils/relayDefaults'
 import AntennaArrayDialog from './AntennaArrayDialog'
 import RelayDiagram from './RelayDiagram'
+import InterplanetaryPlanner from './InterplanetaryPlanner'
 
 interface RelayPlannerDialogProps {
   open: boolean
@@ -108,7 +109,8 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const [radioId, setRadioId] = useState<RadioProfileId>(() => defaultRadioProfileId(pack.id))
   const radioProfile = getRadioProfile(radioId)
   const { relayAntennas, clientAntennas, vesselAntennas, dsnLevels } = radioProfile
-  const [tab, setTab] = useState<'network' | 'deployment' | 'body'>(() => first && findRelayBodyPreset(first) ? 'network' : 'body')
+  const [tab, setTab] = useState<'network' | 'deployment' | 'body' | 'signals'>(() => !first ? 'signals' : findRelayBodyPreset(first) ? 'network' : 'body')
+  const [signalsOpened, setSignalsOpened] = useState(!first)
   const [satelliteCount, setSatelliteCount] = useState(3)
   const [relayId, setRelayId] = useState(relayAntennas.find(antenna => antenna.id === 'hg-5')?.id ?? relayAntennas[0]?.id ?? '')
   const [clientId, setClientId] = useState(clientAntennas.find(antenna => antenna.id === 'communotron-16')?.id ?? clientAntennas[0]?.id ?? '')
@@ -211,31 +213,29 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     </TextField>
   }
 
-  if (!body) return <>
-    <DialogTitle id="relay-planner-heading" sx={{ px: 1.5, py: 1, fontSize: 16 }}>CommNet relay planner</DialogTitle>
-    <DialogContent sx={{ px: 1.5, py: 1 }}><Typography sx={{ fontSize: 12, color: 'text.secondary' }}>This pack has no planetary bodies for relay planning.</Typography></DialogContent>
-    <DialogActions sx={{ px: 1.5, py: .75 }}><Button onClick={onClose}>Close</Button></DialogActions>
-  </>
-
   return <>
     <DialogTitle id="relay-planner-title-row" sx={{ px: 1.5, py: .5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, fontSize: 16, lineHeight: 1.5 }}>
       <Box component="span" id="relay-planner-heading">CommNet relay planner</Box>
       <IconButton aria-label="Close relay planner" size="small" onClick={onClose}><CloseRounded sx={{ fontSize: 19 }} /></IconButton>
     </DialogTitle>
-    <Box sx={{ px: 1.5, pt: 1.5, pb: .75, display: 'flex', alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' }, columnGap: 1, rowGap: .5, minWidth: 0 }}>
+    <Box sx={{ px: 1.5, pt: 1.5, pb: .75, display: tab === 'signals' || !body ? 'none' : 'flex', alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' }, columnGap: 1, rowGap: .5, minWidth: 0 }}>
       <TextField select fullWidth size="small" label="Relay body" value={bodyId} onChange={event => changeBody(event.target.value)} sx={{ ...fieldStyles, maxWidth: 380 }}>
         {bodies.map(candidate => <MenuItem key={candidate.id} value={candidate.id} sx={{ fontSize: 12 }}>{candidate.name}</MenuItem>)}
       </TextField>
       <Typography sx={{ display: usesRssBodyData ? 'block' : { xs: 'none', sm: 'block' }, flexBasis: usesRssBodyData ? { xs: '100%', sm: 'auto' } : undefined, fontSize: 11, lineHeight: 1.35, color: 'text.secondary', minWidth: 0, overflowWrap: 'anywhere' }}>{usesRssBodyData ? 'RSS body data' : pack.shortName ?? pack.name} · {radioProfile.name}</Typography>
     </Box>
-    <Tabs value={tab} onChange={(_, value: typeof tab) => setTab(value)} aria-label="Relay planner sections" variant="fullWidth" sx={{ px: 1.5, minHeight: 32, borderBottom: '1px solid', borderColor: 'divider', '& .MuiTab-root': { minHeight: 32, minWidth: 0, py: .5, px: 1, fontSize: 12, textTransform: 'none' } }}>
-      <Tab id="relay-network-tab" aria-controls="relay-network-panel" value="network" label="Network" />
-      <Tab id="relay-deployment-tab" aria-controls="relay-deployment-panel" value="deployment" label="Deployment" />
-      <Tab id="relay-body-tab" aria-controls="relay-body-panel" value="body" label="Body data" />
+    <Tabs value={tab} onChange={(_, value: typeof tab) => { setTab(value); if (value === 'signals') setSignalsOpened(true) }} aria-label="Relay planner sections" variant="fullWidth" sx={{ px: 1.5, minHeight: 32, borderBottom: '1px solid', borderColor: 'divider', '& .MuiTab-root': { minHeight: 32, minWidth: 0, py: .5, px: 1, fontSize: 12, textTransform: 'none' } }}>
+      <Tab id="relay-network-tab" aria-controls="relay-network-panel" value="network" label="Network" disabled={!body} />
+      <Tab id="relay-deployment-tab" aria-controls="relay-deployment-panel" value="deployment" label="Deployment" disabled={!body} />
+      <Tab id="relay-body-tab" aria-controls="relay-body-panel" value="body" label="Body data" disabled={!body} />
+      <Tab id="relay-signals-tab" aria-controls="relay-signals-panel" value="signals" label="Signals" />
     </Tabs>
     <DialogContent sx={{ p: 1.5, minWidth: 0, minHeight: 0, overflowY: 'auto', [compact]: { pb: 1 } }}>
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.25, '@media (min-width: 600px)': { gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' } }}>
-        <Box role="tabpanel" id={`relay-${tab}-panel`} aria-labelledby={`relay-${tab}-tab`} sx={{ minWidth: 0, containerType: 'inline-size' }}>
+      <Box role="tabpanel" id="relay-signals-panel" aria-labelledby="relay-signals-tab" hidden={tab !== 'signals'} sx={{ display: tab === 'signals' ? 'block' : 'none', minWidth: 0 }}>
+        {signalsOpened && <InterplanetaryPlanner pack={pack} initialBodyId={initialBodyId} radioId={radioId} onRadioChange={setRadioId} rangeMultiplier={rangeMultiplier} onRangeMultiplierChange={setRangeMultiplier} />}
+      </Box>
+      <Box sx={{ display: tab === 'signals' || !body ? 'none' : 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.25, '@media (min-width: 600px)': { gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' } }}>
+        <Box role={tab === 'signals' ? undefined : 'tabpanel'} id={tab === 'signals' ? undefined : `relay-${tab}-panel`} aria-labelledby={tab === 'signals' ? undefined : `relay-${tab}-tab`} sx={{ minWidth: 0, containerType: 'inline-size' }}>
           {tab === 'network' && <Stack spacing={.5}>
             <TextField select fullWidth size="small" label="Radio setup" value={radioId} onChange={event => setRadioId(event.target.value as RadioProfileId)} sx={fieldStyles}>
               {radioProfileOptions.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 12 }}>{option.name}</MenuItem>)}

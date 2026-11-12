@@ -45,8 +45,12 @@ return-only budgets, and add a reserve for your mission.
 - **CommNet relay planning** for circular, equally spaced constellations, with
   equatorial coverage, antenna ranges, resonant deployment estimates, and body
   presets for Stock, OPM, RSS, and Kcalbeloh planets and moons.
-- **Mixed antenna arrays** with separate relay and surface-client loadouts,
-  using stock antenna combining rules.
+- **Interplanetary signal planning** with antenna pairs, an interactive relative
+  phase view, circular-reference nearest/farthest strengths, and central-body
+  occlusion checks. Reference pairs cover Stock, OPM, RSS, and compatible local
+  Kcalbeloh systems; manual geometry supports other configurations.
+- **Mixed antenna arrays** with separate relay, surface-client, and interplanetary
+  endpoint loadouts, using stock antenna combining rules.
 - **A responsive map** with keyboard and touch selection, a deep-blue starfield,
   and no page or map scrolling.
 
@@ -158,6 +162,15 @@ satellite separately; antennas on different satellites do not combine. Arrays
 use the selected radio setup's powers. Custom powers are final effective values
 and are never scaled automatically.
 
+For planet-to-planet links, open **Relays → Signals**. Choose two planets around
+the same reference center and an antenna or array at each endpoint. A DSN power
+can represent the homeworld endpoint. Move **Relative phase**, or use **Closest**
+and **Opposite**, to inspect changing distance and central-body obstruction.
+The current signal includes that obstruction; the nearest/farthest cards show
+the circular-reference range-only envelope. Manual geometry accepts your own
+orbit radii and central radius. See the [signal guide](docs/RELAYS.md#interplanetary-signals)
+for scope and examples.
+
 ## About the estimates
 
 Open **Budget assumptions** beside the total to see the selected mission's
@@ -243,7 +256,12 @@ for choices and calculation assumptions.
 
 **Relay coverage is equatorial.** A visible surface receiver and a working local
 ring do not establish a connection back to the homeworld's Deep Space Network
-(DSN). The radio presets use stock CommNet rules with explicit Stock and RSS
+(DSN). **Signals checks one link** between vessels near the selected planets,
+using circular, coplanar reference orbits and a relative angle rather than dates.
+Its nearest/farthest strengths are not universal extrema for eccentric or
+inclined trajectories. Local endpoint horizons, other bodies, and complete DSN
+paths remain unchecked. The radio presets use stock CommNet rules with explicit
+Stock and RSS
 power configurations. RealAntennas and RemoteTech use different models and are
 not simulated; custom powers do not reproduce those models. The
 [validation record](docs/VALIDATION.md) describes the
@@ -274,8 +292,6 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 - Additional planet packs, rescaled systems, and alternative starting-homeworld
   configurations.
-- Interplanetary signal planning: antenna pairs, changing planet-to-planet
-  distances, best/worst-case signal strength, and occlusion checks.
 - Advanced relay planning: inclined and polar constellations for coverage beyond
   the equator, and complete communication paths through relays back to the DSN.
 

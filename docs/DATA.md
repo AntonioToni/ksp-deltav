@@ -9,9 +9,49 @@ No source artwork or layout is bundled. This planner uses a new schematic layout
 reference figures have been reorganized into named, directed maneuver records.
 
 The separate [CommNet relay guide](RELAYS.md) documents relay body constants,
-antenna presets, coverage geometry, and deployment estimates. Relay calculations
-remain separate from maneuver budgets. Stock, OPM, and RSS share their pinned physical
+antenna presets, coverage geometry, deployment estimates, and interplanetary
+signal references. CommNet calculations remain separate from maneuver budgets.
+Stock, OPM, and RSS share their pinned physical
 constants with the analytic direct-transfer model documented below.
+
+## Interplanetary signal references
+
+**Relays → Signals** uses the pinned semi-major axes already supplied by the
+Stock, OPM, RSS, and Kcalbeloh physical tables. Each selected orbit is
+circularized at that radius in a common plane around the same physical center.
+The phase control changes their relative angle; it does not advance a dated
+ephemeris or calculate a transfer window. The nearest/farthest distances and
+range-only strengths describe this circular reference, not guaranteed extrema
+of eccentric or inclined orbits.
+
+The reference catalog matches both body identity and parent identity, excludes
+moons, barycenters, wormholes, and cross-star pairs, and requires at least two
+eligible planets around a center. It contains **7 Stock**, **10 OPM**, and
+**11 RSS** planet references. Combined Stock/Kcalbeloh and OPM/Kcalbeloh packs
+contain **20** and **23** respectively: their local Kcalbeloh groups add four
+planets around Kcalbeloh, two around Maelg, four around Sunorc, and three around
+Aralc-A. Aralc-B's single eligible planet and binary-center children do not form
+a supported reference pair. Wormhole settings do not supply a radio path.
+
+Central occlusion uses physical radii, including **261,600,000 m for Kerbol**
+from the [pinned KSPTOT Sun record](https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini)
+and **696,342,000 m for the RSS Sun** from its
+[pinned official config](https://github.com/KSP-RO/RealSolarSystem/blob/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus/Sun.cfg).
+Kcalbeloh radii already include the default stellar-size patch in the shared
+facts. Full physical radius is the default; an entered occlusion factor changes
+the effective blocking sphere without changing the orbit radii. Stellar
+atmosphere flags are not used to guess a game occlusion multiplier.
+
+The single-link strength curve follows the
+[pinned CommNet calculator reference](https://github.com/IgaguriMK/ksp-commnet-calculator-core/blob/2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80/src/endpoint.rs):
+`R = sqrt(PA × PB) × rangeMultiplier`, `x = clamp(1 − distance/R, 0, 1)`,
+and `strength = 3x² − 2x³`. Central-body blockage makes the effective signal zero;
+the separate range-only value remains available for antenna comparison. This
+does not trace endpoint-local visibility, other bodies, relay forwarding, or a
+complete DSN/control path. Manual geometry is available for unknown custom
+packs and user-defined/rescaled references; it does not infer missing orbital
+data. See [Interplanetary signals](RELAYS.md#interplanetary-signals) for units,
+radio choices, diagrams, and worked reference values.
 
 ## Coverage and units
 

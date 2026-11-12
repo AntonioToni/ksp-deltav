@@ -23,7 +23,7 @@ Production output is written to `dist`. Production builds and previews use the
 ## Checks
 
 ```sh
-npm test             # Unit tests for packs, imports, layouts, missions, relays, and reserves
+npm test             # Unit tests for packs, imports, layouts, missions, CommNet, and reserves
 npm run lint         # ESLint
 npm run build        # Strict TypeScript checks and production bundle
 ```
@@ -107,6 +107,10 @@ On Linux CI machines that also need browser system dependencies, use
 | Relay geometry, antenna ranges, and resonant deployment | `src/utils/relay.ts` |
 | Relay workspace and constellation diagram | `src/components/RelayPlannerDialog.tsx`, `src/components/RelayDiagram.tsx` |
 | Staged relay and surface antenna loadout editor | `src/components/AntennaArrayDialog.tsx` |
+| Interplanetary signal input/result types | `src/types/interplanetary.ts` |
+| Common-center signal orbit and central-radius references | `src/data/interplanetary.ts` |
+| Single-link strength, distance, and central occlusion | `src/utils/interplanetary.ts` |
+| Signals controls and orbital/strength diagrams | `src/components/InterplanetaryPlanner.tsx`, `src/components/InterplanetaryDiagram.tsx` |
 | Theme and decorative background | `src/main.tsx`, `src/components/SpaceBackground.tsx` |
 | Browser workflows | `e2e/` |
 
@@ -487,6 +491,55 @@ links while retaining the uniformly spaced constellation. Tests cover analytical
 landmarks, range and limb boundaries, unsupported inputs, atmospheric clearance,
 SOI bounds, and responsive workflows. See [Relay planning](RELAYS.md) for formulas,
 sources, and scope.
+
+## Interplanetary signals
+
+The **Signals** section lives inside `RelayPlannerDialog` alongside local
+Network, Deployment, and Body data sections. It uses the same session and
+Delta-V-state separation. Signal inputs survive section changes and closing the
+workspace; a pack change resets them. Radio profile and range multiplier are
+shared with local planning, while central-body occlusion is a signal-model
+input with a full-radius default.
+
+`getInterplanetaryPresets(pack)` returns reviewed orbit and center records for
+the seven built-in pack IDs. It matches planetary body IDs and actual parents,
+requires a supported star/black-hole center, and retains only groups with at
+least two eligible planets. This excludes moved OPM Eeloo, moons, barycenters,
+wormholes, unsupported cross-star geometry, and unknown custom references from
+automatic planetary pairs. Unknown/rescaled configurations use the manual
+circular-geometry inputs instead of inheriting orbital facts by name.
+
+`calculateInterplanetarySignal` consumes explicit SI inputs: two circular orbit
+radii, physical central radius, final effective endpoint powers, range
+multiplier, occlusion factor, and relative phase. It validates inputs and
+returns either errors or normalized phase, endpoint coordinates, distance,
+maximum range, central clearance/status, current range-only/effective strength,
+and the circular nearest/farthest distance-strength envelope. It does not fetch
+an ephemeris or infer a date from the phase slider.
+
+The strength function is `3x² − 2x³` for `x = clamp(1 − d/R, 0, 1)`, where
+`R = sqrt(PA × PB) × rangeMultiplier`. Occluded segments have zero effective
+strength; the range-only value remains separate. The nearest/farthest strengths
+ignore occlusion and describe only circularized radii, so they cannot be labeled
+as universal worst-case bounds for eccentric or inclined trajectories. Exact
+limb and range cases remain marginal. Both circular radii must exceed the
+physical central radius even when the effective occlusion factor is smaller.
+
+Preset powers and array calculations already include the active radio profile's
+catalog scaling. Both direct and relay antennas may serve as single-link
+endpoints; role/forwarding constraints for a complete relay path are not inferred.
+Custom power remains a final endpoint value. DSN presets are offered for the
+known homeworld in reference mode; manually entered geometry remains an
+explicit user assumption. The orbital diagram and phase-strength samples use
+the same pure calculation engine as the metrics.
+
+The central radius catalog adds the pinned Kerbol and RSS Sun radii and reuses
+the default-patched Kcalbeloh facts. Do not select solar occlusion multipliers
+from the planner's `hasAtmosphere` flag: stellar technical atmospheres are
+intentionally excluded from its body classification. Keep the scope to one
+central occluder explicit; local endpoint visibility, other planets/stars, hardware
+deployment, and complete DSN/control paths remain separate work. See
+[Interplanetary signals](RELAYS.md#interplanetary-signals) for formulas and scope.
 
 ## GitHub Pages
 
