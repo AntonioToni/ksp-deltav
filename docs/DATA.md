@@ -47,11 +47,21 @@ The single-link strength curve follows the
 `R = sqrt(PA × PB) × rangeMultiplier`, `x = clamp(1 − distance/R, 0, 1)`,
 and `strength = 3x² − 2x³`. Central-body blockage makes the effective signal zero;
 the separate range-only value remains available for antenna comparison. This
-does not trace endpoint-local visibility, other bodies, relay forwarding, or a
+symmetric range reference accepts direct or relay antennas but does not verify
+receiver forwarding capability, endpoint-local visibility, other bodies, or a
 complete DSN/control path. Manual geometry is available for unknown custom
 packs and user-defined/rescaled references; it does not infer missing orbital
 data. See [Interplanetary signals](RELAYS.md#interplanetary-signals) for units,
 radio choices, diagrams, and worked reference values.
+
+The explicit Kerbalism 3.44 CommNet profiles retain this stock curve and the
+selected Stock/RSS range baseline. They add the direct Communotron 8 from its
+[pinned official part config](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/GameData/KerbalismConfig/Parts/ShortAntenna/kerbalism-antenna.cfg):
+250,000 m power, combinable with exponent 1, and no relay forwarding capability.
+Kerbalism science rates, powered/deployed antenna state, ElectricCharge, and
+storms are unmodeled. The [Kerbalism radio guide](RELAYS.md#kerbalism-radio-configuration)
+records the pinned adapter and damping references and explains the distinction
+between CommNet strength and science throughput.
 
 ## Coverage and units
 

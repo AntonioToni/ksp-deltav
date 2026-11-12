@@ -57,25 +57,27 @@ switch to a different radio model. Custom powers are final values: changing
 ## Antenna arrays
 
 Choose **Antenna array…** in the **Relay antenna** or **Surface antenna** list to
-open the matching array editor. Add stock antenna models, set their counts, and
-inspect their powers under the selected radio setup before choosing **Apply**.
+open the matching array editor. Add models from the selected radio catalog, set
+their counts, and inspect their powers before choosing **Apply**.
 **Cancel** or Escape
 discards the draft. Reopen the same array option to edit it, or choose a single
 antenna preset or **Custom power** to use that mode instead.
 
 An array contains **1–100 antennas per craft**, with one count per selected
 model. Relay arrays can use the four relay-capable models; surface-client arrays
-can mix all ten stock vessel models. The same relay loadout is fitted to **each
-satellite** in the ring. Antennas on separate satellites never combine. The DSN
-remains a single station power, with no array count.
+can mix all ten stock vessel models, plus Communotron 8 with a Kerbalism profile.
+The same relay loadout is fitted to **each satellite** in the ring. Antennas on
+separate satellites never combine. The DSN remains a single station power, with
+no array count.
 
 Applied arrays remain in the relay workspace during the same session, including
 when the tool is closed and reopened. Changing planet packs or reloading the
 page resets the workspace. Changing radio setup keeps the selected parts and
-counts, recalculating their powers from that setup's catalog. The resulting
-powers recalculate neighbor and
-surface ranges, coverage, and maximum DSN range. Orbital geometry and deployment
-burn estimates still depend on the orbit and physical body inputs.
+counts, recalculating compatible parts from that setup's catalog. An unavailable
+part stays selected and prevents a result until you edit the loadout or restore
+its radio setup. The resulting powers recalculate neighbor and surface ranges,
+coverage, and maximum DSN range. Orbital geometry and deployment burns still
+depend on the orbit and physical body inputs.
 
 Only antennas marked **combinable** contribute to the combined group. If each
 selected model has power `Pi`, count `ni`, and combinability exponent `ei`, use:
@@ -116,8 +118,8 @@ ratings and derived ranges, not signal-strength percentages.
 
 Open **Relays → Signals** to compare one antenna link between vessels near two
 planets. The radio model uses stock CommNet range, strength, and antenna-combining
-rules with the selected Stock/RSS power profile. It does not simulate a complete
-network path or place a ground station on the visible side of a planet.
+rules with the selected Stock, RSS, or Kerbalism profile. It does not simulate a
+complete network path or place a ground station on the visible side of a planet.
 
 1. Under **Signal geometry**, choose **Reference planets** and select **Planet A**
    and **Planet B**. The second list contains other supported planets around
@@ -140,10 +142,13 @@ network path or place a ground station on the visible side of a planet.
 
 **Radio setup** and the **Range multiplier** are shared with local relay
 planning. Changing the radio setup preserves part identities and array counts,
-then recalculates their powers from that setup's catalog. Custom powers remain
+recalculating compatible powers from its catalog. Unavailable choices remain
+visible for correction or restoring their radio setup. Custom powers remain
 already-effective values and are never scaled again. Both direct and relay
-antennas can be single-link endpoints; testing relay forwarding is a separate
-problem. Arrays combine antennas on one craft, never across the two endpoints.
+antennas can be selected for this symmetric range comparison. A vessel receiving
+a forwarding hop needs a relay-capable antenna; selecting two direct antennas
+does not verify a working vessel-to-vessel path. Arrays combine antennas on one
+craft, never across the two endpoints.
 
 ### Circular-reference distance and strength
 
@@ -238,8 +243,10 @@ Bodies without a landable surface still support orbital relay and deployment
 calculations, but have no surface coverage or surface-station result.
 
 The radio model follows **stock CommNet** range and combining rules. **Radio
-setup** supplies Stock or RSS-adjusted powers independently of the physical
-body data; see [RSS radio configuration](#rss-radio-configuration).
+setup** supplies Stock or RSS-adjusted powers, with optional Kerbalism antenna
+catalogs, independently of the physical body data; see
+[RSS radio configuration](#rss-radio-configuration) and
+[Kerbalism radio configuration](#kerbalism-radio-configuration).
 **RealAntennas** and **RemoteTech** use different models and are not simulated
 here. Custom effective powers do not reproduce their behavior.
 
@@ -292,9 +299,11 @@ equatorial coverage fraction = min(1, N theta / pi)
 The range and limb boundary checks remain separate from the coverage percentage:
 a percentage rounding to 100% is not proof of a robust link at the boundary.
 
-**Full radius**, the default, uses `f = 1`. With **Stock CommNet**, **KSP normal**
-uses `f = 0.75` for a body with an atmosphere and `f = 0.90` for an airless body.
-Both RSS radio setups use normal defaults of `f = 1` for either body type.
+**Full radius**, the default, uses `f = 1`. With **Stock CommNet** or
+**Kerbalism + CommNet**, **KSP normal** uses `f = 0.75` for a body with an
+atmosphere and `f = 0.90` for an airless body.
+All RSS radio setups, including their Kerbalism variants, use normal defaults
+of `f = 1` for either body type.
 These are effective game occlusion settings, not changes to a planet's physical
 radius or atmospheric height. The
 diagram distinguishes the effective occluder when it differs from the body.
@@ -509,6 +518,41 @@ RealAntennas and RemoteTech use different models and remain unsupported. An RSS,
 RO, or RP-1 installation using either radio overhaul should not use these
 CommNet profiles as a simulation of that overhaul. See the
 [validation record](VALIDATION.md) for the source audit and calculation checks.
+
+### Kerbalism radio configuration
+
+Select Kerbalism explicitly; the planet pack does not identify installed mods.
+The presets target **Kerbalism 3.44 using stock CommNet** with its default
+configuration:
+
+| Radio setup | Power and occlusion baseline |
+| --- | --- |
+| Kerbalism + CommNet | Stock CommNet |
+| Kerbalism + RSS | RSS CommNet without CBK |
+| Kerbalism + RSS + CBK | RSS + CustomBarnKit |
+
+Each keeps the baseline's range formula, combination rules, DSN powers, and
+Normal occlusion factors. The added **Communotron 8** has power **250 km**, is
+combinable with exponent **1**, and is a **direct antenna**, so it is unavailable
+for relay forwarding loadouts. RSS scales its power to **5 Mm**. Its
+[official part configuration](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/GameData/KerbalismConfig/Parts/ShortAntenna/kerbalism-antenna.cfg)
+is pinned to revision `39f9f43afe8b4f77aff0086c3866044287694475`, alongside the
+Kerbalism sources below. No part artwork or source implementation is bundled.
+Switching to a profile without Communotron 8 retains that choice as unavailable;
+select another antenna, edit/remove its array row, or restore a Kerbalism profile
+to resume the calculation.
+
+**Signal now** remains the stock CommNet percentage. Kerbalism's
+[CommNet adapter](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/Comms/CommHandlerCommNetBase.cs)
+uses that strength for a separate science rate, with a
+[system-calibrated damping exponent](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/Sim.cs).
+Science throughput also depends on the
+[geometric mean of active external antenna rates](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/Comms/CommHandlerCommNetVessel.cs),
+the minimum rate along the relay path, settings, and a positive-rate floor.
+These rates are
+not calculated here. ElectricCharge availability, powered/deployed antenna
+state, failures, and storms are also outside the model; a clear reference link
+does not establish control or a complete home connection.
 
 ### Retained MIT notice for the antenna reference
 

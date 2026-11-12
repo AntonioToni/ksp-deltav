@@ -151,13 +151,17 @@ body data automatically with either base system and wormhole setting. Inputs
 remain editable; **Restore preset** returns to the reference values. The
 [relay guide](docs/RELAYS.md) explains the calculations and supported data.
 
-**Radio setup** selects Stock CommNet, RSS CommNet without CustomBarnKit, or
-RSS + CustomBarnKit. RSS maps start with RSS antenna powers (20× stock) and
-stock DSN powers; select the CustomBarnKit option if your installation includes
-its RSS DSN patch. Radio setup can be changed independently of the body map.
+**Radio setup** selects Stock CommNet, either RSS configuration, or the explicit
+**Kerbalism + CommNet**, **Kerbalism + RSS**, and **Kerbalism + RSS + CBK** presets
+for Kerbalism 3.44. RSS maps start with RSS antenna powers (20× stock) and stock
+DSN powers; select a CustomBarnKit option if your installation includes its RSS
+DSN patch. Radio setup is shared by Network and Signals and can be changed
+independently of the body map. Kerbalism presets retain CommNet range and signal
+rules and add the direct **Communotron 8** antenna; science transmission rates
+are not calculated. See [Kerbalism radio configuration](docs/RELAYS.md#kerbalism-radio-configuration).
 
 Choose **Antenna array…** under **Relay antenna** or **Surface antenna** to mix
-stock parts and counts, then choose **Apply**. A relay loadout is fitted to each
+catalog parts and counts, then choose **Apply**. A relay loadout is fitted to each
 satellite separately; antennas on different satellites do not combine. Arrays
 use the selected radio setup's powers. Custom powers are final effective values
 and are never scaled automatically.
@@ -261,8 +265,10 @@ using circular, coplanar reference orbits and a relative angle rather than dates
 Its nearest/farthest strengths are not universal extrema for eccentric or
 inclined trajectories. Local endpoint horizons, other bodies, and complete DSN
 paths remain unchecked. The radio presets use stock CommNet rules with explicit
-Stock and RSS
-power configurations. RealAntennas and RemoteTech use different models and are
+Stock, RSS, and Kerbalism configurations. Communotron 8 cannot forward relay
+traffic, and a symmetric Signals antenna comparison does not verify forwarding.
+Kerbalism science rates, ElectricCharge availability, antenna deployment, and
+storms are not modeled. RealAntennas and RemoteTech use different models and are
 not simulated; custom powers do not reproduce those models. The
 [validation record](docs/VALIDATION.md) describes the
 checked data, independent calculation tests, and remaining limits.
@@ -292,7 +298,6 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 - Additional planet packs, rescaled systems, and alternative starting-homeworld
   configurations.
-- Kerbalism signal-strength preset for communication planning.
 - Advanced relay planning: inclined and polar constellations for coverage beyond
   the equator, and complete communication paths through relays back to the DSN.
 

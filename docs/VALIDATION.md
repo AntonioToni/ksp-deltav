@@ -485,6 +485,38 @@ a dated trajectory, deployed hardware, relay forwarding, control capability,
 or a complete route to the home DSN. Its sources and formulas are documented in
 the [signal guide](RELAYS.md#interplanetary-signals).
 
+### Kerbalism CommNet presets — 12 November 2026
+
+The explicit Kerbalism profiles target official **3.44**, pinned to revision
+`39f9f43afe8b4f77aff0086c3866044287694475`. The official part configuration
+supplies Communotron 8's **250,000 m** power, direct-only antenna type,
+combinability, and exponent **1**. The CommNet adapter and signal helper confirm
+that raw link strength retains the stock cubic curve. Kerbalism's science-rate
+damping, antenna-rate aggregation, relay-path bottlenecks, and positive-rate
+floor are separate behavior and are not simulated by these presets.
+
+Three profiles layer that antenna catalog onto Stock, RSS without CustomBarnKit,
+and RSS with CustomBarnKit. The pinned generic RSS transmitter patch also
+scales Communotron 8 by **20**, to **5,000,000 m**. No second scaling is applied
+to arrays, and custom effective powers stay unchanged. The original antenna and
+DSN powers and occlusion defaults remain those of the selected baseline.
+
+Independent fixtures check four Communotron 8 parts combining linearly to
+**1 Mm**, or **20 Mm** with RSS. With HG-5, its single-part surface-link range is
+**1,118,033.98875 m** under Stock and **22,360,679.775 m** under RSS. The same
+loadouts of existing stock parts produce identical complete relay results with
+and without Kerbalism. Relay forwarding catalogs reject Communotron 8.
+
+The full **1,083-unit-test suite across 41 files**, ESLint, strict TypeScript,
+and the production build passed. Production browser checks passed **20 new
+Kerbalism cases** and **110 existing relay/signal cases** across desktop and
+mobile. They cover shared preset selection, custom-power preservation, linear
+Communotron 8 arrays, RSS/CBK scaling, unavailable single/array choices and
+recovery, source visibility, occlusion labels, and mission/session retention.
+Controls remain usable at **320 × 568** and **667 × 375** without page overflow.
+The source references and interpretation
+limits are documented in the [Kerbalism radio guide](RELAYS.md#kerbalism-radio-configuration).
+
 ## Calculation checks
 
 - Ordered mission routing was compared with an independent Bellman–Ford search

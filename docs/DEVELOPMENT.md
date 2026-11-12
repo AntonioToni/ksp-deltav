@@ -100,7 +100,7 @@ On Linux CI machines that also need browser system dependencies, use
 | Custom pack import, export, and selection | `src/components/PlanetPacksDialog.tsx` |
 | Per-body atmospheric options and landing inputs | `src/components/AtmosphereDialog.tsx` |
 | CommNet presets and body reference constants | `src/data/commnet.ts` |
-| Stock/RSS radio profiles and conditional CustomBarnKit DSN powers | `src/data/radioProfiles.ts` |
+| Stock/RSS/Kerbalism CommNet profiles and conditional CustomBarnKit DSN powers | `src/data/radioProfiles.ts` |
 | Kcalbeloh relay physics and gravity/SOI derivation | `src/data/kcalbelohPhysics.ts` |
 | Automatic relay altitude within clearance and SOI bounds | `src/utils/relayDefaults.ts` |
 | Validated antenna loadouts and effective power | `src/utils/antennaArray.ts` |
@@ -452,20 +452,32 @@ affect Enceladus and Miranda.
 
 `radioProfiles.ts` keeps radio setup separate from physical body presets. The
 exact built-in `rss` pack defaults to the `rss` profile; other pack IDs default
-to `stock`. Users can select any profile independently. The three immutable
-catalogs are Stock CommNet, RSS without CustomBarnKit, and RSS + CustomBarnKit.
-Both RSS profiles multiply stock vessel powers by 20 while preserving antenna
-IDs and combining metadata. Only the CustomBarnKit profile substitutes DSN
-powers of 5e9/5e11/5e13 m; bare RSS retains stock DSN powers. Normal occlusion
-uses the active profile's factors (Stock 0.75/0.9, RSS 1/1), while the default
+to `stock`. Users can select any profile independently. The six immutable
+catalogs are Stock CommNet, RSS without CustomBarnKit, RSS + CustomBarnKit, and
+the corresponding Kerbalism 3.44 variants. RSS profiles multiply vessel powers
+by 20 while preserving antenna IDs and combining metadata. Only CustomBarnKit
+profiles substitute DSN powers of 5e9/5e11/5e13 m; bare RSS retains stock DSN
+powers. Normal occlusion uses the active profile's factors (Stock 0.75/0.9,
+RSS 1/1), while the default
 Full radius option remains 1. The range multiplier starts at 1 independently.
 
+Kerbalism variants add Communotron 8 as a direct, combinable antenna with
+250,000 m power and exponent 1 (5,000,000 m under RSS). It is excluded from
+relay forwarding catalogs. They retain stock CommNet ranges and strength;
+science throughput, damping, powered/deployed antenna state, ElectricCharge,
+and storms are not calculated. See the
+[pinned Kerbalism source notes](RELAYS.md#kerbalism-radio-configuration).
+
 Changing radio profile keeps body/orbit drafts, antenna IDs, array entries, and
-custom power inputs. Presets and arrays recalculate from the selected catalog;
-custom powers remain final effective values without profile multiplication.
+custom power inputs. Compatible presets and arrays recalculate from the selected
+catalog; custom powers remain final effective values without profile multiplication.
+Unavailable selections stay visible and invalidate the result until the user
+changes the antenna/loadout or restores its radio profile. An array row is not
+silently removed when its model is unavailable.
 Changing body within a pack preserves the profile, and the existing pack key
 resets the complete relay session on pack changes. Profile sources pin the
-official RSS range patch and CommNet defaults; the [relay guide](RELAYS.md#rss-radio-configuration)
+official RSS range patch, CommNet defaults, and Kerbalism part/adapter sources;
+the [relay guide](RELAYS.md#rss-radio-configuration)
 records the installation assumptions. RealAntennas and RemoteTech remain outside
 this model.
 
@@ -526,8 +538,9 @@ limb and range cases remain marginal. Both circular radii must exceed the
 physical central radius even when the effective occlusion factor is smaller.
 
 Preset powers and array calculations already include the active radio profile's
-catalog scaling. Both direct and relay antennas may serve as single-link
-endpoints; role/forwarding constraints for a complete relay path are not inferred.
+catalog scaling. Both direct and relay antennas may serve as endpoints for this
+symmetric range reference; a receiving vessel hop still requires relay
+capability, and a complete forwarding path is not verified.
 Custom power remains a final endpoint value. DSN presets are offered for the
 known homeworld in reference mode; manually entered geometry remains an
 explicit user assumption. The orbital diagram and phase-strength samples use

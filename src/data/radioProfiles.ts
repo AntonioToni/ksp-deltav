@@ -4,7 +4,8 @@ import {
   type CommNetAntenna, type CommNetPowerPreset,
 } from './commnet'
 
-export type RadioProfileId = 'stock' | 'rss' | 'rss-cbk'
+type KerbalismRadioProfileId = 'kerbalism' | 'rss-kerbalism' | 'rss-cbk-kerbalism'
+export type RadioProfileId = 'stock' | 'rss' | 'rss-cbk' | KerbalismRadioProfileId
 
 export interface CommNetRadioProfile {
   readonly id: RadioProfileId
@@ -15,6 +16,8 @@ export interface CommNetRadioProfile {
   readonly vesselAntennas: readonly CommNetAntenna[]
   readonly dsnLevels: readonly CommNetPowerPreset[]
   readonly normalOcclusion: Readonly<{ atmospheric: number; vacuum: number }>
+  readonly normalOcclusionLabel: string
+  readonly kerbalism?: boolean
   readonly sources: readonly DataSource[]
 }
 
@@ -38,6 +41,31 @@ const rssRadioSources = Object.freeze([
   rssRangesSource, rssOcclusionSource,
 ])
 
+const kerbalismRevision = '39f9f43afe8b4f77aff0086c3866044287694475'
+const kerbalismSourceBase = `https://github.com/Kerbalism/Kerbalism/blob/${kerbalismRevision}`
+const kerbalismRadioSources: readonly DataSource[] = Object.freeze([
+  Object.freeze({
+    id: 'commnet-kerbalism-antenna',
+    title: 'Official Kerbalism 3.44 Communotron 8 antenna · pinned revision',
+    url: `${kerbalismSourceBase}/GameData/KerbalismConfig/Parts/ShortAntenna/kerbalism-antenna.cfg`,
+  }),
+  Object.freeze({
+    id: 'commnet-kerbalism-commnet',
+    title: 'Official Kerbalism 3.44 CommNet link and science-rate adapter · pinned revision',
+    url: `${kerbalismSourceBase}/src/Kerbalism/Comms/CommHandlerCommNetBase.cs`,
+  }),
+  Object.freeze({
+    id: 'commnet-kerbalism-signal',
+    title: 'Official Kerbalism 3.44 stock signal curve and science-rate damping · pinned revision',
+    url: `${kerbalismSourceBase}/src/Kerbalism/Sim.cs`,
+  }),
+])
+
+const kerbalismShortAntenna: Readonly<CommNetAntenna> = Object.freeze({
+  id: 'communotron-8', name: 'Communotron 8', power: 250_000,
+  combinable: true, combinabilityExponent: 1, relay: false,
+})
+
 function antennaCatalog(antennas: readonly CommNetAntenna[], powerScale: number): readonly CommNetAntenna[] {
   // Keep part identities and combination rules while storing final effective powers.
   return Object.freeze(antennas.map(antenna => Object.freeze({ ...antenna, power: antenna.power * powerScale })))
@@ -55,7 +83,7 @@ const rssClientAntennas = antennaCatalog(clientAntennas, 20)
 const rssVesselAntennas = Object.freeze([...rssClientAntennas, ...rssRelayAntennas])
 const rssNormalOcclusion = Object.freeze({ atmospheric: 1, vacuum: 1 })
 
-const profilesById: Readonly<Record<RadioProfileId, CommNetRadioProfile>> = Object.freeze({
+const baseProfilesById: Readonly<Record<'stock' | 'rss' | 'rss-cbk', CommNetRadioProfile>> = Object.freeze({
   stock: Object.freeze({
     id: 'stock',
     name: 'Stock CommNet',
@@ -65,6 +93,7 @@ const profilesById: Readonly<Record<RadioProfileId, CommNetRadioProfile>> = Obje
     vesselAntennas: Object.freeze([...stockClientAntennas, ...stockRelayAntennas]),
     dsnLevels: stockDsnLevels,
     normalOcclusion: Object.freeze({ atmospheric: .75, vacuum: .9 }),
+    normalOcclusionLabel: 'KSP normal',
     sources: stockRadioSources,
   }),
   rss: Object.freeze({
@@ -76,6 +105,7 @@ const profilesById: Readonly<Record<RadioProfileId, CommNetRadioProfile>> = Obje
     vesselAntennas: rssVesselAntennas,
     dsnLevels: stockDsnLevels,
     normalOcclusion: rssNormalOcclusion,
+    normalOcclusionLabel: 'RSS default (1.0)',
     sources: rssRadioSources,
   }),
   'rss-cbk': Object.freeze({
@@ -91,12 +121,45 @@ const profilesById: Readonly<Record<RadioProfileId, CommNetRadioProfile>> = Obje
       { id: 'dsn3', name: 'DSN level 3', power: 50_000_000_000_000 },
     ]),
     normalOcclusion: rssNormalOcclusion,
+    normalOcclusionLabel: 'RSS default (1.0)',
     sources: rssRadioSources,
   }),
 })
 
+function withKerbalism(
+  base: CommNetRadioProfile,
+  id: KerbalismRadioProfileId,
+  name: string,
+  powerScale: number,
+): CommNetRadioProfile {
+  // RSS patches every ModuleDataTransmitter, including Kerbalism's added part.
+  // Base catalogs already contain final powers; scale only the added antenna.
+  const shortAntenna = Object.freeze({ ...kerbalismShortAntenna, power: kerbalismShortAntenna.power * powerScale })
+  const clients = Object.freeze([...base.clientAntennas, shortAntenna])
+  const powers = base.id === 'stock' ? 'Stock antenna and DSN powers'
+    : base.id === 'rss' ? 'RSS 20× antenna powers; stock DSN' : 'RSS 20× antenna powers; CustomBarnKit DSN'
+  return Object.freeze({
+    ...base, id, name, kerbalism: true,
+    description: `${powers}. Includes Communotron 8. Kerbalism science rates are not calculated.`,
+    clientAntennas: clients,
+    vesselAntennas: Object.freeze([...clients, ...base.relayAntennas]),
+    sources: Object.freeze([
+      ...base.sources.filter(source => source.id !== 'commnet-antenna-combination'),
+      ...kerbalismRadioSources,
+    ]),
+  })
+}
+
+const profilesById: Readonly<Record<RadioProfileId, CommNetRadioProfile>> = Object.freeze({
+  ...baseProfilesById,
+  kerbalism: withKerbalism(baseProfilesById.stock, 'kerbalism', 'Kerbalism + CommNet', 1),
+  'rss-kerbalism': withKerbalism(baseProfilesById.rss, 'rss-kerbalism', 'Kerbalism + RSS', 20),
+  'rss-cbk-kerbalism': withKerbalism(baseProfilesById['rss-cbk'], 'rss-cbk-kerbalism', 'Kerbalism + RSS + CBK', 20),
+})
+
 export const radioProfileOptions: readonly CommNetRadioProfile[] = Object.freeze([
   profilesById.stock, profilesById.rss, profilesById['rss-cbk'],
+  profilesById.kerbalism, profilesById['rss-kerbalism'], profilesById['rss-cbk-kerbalism'],
 ])
 
 export function getRadioProfile(id: RadioProfileId): CommNetRadioProfile {

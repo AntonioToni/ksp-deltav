@@ -200,13 +200,17 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   function antennaField(label: string, value: string, setValue: (value: string) => void, options: readonly { id: string; name: string; power: number }[], role?: AntennaArrayRole) {
     const array = role === 'relay' ? relayArray : clientArray
     const arrayResult = role === 'relay' ? relayArrayResult : clientArrayResult
+    const unavailable = value !== 'array' && value !== 'custom' && !options.some(option => option.id === value)
+    const unavailableName = radioProfileOptions.flatMap(profile => profile.vesselAntennas).find(antenna => antenna.id === value)?.name ?? value
+    const unavailableArray = value === 'array' && array?.some(entry => !vesselAntennas.some(antenna => antenna.id === entry.antennaId))
     const summary = array?.map(entry => `${entry.count} × ${vesselAntennas.find(antenna => antenna.id === entry.antennaId)?.name ?? entry.antennaId}`).join(', ')
     const power = role === 'relay' ? input.relayPower : role === 'client' ? input.clientPower : input.dsnPower
     const selectedName = value === 'array' ? `${summary} · Effective power ${range(arrayResult?.status === 'success' ? arrayResult.effectivePower : 0)}`
-      : value === 'custom' ? 'Custom power' : options.find(option => option.id === value)?.name ?? ''
+      : value === 'custom' ? 'Custom power' : unavailable ? `${unavailableName} (unavailable)` : options.find(option => option.id === value)?.name ?? ''
     const compactName = value === 'array' ? `Array (${arrayResult?.status === 'success' ? arrayResult.totalCount : '—'})`
       : selectedName.replace(/^Communotron\s*/i, '').replace(/^DSN level\s*/i, 'Level ').replace('Custom power', 'Custom')
-    return <TextField select fullWidth size="small" label={label} value={value} onChange={event => { if (event.target.value !== 'array') setValue(event.target.value) }} helperText={<Box component="span" data-testid={`relay-${role ?? 'dsn'}-power`}>{Number.isFinite(power) && power > 0 ? range(power) : 'Enter power'}</Box>} slotProps={{ select: { renderValue: () => <Box component="span" title={`${selectedName} · ${Number.isFinite(power) ? range(power) : 'Enter power'}`}>{compactName}</Box> } }} sx={fieldStyles}>
+    return <TextField select fullWidth size="small" label={label} value={value} error={unavailable || unavailableArray} onChange={event => { if (event.target.value !== 'array') setValue(event.target.value) }} helperText={<Box component="span" data-testid={`relay-${role ?? 'dsn'}-power`}>{unavailable ? 'Unavailable in this setup' : unavailableArray ? 'Edit array or restore its radio setup' : Number.isFinite(power) && power > 0 ? range(power) : 'Enter power'}</Box>} slotProps={{ select: { renderValue: () => <Box component="span" title={`${selectedName} · ${Number.isFinite(power) ? range(power) : 'Enter power'}`}>{compactName}</Box> } }} sx={fieldStyles}>
+      {unavailable && <MenuItem value={value} disabled sx={{ fontSize: 12 }}>{unavailableName} (unavailable)</MenuItem>}
       {options.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 12 }}>{option.name}</MenuItem>)}
       {role && <MenuItem value="array" onClick={() => openArray(role)} sx={{ fontSize: 12 }}>Antenna array…</MenuItem>}
       <MenuItem value="custom" sx={{ fontSize: 12 }}>Custom power</MenuItem>
@@ -308,14 +312,14 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               <Box sx={{ gridArea: 'mu', minWidth: 0 }}><NumericField label="Gravitational parameter" value={current.mu} unit="m³/s²" min={Number.MIN_VALUE} onChange={value => changeProfile({ mu: value, edited: true })} /></Box>
               <Box sx={{ gridArea: 'soi', minWidth: 0 }}><NumericField label="Sphere of influence" value={current.soi} unit="km" optional onChange={value => changeProfile({ soi: value, edited: true })} /></Box>
               <TextField select fullWidth size="small" label="Occlusion" value={occlusion} onChange={event => setOcclusion(event.target.value as typeof occlusion)} sx={{ ...fieldStyles, gridArea: 'occlusion' }}>
-                <MenuItem value="full" sx={{ fontSize: 12 }}>Full radius</MenuItem><MenuItem value="normal" sx={{ fontSize: 12 }}>{radioId === 'stock' ? 'KSP normal' : 'RSS default (1.0)'}</MenuItem>
+                <MenuItem value="full" sx={{ fontSize: 12 }}>Full radius</MenuItem><MenuItem value="normal" sx={{ fontSize: 12 }}>{radioProfile.normalOcclusionLabel}</MenuItem>
               </TextField>
               <Box sx={{ gridArea: 'multiplier', minWidth: 0 }}><NumericField label="Range multiplier" value={rangeMultiplier} min={Number.MIN_VALUE} onChange={setRangeMultiplier} /></Box>
             </Box>
-            <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Occlusion uses {occlusion === 'full' ? 'the full body radius' : `${normalOcclusionFactor.toFixed(2)} × the body radius (${radioId === 'stock' ? 'KSP normal' : 'RSS default'})`}. Ground receivers remain at the physical radius. A missing SOI leaves the orbit limit unchecked.</Typography>
+            <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Occlusion uses {occlusion === 'full' ? 'the full body radius' : `${normalOcclusionFactor.toFixed(2)} × the body radius (${radioProfile.normalOcclusionLabel.replace(/ \(.*\)$/, '')})`}. Ground receivers remain at the physical radius. A missing SOI leaves the orbit limit unchecked.</Typography>
             <Typography sx={{ fontSize: 11, color: 'text.secondary', lineHeight: 1.4 }}>{usesRssBodyData ? 'RSS presets supply body physics.' : 'Body data is editable for your installation.'} Radio setup is selected separately on the Network tab. RealAntennas and RemoteTech are not modeled. Terrain and orbital perturbations are not modeled.</Typography>
             {source && <Link href={source.url} target="_blank" rel="noreferrer" sx={{ fontSize: 11, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{source.title}</Link>}
-            {radioProfile.sources.filter(reference => reference.id.startsWith('commnet-rss-')).map(reference => <Link key={reference.id} href={reference.url} target="_blank" rel="noreferrer" sx={{ fontSize: 11, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{reference.title}</Link>)}
+            {radioProfile.sources.filter(reference => reference.id.startsWith('commnet-rss-') || reference.id.startsWith('commnet-kerbalism-')).map(reference => <Link key={reference.id} href={reference.url} target="_blank" rel="noreferrer" sx={{ fontSize: 11, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{reference.title}</Link>)}
           </Stack>}
         </Box>
 

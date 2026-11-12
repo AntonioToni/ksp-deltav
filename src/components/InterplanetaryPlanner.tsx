@@ -142,13 +142,18 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
     const array = endpoint === 'a' ? arrayA : arrayB
     const value = endpoint === 'a' ? input.powerA : input.powerB
     const label = endpoint.toUpperCase()
+    const unavailable = !['array', 'custom'].includes(draft.selection) && !draft.selection.startsWith('dsn:')
+      && !radio.vesselAntennas.some(antenna => antenna.id === draft.selection)
+    const unavailableName = radioProfileOptions.flatMap(profile => profile.vesselAntennas).find(antenna => antenna.id === draft.selection)?.name ?? draft.selection
+    const unavailableArray = draft.selection === 'array' && draft.array?.some(entry => !radio.vesselAntennas.some(antenna => antenna.id === entry.antennaId))
     return <Stack spacing={1.25} sx={{ minWidth: 0 }}>
-      <TextField select fullWidth size="small" label={`Antenna ${label}`} value={draft.selection}
+      <TextField select fullWidth size="small" label={`Antenna ${label}`} value={draft.selection} error={unavailable || unavailableArray}
         onChange={event => { if (event.target.value !== 'array') setDraft(endpoint, { selection: event.target.value }) }} sx={fieldStyles}
-        helperText={<Box component="span" data-testid={`signal-power-${endpoint}`}>{Number.isFinite(value) && value > 0 ? `Effective power ${distance(value)}` : 'Enter effective power'}</Box>}
-        slotProps={{ select: { renderValue: () => draft.selection === 'array' ? `Array (${array?.status === 'success' ? array.totalCount : '—'})`
+        helperText={<Box component="span" data-testid={`signal-power-${endpoint}`}>{unavailable ? 'Unavailable in this setup' : unavailableArray ? 'Edit array or restore its radio setup' : Number.isFinite(value) && value > 0 ? `Effective power ${distance(value)}` : 'Enter effective power'}</Box>}
+        slotProps={{ select: { renderValue: () => unavailable ? `${unavailableName} (unavailable)` : draft.selection === 'array' ? `Array (${array?.status === 'success' ? array.totalCount : '—'})`
           : draft.selection === 'custom' ? 'Custom power' : draft.selection.startsWith('dsn:') ? radio.dsnLevels.find(level => level.id === draft.selection.slice(4))?.name
             : radio.vesselAntennas.find(antenna => antenna.id === draft.selection)?.name } }}>
+        {unavailable && <MenuItem value={draft.selection} disabled sx={{ fontSize: 12 }}>{unavailableName} (unavailable)</MenuItem>}
         {radio.vesselAntennas.map(antenna => <MenuItem key={antenna.id} value={antenna.id} sx={{ fontSize: 12 }}>{antenna.name}</MenuItem>)}
         {allowDsn(endpoint) && <ListSubheader sx={{ fontSize: 10, lineHeight: '24px' }}>DSN station power</ListSubheader>}
         {allowDsn(endpoint) && radio.dsnLevels.map(level => <MenuItem key={level.id} value={`dsn:${level.id}`} sx={{ fontSize: 12 }}>{level.name}</MenuItem>)}
@@ -237,6 +242,7 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
     <Box component="details" sx={{ mt: 1, fontSize: 11, color: 'text.secondary', '& summary': { cursor: 'pointer', minHeight: 28, color: 'primary.main' } }}>
       <Box component="summary">Signal assumptions and sources</Box>
       <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.45 }}>Stock CommNet: maximum range = √(power A × power B) × range multiplier. Signal uses the stock smoothstep curve; the central spherical occluder masks it to zero when blocked. Exact limb and range boundaries are marginal. Antennas on different craft never combine into one endpoint. RealAntennas and RemoteTech are not modeled.</Typography>
+      {radio.kerbalism && <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.45 }}>Kerbalism retains this CommNet signal curve. Science transmission rates, electric charge, deployment state, and storms are not calculated. This symmetric antenna-range reference does not verify forwarding: a receiving vessel needs a relay-capable antenna, and a complete home path remains unchecked.</Typography>}
       <Stack spacing={.5} sx={{ mt: .75 }}>{sources.map(source => <Link key={source.id} href={source.url} target="_blank" rel="noreferrer" sx={{ fontSize: 11, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{source.title}</Link>)}</Stack>
     </Box>
     {editingArray && <AntennaArrayDialog open role="client" title={`Endpoint ${editingArray.toUpperCase()} antenna array`} description="This loadout is on one vessel. Direct and relay-capable antennas may combine for this endpoint; separate vessels never combine their power."
