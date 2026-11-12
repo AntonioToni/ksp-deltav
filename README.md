@@ -292,6 +292,7 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 - Additional planet packs, rescaled systems, and alternative starting-homeworld
   configurations.
+- Kerbalism signal-strength preset for communication planning.
 - Advanced relay planning: inclined and polar constellations for coverage beyond
   the equator, and complete communication paths through relays back to the DSN.
 
