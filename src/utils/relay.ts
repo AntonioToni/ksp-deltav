@@ -2,6 +2,7 @@ import type {
   LinkStatus, RelayDeployment, RelayNetworkInput, RelayResult,
   RelayStationLink, SuccessfulRelayPlan,
 } from '../types/relay'
+import { commNetSignalStrength, kerbalismDampedStrength, MAX_DAMPING_EXPONENT } from './signalStrength'
 
 export type {
   LinkStatus, RelayBodyData, RelayDeployment, RelayNeighborLink, RelayNetworkInput,
@@ -40,6 +41,7 @@ function validate(input: RelayNetworkInput): string[] {
   }
   number(raw.rangeMultiplier, 'Range multiplier', 0, 100, true)
   number(raw.occlusionFactor, 'Occlusion factor', 0, 1, true)
+  if (raw.dampingExponent !== undefined) number(raw.dampingExponent, 'Damping exponent', 0, MAX_DAMPING_EXPONENT, true)
   number(raw.safetyMarginM, 'Safety margin', 0, 1e13)
   for (const [key, label] of [['phaseDeg', 'Relay phase'], ['stationLongitudeDeg', 'Surface longitude']] as const) {
     if (typeof raw[key] !== 'number' || !Number.isFinite(raw[key])) errors.push(`${label} must be finite.`)
@@ -145,8 +147,15 @@ export function calculateRelayPlan(input: RelayNetworkInput): RelayResult {
   const neighborRangeM = relayPower * rangeMultiplier
   const surfaceRangeM = Math.sqrt(relayPower) * Math.sqrt(clientPower) * rangeMultiplier
   const dsnRangeM = Math.sqrt(relayPower) * Math.sqrt(dsnPower) * rangeMultiplier
+  if (![neighborRangeM, surfaceRangeM, dsnRangeM].every(value => Number.isFinite(value) && value > 0)) {
+    return { status: 'invalid', errors: ['These inputs exceed the supported numerical range for signal calculations.'] }
+  }
   const ringLinkStatus = satelliteCount === 2 ? 'blocked'
     : linkStatus(neighborClearanceM, tolerance(orbitRadiusM, occlusionRadiusM), neighborDistanceM, neighborRangeM)
+  const dampingExponent = input.dampingExponent ?? 1
+  const neighborSignalStrength = ringLinkStatus === 'blocked' || ringLinkStatus === 'out-of-range'
+    ? 0 : commNetSignalStrength(neighborDistanceM, neighborRangeM)
+  const neighborDampedStrength = kerbalismDampedStrength(neighborSignalStrength, dampingExponent)
   const phase = radians(input.phaseDeg)
   const stationAngle = radians(input.stationLongitudeDeg)
   const satellites = Array.from({ length: satelliteCount }, (_, index) => {
@@ -160,7 +169,8 @@ export function calculateRelayPlan(input: RelayNetworkInput): RelayResult {
     const key = JSON.stringify([index, toIndex].sort((a, b) => a - b))
     if (pairs.has(key)) continue
     pairs.add(key)
-    neighborLinks.push({ fromIndex: index, toIndex, distanceM: neighborDistanceM, clearanceM: neighborClearanceM, status: ringLinkStatus })
+    neighborLinks.push({ fromIndex: index, toIndex, distanceM: neighborDistanceM, clearanceM: neighborClearanceM,
+      status: ringLinkStatus, signalStrength: neighborSignalStrength, dampedStrength: neighborDampedStrength })
   }
 
   let surfaceHalfAngleRad: number | null = null
@@ -188,7 +198,9 @@ export function calculateRelayPlan(input: RelayNetworkInput): RelayResult {
       // At f=1 the ground endpoint touches the occluder for every outward ray.
       // Horizon angle distinguishes a valid surface-originating ray from grazing.
       const status = linkStatus(horizonAngle - separation, angularTolerance, distanceM, surfaceRangeM)
-      stationLinks.push({ satelliteIndex, distanceM, clearanceM, status })
+      const signalStrength = status === 'blocked' || status === 'out-of-range' ? 0 : commNetSignalStrength(distanceM, surfaceRangeM)
+      stationLinks.push({ satelliteIndex, distanceM, clearanceM, status, signalStrength,
+        dampedStrength: kerbalismDampedStrength(signalStrength, dampingExponent) })
     })
   }
   const deploymentPlan = deployment(input, orbitRadiusM, orbitalPeriodS, circularSpeedMps)
@@ -204,10 +216,14 @@ export function calculateRelayPlan(input: RelayNetworkInput): RelayResult {
   }
   const warnings = body.sphereOfInfluenceM === undefined
     ? ['Sphere of influence is not supplied; outer orbit bounds are unchecked.'] : []
+  const bestStationSignalStrength = hasSurface ? Math.max(0, ...stationLinks.map(link => link.signalStrength)) : null
+  const bestStationDampedStrength = hasSurface ? Math.max(0, ...stationLinks.map(link => link.dampedStrength)) : null
   return {
     status: 'success', orbitRadiusM, orbitalPeriodS, circularSpeedMps,
     neighborDistanceM, neighborClearanceM, neighborRangeM, ringLinkStatus,
+    neighborSignalStrength, neighborDampedStrength,
     surfaceRangeM, surfaceHalfAngleRad, equatorialCoverageFraction, coverageStatus,
+    bestStationSignalStrength, bestStationDampedStrength,
     dsnRangeM, satellites, neighborLinks, stationLinks, deployment: deploymentPlan, warnings,
   }
 }

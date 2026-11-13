@@ -144,6 +144,95 @@ describe('circular relay network', () => {
   })
 })
 
+describe('local CommNet strength and Kerbalism damping', () => {
+  it('matches independent neighbor and overhead station values without changing geometry or coverage', () => {
+    const raw = success()
+    const damped = success(example({ dampingExponent: 6 }))
+    expect(damped.neighborSignalStrength).toBeCloseTo(Number('.52253187596651196609'), 14)
+    expect(damped.neighborDampedStrength).toBeCloseTo(Number('.020355263696866242907'), 14)
+    expect(damped.bestStationSignalStrength).toBeCloseTo(Number('.49105378592099363488'), 14)
+    expect(damped.bestStationDampedStrength).toBeCloseTo(Number('.014020851264399001108'), 14)
+    expect(raw.neighborDampedStrength).toBe(raw.neighborSignalStrength)
+    expect(raw.bestStationDampedStrength).toBe(raw.bestStationSignalStrength)
+    for (const key of ['orbitRadiusM', 'neighborDistanceM', 'neighborClearanceM',
+      'neighborRangeM', 'surfaceRangeM', 'dsnRangeM', 'ringLinkStatus', 'surfaceHalfAngleRad',
+      'equatorialCoverageFraction', 'coverageStatus', 'orbitalPeriodS'] as const) {
+      expect(damped[key]).toBe(raw[key])
+    }
+    expect(damped.satellites).toEqual(raw.satellites)
+    expect(damped.deployment).toEqual(raw.deployment)
+    expect(damped.neighborLinks.map(link => link.status)).toEqual(raw.neighborLinks.map(link => link.status))
+    expect(damped.stationLinks.map(link => link.status)).toEqual(raw.stationLinks.map(link => link.status))
+  })
+
+  it('assigns zero strength to body-blocked neighbors regardless of antenna power or damping', () => {
+    const result = success(example({ satelliteCount: 2, relayPower: 1e18, dampingExponent: .04 }))
+    expect(result.neighborSignalStrength).toBe(0)
+    expect(result.neighborDampedStrength).toBe(0)
+    expect(result.neighborLinks[0]).toMatchObject({ status: 'blocked', signalStrength: 0, dampedStrength: 0 })
+  })
+
+  it('assigns zero to unavailable surface links without treating geometrically close blocked links as usable', () => {
+    const result = success(example({ dampingExponent: 6 }))
+    expect(result.stationLinks[0]).toMatchObject({ status: 'available' })
+    for (const link of result.stationLinks.slice(1)) {
+      expect(link.status).toBe('blocked')
+      expect(link.signalStrength).toBe(0)
+      expect(link.dampedStrength).toBe(0)
+    }
+    const unreachable = success(example({ clientPower: 1, dampingExponent: .5 }))
+    expect(unreachable.bestStationSignalStrength).toBe(0)
+    expect(unreachable.bestStationDampedStrength).toBe(0)
+    for (const link of unreachable.stationLinks) {
+      expect(link.signalStrength).toBe(0)
+      expect(link.dampedStrength).toBe(0)
+    }
+  })
+
+  it('keeps exact antenna limits at zero but retains raw positive strength for a marginal tangent link', () => {
+    const separation = success().neighborDistanceM
+    const boundary = success(example({ relayPower: separation, dampingExponent: .04 }))
+    expect(boundary.ringLinkStatus).toBe('marginal')
+    expect(boundary.neighborSignalStrength).toBe(0)
+    expect(boundary.neighborDampedStrength).toBe(0)
+    const beyond = success(example({ relayPower: separation * .99, dampingExponent: .04 }))
+    expect(beyond.ringLinkStatus).toBe('out-of-range')
+    expect(beyond.neighborSignalStrength).toBe(0)
+    expect(beyond.neighborDampedStrength).toBe(0)
+    const tangent = success(example({ altitudeM: 600_000, dampingExponent: 6 }))
+    expect(tangent.ringLinkStatus).toBe('marginal')
+    expect(tangent.neighborSignalStrength).toBeGreaterThan(0)
+    expect(tangent.neighborDampedStrength).toBeGreaterThan(0)
+  })
+
+  it('updates the current best sample-station hop when the constellation rotates', () => {
+    const overhead = success(example({ dampingExponent: 6 }))
+    const rotated = success(example({ dampingExponent: 6, phaseDeg: 60 }))
+    expect(rotated.equatorialCoverageFraction).toBe(overhead.equatorialCoverageFraction)
+    expect(rotated.neighborSignalStrength).toBe(overhead.neighborSignalStrength)
+    expect(rotated.bestStationSignalStrength!).toBeLessThan(overhead.bestStationSignalStrength!)
+    expect(rotated.bestStationDampedStrength!).toBeLessThan(overhead.bestStationDampedStrength!)
+    expect(rotated.stationLinks.filter(link => link.status === 'available')).toHaveLength(2)
+  })
+
+  it('does not invent a surface signal for bodies without a surface', () => {
+    const result = success(example({ hasSurface: false, dampingExponent: 6 }))
+    expect(result.bestStationSignalStrength).toBeNull()
+    expect(result.bestStationDampedStrength).toBeNull()
+    expect(result.stationLinks).toEqual([])
+    expect(result.neighborDampedStrength).toBeGreaterThan(0)
+  })
+
+  it.each([0, -1, NaN, Infinity, 1e6 + 1, null, '6'])('rejects invalid supplied damping exponent %j', dampingExponent => {
+    expect(calculateRelayPlan(example({ dampingExponent: dampingExponent as number })).status).toBe('invalid')
+  })
+
+  it('rejects derived ranges that underflow instead of throwing from the strength helper', () => {
+    const input = example({ relayPower: Number.MIN_VALUE, rangeMultiplier: Number.MIN_VALUE })
+    expect(calculateRelayPlan(input)).toMatchObject({ status: 'invalid', errors: [expect.stringContaining('numerical range')] })
+  })
+})
+
 describe('resonant carrier deployment', () => {
   it('matches the independent lower-carrier Kerbin example and separates carrier and per-relay burns', () => {
     const result = success().deployment

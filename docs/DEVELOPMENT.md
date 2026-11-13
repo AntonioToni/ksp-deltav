@@ -101,6 +101,8 @@ On Linux CI machines that also need browser system dependencies, use
 | Per-body atmospheric options and landing inputs | `src/components/AtmosphereDialog.tsx` |
 | CommNet presets and body reference constants | `src/data/commnet.ts` |
 | Stock/RSS/Kerbalism CommNet profiles and conditional CustomBarnKit DSN powers | `src/data/radioProfiles.ts` |
+| Raw signal strength, Kerbalism damping, and automatic calibration | `src/utils/signalStrength.ts` |
+| Reviewed Kerbalism home-orbit reference and compatible recovery profile | `src/data/kerbalism.ts` |
 | Kcalbeloh relay physics and gravity/SOI derivation | `src/data/kcalbelohPhysics.ts` |
 | Automatic relay altitude within clearance and SOI bounds | `src/utils/relayDefaults.ts` |
 | Validated antenna loadouts and effective power | `src/utils/antennaArray.ts` |
@@ -418,9 +420,12 @@ graph or persist settings across page reloads.
 geometry and deployment results. Single antenna presets and applied arrays
 supply effective CommNet powers from the selected radio profile for the relay
 and surface endpoints.
-Equatorial visibility, neighboring relay links, and maximum
-DSN range are separate results. A local constellation is not a complete DSN
-connection.
+Equatorial visibility, neighboring relay links, and maximum DSN range are
+separate results. Each neighbor and sample-station link reports raw and damped
+strength, masked to zero when blocked or out of range. Aggregate station
+strength is the best currently usable sample-station hop, or `null` for a body
+without a surface; it is not a worst-longitude coverage guarantee. A local
+constellation is not a complete DSN connection.
 
 `calculateAntennaArray(entries, role, catalog)` validates the role, selected model IDs, unique rows, and
 integer counts, with at most 100 antennas on one craft. Relay loadouts accept
@@ -464,16 +469,45 @@ Full radius option remains 1. The range multiplier starts at 1 independently.
 Kerbalism variants add Communotron 8 as a direct, combinable antenna with
 250,000 m power and exponent 1 (5,000,000 m under RSS). It is excluded from
 relay forwarding catalogs. They retain stock CommNet ranges and strength;
-science throughput, damping, powered/deployed antenna state, ElectricCharge,
-and storms are not calculated. See the
+the main signal readouts additionally apply Kerbalism's `S^k` factor while
+retaining raw CommNet values separately. Absolute science throughput,
+powered/deployed antenna state, ElectricCharge, and storms are not calculated.
+See the
 [pinned Kerbalism source notes](RELAYS.md#kerbalism-radio-configuration).
+
+`signalStrength.ts` supplies the stock cubic strength curve,
+`kerbalismDampedStrength`, and `calibrateKerbalismDamping`. The two calculation
+inputs accept an optional `dampingExponent`, defaulting to 1 for existing Stock
+callers. A supplied exponent must be finite, greater than zero, and at most
+1e6. Existing strength fields remain raw; additional damped fields expose the
+selected factor without feeding it into link status, range, coverage, or
+deployment calculations. Exponents below 1 are valid and are not clamped.
+
+The automatic 3.44 calibration uses the reviewed homeworld orbital radius and
+the active radio profile's maximum DSN power, not the selected DSN level or
+pair range. `getKerbalismHomeOrbitRadiusM` obtains a reviewed home reference
+from the built-in signal catalog; an unfamiliar custom pack returns `null`.
+The helper tries `2`, `1.5`, `1`, `0.75`, `0.5`, and `0.25 AU`, accepts raw
+strength in `[0.001, 0.999]`, and uses
+`ln((0.3925/0.48)^(multiple/2)) / ln(strength)`. Unusable calibration returns
+an explicit fallback exponent 6. The UI labels these as reference defaults
+and supports a custom exponent from another version or save's `KSP.log`.
+Changing selected planets or the range multiplier does not redefine the home
+calibration reference.
+
+The parent relay workspace owns damping mode and override state, shared by
+Network and Signals and preserved while closed. `KerbalismDampingControls`
+exposes the automatic reference/fallback and custom exponent in a compact
+disclosure. Damping changes alone must not affect Delta-V mission state.
 
 Changing radio profile keeps body/orbit drafts, antenna IDs, array entries, and
 custom power inputs. Compatible presets and arrays recalculate from the selected
 catalog; custom powers remain final effective values without profile multiplication.
 Unavailable selections stay visible and invalidate the result until the user
-changes the antenna/loadout or restores its radio profile. An array row is not
-silently removed when its model is unavailable.
+changes the antenna/loadout or restores its radio profile.
+`UnavailableAntennaAlert` takes priority over generic numeric validation and
+offers a compatible Kerbalism profile plus an available replacement or array
+edit action. An array row is not silently removed when its model is unavailable.
 Changing body within a pack preserves the profile, and the existing pack key
 resets the complete relay session on pack changes. Profile sources pin the
 official RSS range patch, CommNet defaults, and Kerbalism part/adapter sources;
@@ -529,6 +563,13 @@ maximum range, central clearance/status, current range-only/effective strength,
 and the circular nearest/farthest distance-strength envelope. It does not fetch
 an ephemeris or infer a date from the phase slider.
 
+Its optional damping exponent adds `dampedStrength`, `dampedRangeStrength`,
+`bestDampedStrength`, and `worstDampedStrength` alongside the raw fields. With a
+Kerbalism profile, the main metrics and the two profile-specific chart curves
+use these damped results; a separate raw readout and curve retain the CommNet
+reference. Stock readouts keep their existing raw values. Neither output is an
+absolute bit rate or a verified full communication path.
+
 The strength function is `3x² − 2x³` for `x = clamp(1 − d/R, 0, 1)`, where
 `R = sqrt(PA × PB) × rangeMultiplier`. Occluded segments have zero effective
 strength; the range-only value remains separate. The nearest/farthest strengths
@@ -538,12 +579,18 @@ limb and range cases remain marginal. Both circular radii must exceed the
 physical central radius even when the effective occlusion factor is smaller.
 
 Preset powers and array calculations already include the active radio profile's
-catalog scaling. Both direct and relay antennas may serve as endpoints for this
-symmetric range reference; a receiving vessel hop still requires relay
-capability, and a complete forwarding path is not verified.
-Custom power remains a final endpoint value. DSN presets are offered for the
-known homeworld in reference mode; manually entered geometry remains an
-explicit user assumption. The orbital diagram and phase-strength samples use
+catalog scaling. Signals assigns an explicit receiving endpoint, defaulting to
+B. The sending craft's direct and relay antennas retain their combined power;
+a vessel receiver uses only the relay-capable part or relay subset of its
+array. A direct-only receiver produces a contextual correction state, not a
+valid link with a direct-antenna range. Choosing a DSN power sets its endpoint
+as receiver; swapping endpoints moves that role with the hardware.
+
+Custom power remains a final endpoint value, with receiving custom power
+explicitly assumed to be relay-capable. DSN presets are offered for the known
+homeworld in reference mode; manually entered geometry remains an explicit user
+assumption. This single-hop role check does not establish local visibility or a
+complete forwarding path. The orbital diagram and phase-strength samples use
 the same pure calculation engine as the metrics.
 
 The central radius catalog adds the pinned Kerbol and RSS Sun radii and reuses

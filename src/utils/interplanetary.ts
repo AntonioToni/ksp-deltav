@@ -1,18 +1,11 @@
 import type { InterplanetarySignalInput, InterplanetarySignalResult } from '../types/interplanetary'
 import type { LinkStatus } from '../types/relay'
+import { commNetSignalStrength, kerbalismDampedStrength, MAX_DAMPING_EXPONENT } from './signalStrength'
 
 export type { InterplanetarySignalInput, InterplanetarySignalResult, SuccessfulInterplanetarySignal } from '../types/interplanetary'
+export { commNetSignalStrength } from './signalStrength'
 
-const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value))
 const tolerance = (...values: number[]) => Math.max(1e-6, ...values.map(value => Math.abs(value) * 1e-9))
-
-/** Stock CommNet's smoothed distance attenuation, before any occlusion. */
-export function commNetSignalStrength(distanceM: number, maximumRangeM: number): number {
-  if (!Number.isFinite(distanceM) || distanceM < 0) throw new RangeError('Signal distance must be finite and nonnegative.')
-  if (!Number.isFinite(maximumRangeM) || maximumRangeM <= 0) throw new RangeError('Maximum signal range must be finite and positive.')
-  const remaining = clamp(1 - distanceM / maximumRangeM, 0, 1)
-  return remaining * remaining * (3 - 2 * remaining)
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -34,6 +27,7 @@ function validate(input: InterplanetarySignalInput): string[] {
   positive(raw.powerB, 'Endpoint B power', 1e18)
   positive(raw.rangeMultiplier, 'Range multiplier', 100)
   positive(raw.occlusionFactor, 'Occlusion factor', 1)
+  if (raw.dampingExponent !== undefined) positive(raw.dampingExponent, 'Damping exponent', MAX_DAMPING_EXPONENT)
   if (typeof raw.phaseDeg !== 'number' || !Number.isFinite(raw.phaseDeg)) errors.push('Relative phase must be finite.')
   if (errors.length) return errors
   if (input.orbitRadiusAM <= input.centralRadiusM || input.orbitRadiusBM <= input.centralRadiusM) {
@@ -102,13 +96,20 @@ export function calculateInterplanetarySignal(input: InterplanetarySignalInput):
   const minimumDistanceM = Math.abs(input.orbitRadiusAM - input.orbitRadiusBM)
   const maximumDistanceM = input.orbitRadiusAM + input.orbitRadiusBM
   const rangeStrength = commNetSignalStrength(distanceM, maximumRangeM)
+  const signalStrength = occluded ? 0 : rangeStrength
+  const bestRangeStrength = commNetSignalStrength(minimumDistanceM, maximumRangeM)
+  const worstRangeStrength = commNetSignalStrength(maximumDistanceM, maximumRangeM)
+  const dampingExponent = input.dampingExponent ?? 1
 
   return {
     status: 'success', phaseDeg, distanceM, maximumRangeM, rangeStrength,
-    signalStrength: occluded ? 0 : rangeStrength,
+    signalStrength,
+    dampedStrength: kerbalismDampedStrength(signalStrength, dampingExponent),
+    dampedRangeStrength: kerbalismDampedStrength(rangeStrength, dampingExponent),
     linkStatus, centralClearanceM, minimumDistanceM, maximumDistanceM,
-    bestRangeStrength: commNetSignalStrength(minimumDistanceM, maximumRangeM),
-    worstRangeStrength: commNetSignalStrength(maximumDistanceM, maximumRangeM),
+    bestRangeStrength, worstRangeStrength,
+    bestDampedStrength: kerbalismDampedStrength(bestRangeStrength, dampingExponent),
+    worstDampedStrength: kerbalismDampedStrength(worstRangeStrength, dampingExponent),
     pointA, pointB, occluded,
   }
 }

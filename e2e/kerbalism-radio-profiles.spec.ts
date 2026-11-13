@@ -83,14 +83,14 @@ async function pageFits(page: Page) {
     .toEqual({ ...page.viewportSize()!, x: 0, y: 0 })
 }
 
-test('exposes distinct Kerbalism presets and sources while preserving the stock range and strength curve', async ({ page }) => {
+test('exposes distinct Kerbalism presets and sources while preserving the raw stock range and strength curve', async ({ page }) => {
   await openPlanner(page)
   await combo(page, 'Radio setup').click()
   for (const profile of profiles) {
     await expect(page.getByRole('option', { name: profile.name, exact: true })).toHaveAttribute('data-value', profile.id)
   }
   await page.getByRole('option', { name: kerbalism, exact: true }).click()
-  await expect(panel(page).getByText(/Includes Communotron 8\. Kerbalism science rates are not calculated\./)).toBeVisible()
+  await expect(planner(page).locator('summary:visible').filter({ hasText: 'Kerbalism damping' })).toBeVisible()
   await section(page, 'Signals')
   await expect(combo(page, 'Radio setup')).toHaveText(kerbalism)
   await expect(combo(page, 'Antenna A')).toHaveText('RA-100')
@@ -102,7 +102,7 @@ test('exposes distinct Kerbalism presets and sources while preserving the stock 
   const expectedStrength = 100 * normalized ** 2 * (3 - 2 * normalized)
   expect(expectedStrength).toBeCloseTo(84.61, 2)
   await expect(metric(page, 'signal-distance')).toHaveText('24.79 Gm')
-  await expect(metric(page, 'signal-strength')).toHaveText(`${expectedStrength.toFixed(2)}%`)
+  await expect(metric(page, 'signal-raw-strength')).toHaveText(`${expectedStrength.toFixed(2)}%`)
   await choose(page, 'Radio setup', 'Stock CommNet')
   await expect(metric(page, 'signal-range')).toHaveText('100 Gm')
   await expect(metric(page, 'signal-strength')).toHaveText('84.61%')
@@ -187,11 +187,11 @@ test('preserves final custom powers and saved stock array counts across Kerbalis
     await expect(field(page, 'Power A')).toHaveValue('100000000000')
     await expect(field(page, 'Power B')).toHaveValue('100000000000')
     await expect(metric(page, 'signal-range')).toHaveText('100 Gm')
-    await expect(metric(page, 'signal-strength')).toHaveText('84.61%')
+    await expect(metric(page, 'signal-raw-strength')).toHaveText('84.61%')
   }
 })
 
-test('offers Communotron 8 only to receiving craft and combines four parts linearly', async ({ page }) => {
+test('uses Communotron 8 for clients and senders, combines it linearly, and requires a forwarding receiver', async ({ page }) => {
   await openPlanner(page)
   await choose(page, 'Radio setup', kerbalism)
   await combo(page, 'Relay antenna').click()
@@ -218,16 +218,20 @@ test('offers Communotron 8 only to receiving craft and combines four parts linea
   await cancel(dialog)
   await section(page, 'Signals')
   for (const endpoint of ['A', 'B']) await choose(page, `Antenna ${endpoint}`, 'Communotron 8')
-  await expect(metric(page, 'signal-range')).toHaveText('5 Mm')
+  await expect(metric(page, 'signal-range')).toHaveCount(0)
+  await expect(planner(page).getByRole('alert')).toContainText(/relay-capable|receiv/i)
+  await planner(page).getByRole('button', { name: 'Use RA-100', exact: true }).click()
+  await expect(combo(page, 'Antenna B')).toHaveText('RA-100')
+  await expect(metric(page, 'signal-range')).toHaveText('3.162 Gm')
   dialog = await openArray(page, 'Antenna A', 'Endpoint A antenna array')
   await dialog.getByRole('spinbutton', { name: 'Antenna count 1', exact: true }).fill('4')
   expect(await exactPower(dialog)).toBe(20_000_000)
   await apply(dialog)
-  await expect(metric(page, 'signal-range')).toHaveText('10 Mm')
+  await expect(metric(page, 'signal-range')).toHaveText('6.325 Gm')
   await choose(page, 'Radio setup', kerbalism)
   await expect(metric(page, 'signal-power-a')).toHaveText('Effective power 1 Mm')
-  await expect(metric(page, 'signal-power-b')).toHaveText('Effective power 250 km')
-  await expect(metric(page, 'signal-range')).toHaveText('500 km')
+  await expect(metric(page, 'signal-power-b')).toHaveText('Effective power 100 Gm')
+  await expect(metric(page, 'signal-range')).toHaveText('316.228 Mm')
 })
 
 test('retains unavailable single Communotron 8 selections without reporting a valid network or signal', async ({ page }) => {
@@ -287,6 +291,7 @@ test('preserves unavailable Communotron 8 array rows and supports profile or rep
   await expect(combo(page, 'Surface antenna')).toHaveText('Array (4)')
   await expect(metric(page, 'relay-client-power')).toHaveText('20 Mm')
   await section(page, 'Signals')
+  await choose(page, 'Receiving endpoint', 'A · Relay / DSN')
   await choose(page, 'Antenna B', 'Communotron 8')
   dialog = await openArray(page, 'Antenna B', 'Endpoint B antenna array')
   await dialog.getByRole('spinbutton', { name: 'Antenna count 1', exact: true }).fill('4')

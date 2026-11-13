@@ -46,20 +46,37 @@ The single-link strength curve follows the
 [pinned CommNet calculator reference](https://github.com/IgaguriMK/ksp-commnet-calculator-core/blob/2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80/src/endpoint.rs):
 `R = sqrt(PA × PB) × rangeMultiplier`, `x = clamp(1 − distance/R, 0, 1)`,
 and `strength = 3x² − 2x³`. Central-body blockage makes the effective signal zero;
-the separate range-only value remains available for antenna comparison. This
-symmetric range reference accepts direct or relay antennas but does not verify
-receiver forwarding capability, endpoint-local visibility, other bodies, or a
-complete DSN/control path. Manual geometry is available for unknown custom
-packs and user-defined/rescaled references; it does not infer missing orbital
+the separate range-only value remains available for antenna comparison.
+Signals has an explicit receiving endpoint, defaulting to B. The sending
+craft's direct and relay antennas may combine, while a vessel receiver uses
+only its relay-capable antenna power. A direct-only receiver cannot produce an
+available-link result. A DSN choice sets the receiving role to that endpoint;
+custom receiving power is a user-supplied relay-capability assumption.
+These single-hop checks do not establish endpoint-local visibility, other-body
+obstruction, or a complete DSN/control path. Manual geometry is available for
+unknown custom packs and user-defined/rescaled references; it does not infer missing orbital
 data. See [Interplanetary signals](RELAYS.md#interplanetary-signals) for units,
 radio choices, diagrams, and worked reference values.
 
-The explicit Kerbalism 3.44 CommNet profiles retain this stock curve and the
-selected Stock/RSS range baseline. They add the direct Communotron 8 from its
+The explicit Kerbalism 3.44 CommNet profiles retain this raw stock curve and the
+selected Stock/RSS range baseline, and calculate the separate `S^k` signal
+factor using the
+[pinned official calibration](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/Sim.cs).
+Automatic reference calibration uses the reviewed homeworld orbit and the radio
+profile's maximum DSN power; it is independent of the current planet pair and
+selected DSN level. Unknown home references or unusable calibration points use
+an explicitly labeled fallback exponent 6. Users can enter a custom exponent
+to match their version, settings, or `KSP.log`.
+
+These profiles add the direct Communotron 8 from its
 [pinned official part config](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/GameData/KerbalismConfig/Parts/ShortAntenna/kerbalism-antenna.cfg):
 250,000 m power, combinable with exponent 1, and no relay forwarding capability.
-Kerbalism science rates, powered/deployed antenna state, ElectricCharge, and
-storms are unmodeled. The [Kerbalism radio guide](RELAYS.md#kerbalism-radio-configuration)
+The signal factor is applied after raw range attenuation, with obstruction
+making effective strength zero. It does not change range, link availability, or
+equatorial coverage, and is not an absolute transmission rate. Neighbor and
+current sample-station hop strengths use the same model as Signals.
+Absolute Kerbalism science rates, powered/deployed antenna state, ElectricCharge,
+and storms are unmodeled. The [Kerbalism radio guide](RELAYS.md#kerbalism-radio-configuration)
 records the pinned adapter and damping references and explains the distinction
 between CommNet strength and science throughput.
 

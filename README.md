@@ -43,8 +43,8 @@ return-only budgets, and add a reserve for your mission.
   powered landing allowances you enter yourself. Routes recalculate before the
   mission reserve is added.
 - **CommNet relay planning** for circular, equally spaced constellations, with
-  equatorial coverage, antenna ranges, resonant deployment estimates, and body
-  presets for Stock, OPM, RSS, and Kcalbeloh planets and moons.
+  equatorial coverage, antenna ranges and signal strengths, resonant deployment
+  estimates, and body presets for Stock, OPM, RSS, and Kcalbeloh planets and moons.
 - **Interplanetary signal planning** with antenna pairs, an interactive relative
   phase view, circular-reference nearest/farthest strengths, and central-body
   occlusion checks. Reference pairs cover Stock, OPM, RSS, and compatible local
@@ -157,8 +157,12 @@ for Kerbalism 3.44. RSS maps start with RSS antenna powers (20× stock) and stoc
 DSN powers; select a CustomBarnKit option if your installation includes its RSS
 DSN patch. Radio setup is shared by Network and Signals and can be changed
 independently of the body map. Kerbalism presets retain CommNet range and signal
-rules and add the direct **Communotron 8** antenna; science transmission rates
-are not calculated. See [Kerbalism radio configuration](docs/RELAYS.md#kerbalism-radio-configuration).
+rules, add **Communotron 8**, and show Kerbalism's **damped signal** alongside
+raw CommNet strength in Network and Signals. Open **Kerbalism damping** to use
+the automatic 3.44 reference exponent or enter your installation's exponent.
+Damping settings are shared by both tabs. Reach and coverage still use raw
+CommNet geometry; the damped percentage is not a transmission rate in bits per
+second. See [Kerbalism radio configuration](docs/RELAYS.md#kerbalism-radio-configuration).
 
 Choose **Antenna array…** under **Relay antenna** or **Surface antenna** to mix
 catalog parts and counts, then choose **Apply**. A relay loadout is fitted to each
@@ -167,8 +171,10 @@ use the selected radio setup's powers. Custom powers are final effective values
 and are never scaled automatically.
 
 For planet-to-planet links, open **Relays → Signals**. Choose two planets around
-the same reference center and an antenna or array at each endpoint. A DSN power
-can represent the homeworld endpoint. Move **Relative phase**, or use **Closest**
+the same reference center and an antenna or array at each endpoint. Choose the
+**Receiving endpoint** (B by default): a receiving vessel needs a relay antenna,
+and only relay-capable parts contribute to its array power. A DSN power can
+represent the homeworld receiver. Move **Relative phase**, or use **Closest**
 and **Opposite**, to inspect changing distance and central-body obstruction.
 The current signal includes that obstruction; the nearest/farthest cards show
 the circular-reference range-only envelope. Manual geometry accepts your own
@@ -266,10 +272,12 @@ Its nearest/farthest strengths are not universal extrema for eccentric or
 inclined trajectories. Local endpoint horizons, other bodies, and complete DSN
 paths remain unchecked. The radio presets use stock CommNet rules with explicit
 Stock, RSS, and Kerbalism configurations. Communotron 8 cannot forward relay
-traffic, and a symmetric Signals antenna comparison does not verify forwarding.
-Kerbalism science rates, ElectricCharge availability, antenna deployment, and
-storms are not modeled. RealAntennas and RemoteTech use different models and are
-not simulated; custom powers do not reproduce those models. The
+traffic. Signals checks the receiving endpoint's relay capability for one hop;
+it does not establish a complete connection to mission control.
+Kerbalism damping is calculated, while absolute science rates, ElectricCharge
+availability, antenna deployment, and storms are not modeled. RealAntennas and
+RemoteTech use different models and are not simulated; custom powers do not
+reproduce those models. The
 [validation record](docs/VALIDATION.md) describes the
 checked data, independent calculation tests, and remaining limits.
 
@@ -296,6 +304,7 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 ## Planned additions
 
+- Kerbalism science transmission-rate estimates in bits per second.
 - Additional planet packs, rescaled systems, and alternative starting-homeworld
   configurations.
 - Advanced relay planning: inclined and polar constellations for coverage beyond

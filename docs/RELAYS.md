@@ -22,9 +22,11 @@ resets the workspace; reloading the page resets its inputs.
 2. Under **Network**, choose the **Orbit altitude** above the body's physical
    radius and a **Relay count** from 2 to 12. Choose your **Radio setup**, a relay
    antenna or array, a surface-client antenna or array, and a DSN level.
-3. Inspect the equatorial coverage, neighboring links, orbital period, and maximum
-   DSN range. **Rotate relays** changes the constellation's phase so you can
-   inspect the sample surface station's links.
+3. Inspect equatorial coverage, neighboring links, their signal strength, the
+   best current sample-station signal, orbital period, and maximum DSN range.
+   **Rotate relays** changes the constellation's phase so you can inspect the
+   sample surface station's links. Kerbalism profiles show their damped signal
+   with raw CommNet strength separately; see [Kerbalism damping](#kerbalism-damping).
 4. Under **Body data**, choose **Full radius** occlusion for conservative
    spherical geometry, or the selected radio setup's normal effective occlusion
    factors. The range multiplier applies to the antenna range calculation and
@@ -118,7 +120,8 @@ ratings and derived ranges, not signal-strength percentages.
 
 Open **Relays → Signals** to compare one antenna link between vessels near two
 planets. The radio model uses stock CommNet range, strength, and antenna-combining
-rules with the selected Stock, RSS, or Kerbalism profile. It does not simulate a
+rules with the selected Stock, RSS, or Kerbalism profile, with a separate
+Kerbalism damping calculation when selected. It does not simulate a
 complete network path or place a ground station on the visible side of a planet.
 
 1. Under **Signal geometry**, choose **Reference planets** and select **Planet A**
@@ -126,34 +129,48 @@ complete network path or place a ground station on the visible side of a planet.
    the same center. The reference geometry uses their
    pinned semi-major axes as circular radii in one plane.
 2. Choose **Antenna A** and **Antenna B**, mixed arrays, or final custom effective
-   powers in **Power A** and **Power B**.
-   A DSN preset may represent the known homeworld endpoint in reference mode.
-   It is a station-power choice, not proof of an unobstructed DSN connection.
-3. Move **Relative phase**, or choose **Closest** or **Opposite**, to change the
+   powers in **Power A** and **Power B**. A DSN preset may represent the known
+   homeworld endpoint in reference mode.
+3. Choose **Receiving endpoint**: **A · Relay / DSN** or **B · Relay / DSN**
+   (the default). The other endpoint sends. A vessel receiver must have a
+   relay-capable antenna; a direct-only receiver needs another antenna before
+   the planner can report a link. Choosing a DSN power selects that endpoint as
+   the receiver. Swapping endpoints moves the receiving role with its hardware.
+4. Move **Relative phase**, or choose **Closest** or **Opposite**, to change the
    modeled angle. The orbit diagram and strength chart update together. These
    angles are not dates, transfer-window angles, or the planets' current positions.
-4. Compare the current distance, maximum antenna range, **Signal now**, and
-   circular-reference nearest/farthest range-only strengths. The
-   phase chart distinguishes range attenuation from central-body blockage.
-5. Choose **Signal geometry → Manual orbits** for an unknown custom pack or a
+5. Compare the current distance, maximum antenna range, **Signal now** (or
+   **Kerbalism signal**), and circular-reference nearest/farthest range-only
+   strengths. A Kerbalism profile shows the damped percentage and a separate
+   raw CommNet value. Its phase chart adds the raw curve for comparison with
+   the damped range-only and obstruction-aware curves.
+6. Choose **Signal geometry → Manual orbits** for an unknown custom pack or a
    different reference configuration. Enter **Orbit radius A** and **Orbit radius B**
    in **Gm**, and **Central radius** in **km**. Manual values are user assumptions;
    no physical orbit data is inferred from Delta-V map costs or imported body names.
 
-**Radio setup** and the **Range multiplier** are shared with local relay
-planning. Changing the radio setup preserves part identities and array counts,
+**Radio setup**, **Kerbalism damping**, and the **Range multiplier** are shared
+with local relay planning. Changing the radio setup preserves part identities and array counts,
 recalculating compatible powers from its catalog. Unavailable choices remain
 visible for correction or restoring their radio setup. Custom powers remain
 already-effective values and are never scaled again. Both direct and relay
-antennas can be selected for this symmetric range comparison. A vessel receiving
-a forwarding hop needs a relay-capable antenna; selecting two direct antennas
-does not verify a working vessel-to-vessel path. Arrays combine antennas on one
-craft, never across the two endpoints.
+antennas may contribute to the sending craft's combined power. The receiving
+vessel uses only its relay-capable antenna power: direct parts in a mixed
+receiver array do not increase that receiving power. A direct-only receiver
+shows a clear correction message with a **Use RA-100** action rather than an
+available link. Custom power on the receiving endpoint is an explicit user
+assumption that the value describes a relay-capable receiver. Arrays combine
+antennas on one craft, never across the two endpoints.
+
+This receiving-role check covers a single hop. A DSN receiver remains a
+station-power assumption, not proof of local visibility, an unobstructed
+homeworld connection, or a complete relay route back to mission control.
 
 ### Circular-reference distance and strength
 
 Let `a` and `b` be the two circular reference radii, `theta` their relative
-angle, and `PA` and `PB` the effective endpoint powers:
+angle, and `PA` and `PB` the effective endpoint powers after applying their
+sending/receiving roles:
 
 ```text
 distance² = a² + b² − 2ab cos(theta)
@@ -169,6 +186,10 @@ antenna range it is zero; a link at that limit is marked marginal rather than
 as a robust connection. The model does not use an inverse-square strength
 percentage. A distance of one quarter, one half, or three quarters of maximum
 range gives **84.375%**, **50%**, or **15.625%** respectively before occlusion.
+These are raw CommNet percentages. With a Kerbalism profile, the main strength
+and envelope readouts apply `S^k` to that raw fraction, using the selected
+damping exponent. This changes the displayed Kerbalism signal factor without
+changing maximum range, obstruction, or link status.
 
 The nearest/farthest cards are **circular-reference, range-only** comparisons.
 Eccentricity and inclination can produce other distances in an actual
@@ -232,6 +253,16 @@ unobstructed line of sight and enough antenna range. Exact limb tangency or a
 distance equal to the maximum antenna range is marginal, not a robust working
 link. Two opposite relays cannot see each other through the body, regardless of
 how high their circular orbit is.
+
+**Neighbor signal** (**Neighbor Kerbalism signal** with a Kerbalism profile) is
+the strength of a neighboring relay hop at the selected altitude, using the
+same loadout on every satellite. **Best station signal** (**Best station
+Kerbalism signal**) is the strongest currently usable hop from the sample equatorial surface station
+to one of the relays. Rotation changes that sample result. It is not the
+weakest signal across all covered longitudes, the constellation's worst case,
+or an end-to-end DSN connection. A blocked or out-of-range hop contributes zero;
+a body without a surface has no station signal. Kerbalism profiles display
+`S^k` and retain separate raw CommNet readouts for these hops.
 
 **DSN range** is the maximum distance allowed by the selected relay loadout and
 DSN power. It does not check where the homeworld is, other bodies or the Sun
@@ -539,19 +570,71 @@ for relay forwarding loadouts. RSS scales its power to **5 Mm**. Its
 is pinned to revision `39f9f43afe8b4f77aff0086c3866044287694475`, alongside the
 Kerbalism sources below. No part artwork or source implementation is bundled.
 Switching to a profile without Communotron 8 retains that choice as unavailable;
-select another antenna, edit/remove its array row, or restore a Kerbalism profile
-to resume the calculation.
+the message offers a matching Kerbalism preset or an available replacement.
+For an array, use the edit action to replace or remove unavailable rows, or
+restore its Kerbalism profile. Choices and counts stay available until you
+change them; the planner does not calculate using a missing antenna's power.
 
-**Signal now** remains the stock CommNet percentage. Kerbalism's
+### Kerbalism damping
+
+Kerbalism's
 [CommNet adapter](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/Comms/CommHandlerCommNetBase.cs)
-uses that strength for a separate science rate, with a
+retains raw CommNet strength but uses a damped factor for science transmission
+and displays that factor as strength in its connection-path details:
+
+```text
+raw CommNet strength S = 3x² − 2x³
+Kerbalism signal factor = S^k
+```
+
+With a custom exponent `k = 6`, raw strength **80%** gives a Kerbalism factor
+of **26.2144%**; raw **50%** gives **1.5625%**. This percentage is the attenuation
+factor before the science-rate floor, not a bit rate or a threshold for control.
+It does not shorten the antenna's maximum range or remove a geometrically
+available link. A blocked or out-of-range link still has zero effective strength.
+
+With a Kerbalism profile, Network and Signals show the damped percentage as the
+main signal result, alongside raw CommNet strength. The Signals envelope uses
+the same damping for its range-only strengths, and its chart also shows raw
+CommNet strength. Open **Kerbalism damping** to select **Automatic (3.44)** or
+**Custom exponent**. Mode and custom value remain shared across both tabs and
+closing/reopening the workspace; changing packs resets the session.
+
+Automatic uses the pinned
 [system-calibrated damping exponent](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/Sim.cs).
-Science throughput also depends on the
+Its reference inputs are the homeworld's orbital radius (`AU`) and the radio
+profile's **maximum DSN power**, rather than the currently selected DSN level,
+the two endpoint powers, or their geometric-mean link range. Choosing a
+different target planet or local Kcalbeloh center does not change the
+installation's homeworld reference. The shared range multiplier changes link
+range, not these automatic calibration references.
+
+The calibration tries distances of `2`, `1.5`, `1`, `0.75`, `0.5`, and `0.25 AU`
+in that order. It accepts a distance inside the maximum DSN reference with raw
+strength between `0.001` and `0.999`, then calculates:
+
+```text
+targetRatio = (0.3925 / 0.48)^(AU multiple / 2)
+k = ln(targetRatio) / ln(raw strength at calibration distance)
+```
+
+If the homeworld reference is unknown, or no calibration point is usable, the
+UI identifies the **fallback exponent 6**. An automatically calibrated exponent
+can be below 1; it is not clamped to force a reduction. Custom exponent accepts
+a finite value greater than zero, up to `1,000,000`.
+
+These automatic values use the planner's default reference configuration.
+For another Kerbalism version, rescaled system, changed DSN configuration, or a
+`DampingExponentOverride`, enter the value from your installation's settings or
+`KSP.log` (`DataRateDampingExponent`). A custom imported pack without a reviewed
+home orbit cannot supply a certified automatic exponent.
+
+Absolute science throughput also depends on the
 [geometric mean of active external antenna rates](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/Comms/CommHandlerCommNetVessel.cs),
 the minimum rate along the relay path, settings, and a positive-rate floor.
-These rates are
-not calculated here. ElectricCharge availability, powered/deployed antenna
-state, failures, and storms are also outside the model; a clear reference link
+These rates in bits per second remain a planned feature. ElectricCharge
+availability, powered/deployed antenna state, failures, and storms are also
+outside the model; a clear reference link
 does not establish control or a complete home connection.
 
 ### Retained MIT notice for the antenna reference

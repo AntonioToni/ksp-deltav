@@ -491,9 +491,10 @@ The explicit Kerbalism profiles target official **3.44**, pinned to revision
 `39f9f43afe8b4f77aff0086c3866044287694475`. The official part configuration
 supplies Communotron 8's **250,000 m** power, direct-only antenna type,
 combinability, and exponent **1**. The CommNet adapter and signal helper confirm
-that raw link strength retains the stock cubic curve. Kerbalism's science-rate
-damping, antenna-rate aggregation, relay-path bottlenecks, and positive-rate
-floor are separate behavior and are not simulated by these presets.
+that raw link strength retains the stock cubic curve. The initial catalog
+extension did not calculate damping; the damping extension below adds that
+factor. Antenna-rate aggregation, relay-path bottlenecks, and the positive-rate
+floor remain outside these presets' signal-strength calculations.
 
 Three profiles layer that antenna catalog onto Stock, RSS without CustomBarnKit,
 and RSS with CustomBarnKit. The pinned generic RSS transmitter patch also
@@ -503,9 +504,10 @@ DSN powers and occlusion defaults remain those of the selected baseline.
 
 Independent fixtures check four Communotron 8 parts combining linearly to
 **1 Mm**, or **20 Mm** with RSS. With HG-5, its single-part surface-link range is
-**1,118,033.98875 m** under Stock and **22,360,679.775 m** under RSS. The same
-loadouts of existing stock parts produce identical complete relay results with
-and without Kerbalism. Relay forwarding catalogs reject Communotron 8.
+**1,118,033.98875 m** under Stock and **22,360,679.775 m** under RSS. With damping
+disabled, the same loadouts of existing stock parts produce identical complete
+relay results with and without Kerbalism. Relay forwarding catalogs reject
+Communotron 8.
 
 The full **1,083-unit-test suite across 41 files**, ESLint, strict TypeScript,
 and the production build passed. Production browser checks passed **20 new
@@ -516,6 +518,54 @@ recovery, source visibility, occlusion labels, and mission/session retention.
 Controls remain usable at **320 × 568** and **667 × 375** without page overflow.
 The source references and interpretation
 limits are documented in the [Kerbalism radio guide](RELAYS.md#kerbalism-radio-configuration).
+
+### Kerbalism damping and directed receiver checks
+
+The signal engine now keeps raw CommNet strength `S` separate from Kerbalism's
+dimensionless factor `S^k`. Both local neighbor links and sample surface-station
+links receive raw and damped strengths, masked to zero for blocked or
+out-of-range hops. The station summary is the best currently usable sample
+hop at the selected rotation, rather than a worst-case strength over an orbit.
+Damping does not change geometric coverage, antenna range, or reach status.
+
+Automatic calibration follows the pinned 3.44 `Sim.cs` calculation using the
+physical home orbit and maximum DSN preset, independently of the selected pair,
+local body, or current DSN level. Independent scalar fixtures include:
+
+| Reference | Exponent or factor |
+| --- | ---: |
+| Stock home orbit 13,599,840,256 m; maximum DSN 250 Gm | `k = 6.009182065257` |
+| RSS home orbit 149,598,261,150.4425 m; maximum DSN 250 Gm | `k = 0.04276280180335` |
+| RSS home orbit; maximum DSN 50 Tm | Fallback `k = 6` |
+| Raw strength 80%; custom `k = 6` | 26.2144% |
+| Raw strength 50%; custom `k = 6` | 1.5625% |
+| Kerbin–Duna, 90°, RA-100 pair; automatic Stock calibration | Raw 84.6109236%; damped 36.6346662% |
+
+The adaptive calibration checks 2, 1.5, 1, 0.75, 0.5, and 0.25 home-orbit
+multiples. Exponents below one are retained when the source calculation yields
+them; missing custom home references and unusable points visibly use the
+upstream fallback. A custom exponent can match older versions or save settings.
+Invalid overrides do not silently revert to another value. Even a factor that
+numerically underflows to zero does not turn a reachable raw link into a
+disconnected one.
+
+Directed endpoint fixtures reject a direct-only receiver and use only the
+relay-capable subset of a mixed receiving array. Sending arrays keep their
+combined power. DSN selection and swapping preserve the intended receiving
+hardware; custom receiving power is explicitly a relay-hardware assumption.
+These checks establish one hop, not a complete route to the DSN.
+
+The full **1,183-unit-test suite across 44 files**, ESLint, strict TypeScript,
+and the production build passed for this extension. **150 production browser
+cases** passed across desktop and mobile, covering new damping controls and
+fixtures alongside the existing relay, signal, array, RSS, and Kcalbeloh flows.
+The checks include unavailable-part recovery, direct-only receiver correction,
+DSN and swap behavior, invalid overrides, fallback, and preserved mission inputs.
+Phone **320 × 568** and landscape **667 × 375** layouts were inspected and stay
+within the page, with additional controls accessible inside the dialog.
+Absolute transmission rates
+in bits per second remain deferred; no antenna base rates, minimum-rate floors,
+or end-to-end relay bottlenecks are inferred from the signal percentages.
 
 ## Calculation checks
 

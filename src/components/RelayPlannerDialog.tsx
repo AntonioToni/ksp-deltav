@@ -10,12 +10,16 @@ import {
   commNetSources, findRelayBodyPreset,
 } from '../data/commnet'
 import { defaultRadioProfileId, getRadioProfile, radioProfileOptions, type RadioProfileId } from '../data/radioProfiles'
+import { getKerbalismHomeOrbitRadiusM, getKerbalismRadioProfileId } from '../data/kerbalism'
+import { calibrateKerbalismDamping } from '../utils/signalStrength'
 import { calculateAntennaArray, type AntennaArrayEntry, type AntennaArrayRole } from '../utils/antennaArray'
 import { calculateRelayPlan, type RelayNetworkInput } from '../utils/relay'
 import { suggestRelayAltitudeKm } from '../utils/relayDefaults'
 import AntennaArrayDialog from './AntennaArrayDialog'
 import RelayDiagram from './RelayDiagram'
 import InterplanetaryPlanner from './InterplanetaryPlanner'
+import KerbalismDampingControls, { type KerbalismDampingMode } from './KerbalismDampingControls'
+import UnavailableAntennaAlert from './UnavailableAntennaAlert'
 
 interface RelayPlannerDialogProps {
   open: boolean
@@ -35,6 +39,8 @@ interface BodyDraft {
 }
 
 const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
+const signalNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
+const signalPercent = (value: number) => value > 0 && value < .0001 ? '<0.01%' : `${signalNumber.format(value * 100)}%`
 const fieldStyles = {
   minWidth: 0,
   '& .MuiInputBase-root': { fontSize: 12, minHeight: 38 },
@@ -82,10 +88,11 @@ function range(value: number): string {
   return value >= 1e9 ? `${number.format(value / 1e9)} Gm` : value >= 1e6 ? `${number.format(value / 1e6)} Mm` : distance(value)
 }
 
-function Metric({ label, value, testId, color }: { label: string; value: string; testId?: string; color?: string }) {
+function Metric({ label, value, testId, color, rawValue, rawTestId }: { label: string; value: string; testId?: string; color?: string; rawValue?: string; rawTestId?: string }) {
   return <Box sx={{ px: 1, py: { xs: .25, sm: .5 }, minWidth: 0, border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: '#080f2145', [compact]: { py: .25 } }}>
     <Typography sx={{ fontSize: 10, lineHeight: 1.2, color: 'text.secondary' }}>{label}</Typography>
     <Typography component="output" data-testid={testId} sx={{ display: 'block', mt: { xs: .125, sm: .25 }, fontSize: { xs: 14, sm: 15 }, lineHeight: 1.25, fontWeight: 500, fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere', color: color ?? 'text.primary', [compact]: { fontSize: 13, mt: 0 } }}>{value}</Typography>
+    {rawValue !== undefined && <Typography sx={{ mt: .25, fontSize: 10, lineHeight: 1.3, color: 'text.secondary' }}>Raw CommNet <Box component="output" data-testid={rawTestId} sx={{ fontVariantNumeric: 'tabular-nums' }}>{rawValue}</Box></Typography>}
   </Box>
 }
 
@@ -109,6 +116,13 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const [radioId, setRadioId] = useState<RadioProfileId>(() => defaultRadioProfileId(pack.id))
   const radioProfile = getRadioProfile(radioId)
   const { relayAntennas, clientAntennas, vesselAntennas, dsnLevels } = radioProfile
+  const [dampingMode, setDampingMode] = useState<KerbalismDampingMode>('automatic')
+  const [customExponent, setCustomExponent] = useState('6')
+  const homeOrbitRadiusM = getKerbalismHomeOrbitRadiusM(pack)
+  const maximumDsnPowerM = dsnLevels.at(-1)?.power ?? NaN
+  const calibration = calibrateKerbalismDamping(homeOrbitRadiusM, maximumDsnPowerM)
+  const dampingExponent = radioProfile.kerbalism ? dampingMode === 'automatic' ? calibration.exponent : numeric(customExponent) : 1
+  const dampingControls = radioProfile.kerbalism ? <KerbalismDampingControls mode={dampingMode} customExponent={customExponent} onModeChange={setDampingMode} onExponentChange={setCustomExponent} calibration={calibration} homeOrbitRadiusM={homeOrbitRadiusM} maximumDsnPowerM={maximumDsnPowerM} /> : null
   const [tab, setTab] = useState<'network' | 'deployment' | 'body' | 'signals'>(() => !first ? 'signals' : findRelayBodyPreset(first) ? 'network' : 'body')
   const [signalsOpened, setSignalsOpened] = useState(!first)
   const [satelliteCount, setSatelliteCount] = useState(3)
@@ -190,7 +204,17 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     stationLongitudeDeg: 0,
     safetyMarginM: numeric(safetyMargin) * 1000,
     deploymentMode,
+    dampingExponent,
   }
+  const missingParts = (id: string, array: AntennaArrayEntry[] | null, options: readonly { id: string }[]) => id === 'array'
+    ? array?.filter(entry => !options.some(antenna => antenna.id === entry.antennaId)).map(entry => entry.antennaId) ?? []
+    : id !== 'custom' && !options.some(antenna => antenna.id === id) ? [id] : []
+  const missingRelay = missingParts(relayId, relayArray, relayAntennas)
+  const missingClient = missingParts(clientId, clientArray, vesselAntennas)
+  const missingIds = [...missingRelay, ...missingClient]
+  const missingNames = missingIds.map(id => radioProfileOptions.flatMap(profile => profile.vesselAntennas).find(antenna => antenna.id === id)?.name ?? id)
+  const restoreProfileId = getKerbalismRadioProfileId(radioId)
+  const missingArrayRole = missingRelay.length && relayId === 'array' ? 'relay' : missingClient.length && clientId === 'array' ? 'client' : null
   const result = calculateRelayPlan(input)
   const success = result.status === 'success' ? result : null
   const ringLabel = success ? ({ available: 'Available', marginal: 'At limit', blocked: 'Body blocks links', 'out-of-range': 'Out of range' } as const)[success.ringLinkStatus] : '—'
@@ -236,7 +260,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     </Tabs>
     <DialogContent sx={{ p: 1.5, minWidth: 0, minHeight: 0, overflowY: 'auto', [compact]: { pb: 1 } }}>
       <Box role="tabpanel" id="relay-signals-panel" aria-labelledby="relay-signals-tab" hidden={tab !== 'signals'} sx={{ display: tab === 'signals' ? 'block' : 'none', minWidth: 0 }}>
-        {signalsOpened && <InterplanetaryPlanner pack={pack} initialBodyId={initialBodyId} radioId={radioId} onRadioChange={setRadioId} rangeMultiplier={rangeMultiplier} onRangeMultiplierChange={setRangeMultiplier} />}
+        {signalsOpened && <InterplanetaryPlanner pack={pack} initialBodyId={initialBodyId} radioId={radioId} onRadioChange={setRadioId} rangeMultiplier={rangeMultiplier} onRangeMultiplierChange={setRangeMultiplier} dampingExponent={dampingExponent} dampingControls={dampingControls} />}
       </Box>
       <Box sx={{ display: tab === 'signals' || !body ? 'none' : 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.25, '@media (min-width: 600px)': { gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' } }}>
         <Box role={tab === 'signals' ? undefined : 'tabpanel'} id={tab === 'signals' ? undefined : `relay-${tab}-panel`} aria-labelledby={tab === 'signals' ? undefined : `relay-${tab}-tab`} sx={{ minWidth: 0, containerType: 'inline-size' }}>
@@ -245,6 +269,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               {radioProfileOptions.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 12 }}>{option.name}</MenuItem>)}
             </TextField>
             <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>{radioProfile.description}</Typography>
+            {dampingControls}
             <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, .7fr)', gap: .75 }}>
               <NumericField label="Orbit altitude" value={current.altitude} unit="km" onChange={value => changeProfile({ altitude: value, altitudeAutomatic: false })} />
               <TextField select fullWidth size="small" label="Relay count" value={satelliteCount} onChange={event => setSatelliteCount(Number(event.target.value))} sx={fieldStyles}>
@@ -269,8 +294,15 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
                 <Metric label="Neighbor distance" value={distance(success.neighborDistanceM)} testId="relay-neighbor-distance" />
                 <Metric label="Orbital period" value={duration(success.orbitalPeriodS)} testId="relay-period" />
                 <Metric label="Maximum DSN range" value={range(success.dsnRangeM)} testId="relay-dsn-range" />
+                <Metric label={radioProfile.kerbalism ? 'Neighbor Kerbalism signal' : 'Neighbor signal'} value={signalPercent(radioProfile.kerbalism ? success.neighborDampedStrength : success.neighborSignalStrength)} testId="relay-neighbor-signal" rawValue={radioProfile.kerbalism ? signalPercent(success.neighborSignalStrength) : undefined} rawTestId="relay-neighbor-raw-signal" />
+                <Metric label={radioProfile.kerbalism ? 'Best station Kerbalism signal' : 'Best station signal'} value={success.bestStationSignalStrength === null ? 'No surface' : signalPercent((radioProfile.kerbalism ? success.bestStationDampedStrength : success.bestStationSignalStrength)!)} testId="relay-station-signal" rawValue={radioProfile.kerbalism && success.bestStationSignalStrength !== null ? signalPercent(success.bestStationSignalStrength) : undefined} rawTestId="relay-station-raw-signal" />
               </Box>
-            </> : <Alert severity="info" sx={{ py: .25, fontSize: 11, '& .MuiAlert-message': { minWidth: 0 } }}>{result.status === 'invalid' ? result.errors[0] : 'Enter the body and orbit data to calculate a network.'}</Alert>}
+              <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Station signal is the best visible hop from the sample surface point at this rotation. Coverage and link reach use raw CommNet strength.{radioProfile.kerbalism ? ' Kerbalism signal is S^k before any minimum-rate floor; it is not a bit/s estimate.' : ''}</Typography>
+            </> : missingIds.length ? <UnavailableAntennaAlert names={missingNames} restoreLabel={getRadioProfile(restoreProfileId).name} onRestore={() => setRadioId(restoreProfileId)}
+              replaceLabel={missingArrayRole ? 'Edit antenna array' : missingRelay.length ? 'Use HG-5' : 'Use Communotron 16'} onReplace={() => {
+                if (missingArrayRole) openArray(missingArrayRole)
+                else { if (missingRelay.length) setRelayId('hg-5'); if (missingClient.length) setClientId('communotron-16') }
+              }} /> : <Alert severity="info" sx={{ py: .25, fontSize: 11, '& .MuiAlert-message': { minWidth: 0 } }}>{result.status === 'invalid' ? result.errors[0] : 'Enter the body and orbit data to calculate a network.'}</Alert>}
             <Typography sx={{ fontSize: 10, lineHeight: 1.35, color: 'text.secondary' }}>Same loadout on each relay · Equatorial coverage only · DSN range is not a home link.</Typography>
             <Typography sx={{ fontSize: 10, lineHeight: 1.35, color: 'text.secondary' }}>RealAntennas and RemoteTech are not modeled. Custom powers do not reproduce their radio systems.</Typography>
           </Stack>}

@@ -341,6 +341,56 @@ describe('radio presets and final endpoint powers', () => {
   })
 })
 
+describe('Kerbalism signal damping', () => {
+  it('preserves raw strength, geometry and reach while reporting an independently calculated damped value', () => {
+    const raw = success()
+    const damped = success(example({ dampingExponent: 6 }))
+    expect(damped.signalStrength).toBeCloseTo(Number('.84610923581389190419'), 14)
+    expect(damped.dampedStrength).toBeCloseTo(Number('.36690921056696263418'), 14)
+    expect(raw.dampedStrength).toBe(raw.signalStrength)
+    expect(raw.dampedRangeStrength).toBe(raw.rangeStrength)
+    for (const key of ['distanceM', 'maximumRangeM', 'centralClearanceM', 'linkStatus',
+      'signalStrength', 'rangeStrength', 'bestRangeStrength', 'worstRangeStrength'] as const) {
+      expect(damped[key]).toBe(raw[key])
+    }
+  })
+
+  it('keeps blocked signal at zero while preserving its separate range-only damped envelope', () => {
+    const blocked = success(example({ dampingExponent: 6, phaseDeg: 180 }))
+    expect(blocked.linkStatus).toBe('blocked')
+    expect(blocked.signalStrength).toBe(0)
+    expect(blocked.dampedStrength).toBe(0)
+    expect(blocked.dampedRangeStrength).toBeGreaterThan(0)
+    expect(blocked.dampedRangeStrength).toBe(blocked.worstDampedStrength)
+    expect(blocked.bestDampedStrength).toBeGreaterThan(blocked.worstDampedStrength)
+  })
+
+  it('preserves zero at and beyond maximum range for any positive damping exponent', () => {
+    for (const dampingExponent of [.04, 1, 6, 1e6]) {
+      for (const radius of [11, 12]) {
+        const result = success(example({ orbitRadiusAM: 1, orbitRadiusBM: radius,
+          centralRadiusM: .1, powerA: 10, powerB: 10, phaseDeg: 0, dampingExponent }))
+        expect(result.signalStrength).toBe(0)
+        expect(result.dampedStrength).toBe(0)
+        expect(result.linkStatus).toBe(radius === 11 ? 'marginal' : 'out-of-range')
+      }
+    }
+  })
+
+  it('accepts exponents below one and handles coincident same-radius endpoints without a rate floor', () => {
+    const result = success(example({ dampingExponent: .5 }))
+    expect(result.dampedStrength).toBeCloseTo(Math.sqrt(result.signalStrength), 14)
+    expect(result.dampedStrength).toBeGreaterThan(result.signalStrength)
+    const coincident = success(example({ dampingExponent: 1e6, orbitRadiusBM: 13_599_840_256, phaseDeg: 0 }))
+    expect(coincident.signalStrength).toBe(1)
+    expect(coincident.dampedStrength).toBe(1)
+  })
+
+  it.each([0, -1, NaN, Infinity, 1e6 + 1, null, '6'])('rejects invalid supplied damping exponent %j', dampingExponent => {
+    expect(calculateInterplanetarySignal(example({ dampingExponent: dampingExponent as number })).status).toBe('invalid')
+  })
+})
+
 describe('invalid interplanetary inputs', () => {
   it.each([
     { orbitRadiusAM: 0 }, { orbitRadiusAM: -1 }, { orbitRadiusAM: NaN }, { orbitRadiusAM: Infinity }, { orbitRadiusAM: 1e16 + 100 },

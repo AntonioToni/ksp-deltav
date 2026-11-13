@@ -16,6 +16,7 @@ const linkColors: Record<LinkStatus, string> = {
   available: '#8fcdbd', marginal: '#e7bd7b', blocked: '#c1808c', 'out-of-range': '#c1808c',
 }
 const format = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
+const signalFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
 
 /** Merge footprint intervals so overlapping caps do not hide narrow gaps. */
 function coverageIntervals(angles: readonly number[], halfAngle: number): [number, number][] {
@@ -69,6 +70,7 @@ export default function RelayDiagram({ input, result, bodyName, bodyColor, onRot
     x: centerX + bodyRadius * Math.cos(angle),
     y: centerY - bodyRadius * Math.sin(angle),
   })
+  const signalDetails = (raw: number, damped: number) => `Raw CommNet signal ${signalFormat.format(raw * 100)}%.${input.dampingExponent !== undefined && input.dampingExponent !== 1 ? ` Kerbalism factor ${signalFormat.format(damped * 100)}%.` : ''}`
 
   return <Box component="figure" sx={{ m: 0, minWidth: 0, width: '100%' }}>
     <Box component="svg" role="img" aria-label={`${bodyName} equatorial relay diagram`} aria-describedby={`${prefix}-description`}
@@ -84,8 +86,8 @@ export default function RelayDiagram({ input, result, bodyName, bodyColor, onRot
         return <line key={`${link.fromIndex}-${link.toIndex}`} x1={from.x} y1={from.y} x2={to.x} y2={to.y}
           stroke={linkColors[link.status]} strokeWidth={strokeWidth} strokeOpacity={link.status === 'available' || link.status === 'marginal' ? .9 : .65}
           strokeDasharray={link.status === 'blocked' ? '5 4' : link.status === 'out-of-range' ? '2 4' : undefined}
-          data-relay-link="neighbor" data-from-index={link.fromIndex} data-to-index={link.toIndex} data-link-status={link.status}>
-          <title>{`Relay ${link.fromIndex + 1} ↔ ${link.toIndex + 1}: ${link.status}; ${format.format(link.distanceM / 1000)} km apart; ${format.format(link.clearanceM / 1000)} km occluder clearance.`}</title>
+          data-relay-link="neighbor" data-from-index={link.fromIndex} data-to-index={link.toIndex} data-link-status={link.status} data-raw-signal={link.signalStrength} data-damped-signal={link.dampedStrength}>
+          <title>{`Relay ${link.fromIndex + 1} ↔ ${link.toIndex + 1}: ${link.status}; ${format.format(link.distanceM / 1000)} km apart; ${format.format(link.clearanceM / 1000)} km occluder clearance. ${signalDetails(link.signalStrength, link.dampedStrength)}`}</title>
         </line>
       })}
       <circle cx={centerX} cy={centerY} r={bodyRadius} fill="#101b2f" fillOpacity={.85} />
@@ -107,8 +109,8 @@ export default function RelayDiagram({ input, result, bodyName, bodyColor, onRot
         if (!satellite) return null
         return <line key={link.satelliteIndex} x1={station.x} y1={station.y} x2={satellite.x} y2={satellite.y}
           stroke={link.status === 'marginal' ? '#e7bd7b' : '#73c8fa'} strokeWidth={strokeWidth} strokeDasharray="2 3" strokeOpacity={.9}
-          data-relay-station-link={link.satelliteIndex} data-link-status={link.status}>
-          <title>{`Surface client → relay ${link.satelliteIndex + 1}: ${link.status}; ${format.format(link.distanceM / 1000)} km.`}</title>
+          data-relay-station-link={link.satelliteIndex} data-link-status={link.status} data-raw-signal={link.signalStrength} data-damped-signal={link.dampedStrength}>
+          <title>{`Surface client → relay ${link.satelliteIndex + 1}: ${link.status}; ${format.format(link.distanceM / 1000)} km. ${signalDetails(link.signalStrength, link.dampedStrength)}`}</title>
         </line>
       })}
       {input.hasSurface && <g transform={`translate(${station.x} ${station.y})`} data-relay-station="true">

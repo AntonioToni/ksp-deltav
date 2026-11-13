@@ -20,6 +20,8 @@ export interface RelayNetworkInput {
   stationLongitudeDeg: number
   safetyMarginM: number
   deploymentMode: 'lower' | 'higher'
+  /** Optional Kerbalism strength factor exponent; omitted means raw CommNet (1). */
+  dampingExponent?: number
 }
 
 export type LinkStatus = 'available' | 'marginal' | 'blocked' | 'out-of-range'
@@ -36,6 +38,10 @@ export interface RelayNeighborLink {
   distanceM: number
   clearanceM: number
   status: LinkStatus
+  /** Raw CommNet strength, zero for a blocked or out-of-range link. */
+  signalStrength: number
+  /** Kerbalism S^k, before minimum science-rate floors. */
+  dampedStrength: number
 }
 
 export interface RelayStationLink {
@@ -44,6 +50,10 @@ export interface RelayStationLink {
   /** Segment-to-occluder clearance; ground endpoints can have zero clearance. */
   clearanceM: number
   status: LinkStatus
+  /** Raw CommNet strength, zero for a blocked or out-of-range link. */
+  signalStrength: number
+  /** Kerbalism S^k, before minimum science-rate floors. */
+  dampedStrength: number
 }
 
 export interface RelayDeployment {
@@ -69,10 +79,15 @@ export interface SuccessfulRelayPlan {
   neighborClearanceM: number
   neighborRangeM: number
   ringLinkStatus: LinkStatus
+  neighborSignalStrength: number
+  neighborDampedStrength: number
   surfaceRangeM: number
   surfaceHalfAngleRad: number | null
   equatorialCoverageFraction: number | null
   coverageStatus: 'full' | 'partial' | 'marginal' | 'none' | null
+  /** Best currently usable sample-station hop; null for bodies without a surface. */
+  bestStationSignalStrength: number | null
+  bestStationDampedStrength: number | null
   /** Range only: this is not a checked home/DSN communication path. */
   dsnRangeM: number
   satellites: RelaySatellite[]
