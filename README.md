@@ -1,4 +1,4 @@
-[![KSP Delta-V Planner — Mission budgets & CommNet planning](docs/assets/planner-preview.png?v=4)](https://antoniotoni.github.io/ksp-deltav/)
+[![KSP Delta-V Planner — Mission budgets & CommNet planning](docs/assets/planner-preview.png?v=5)](https://antoniotoni.github.io/ksp-deltav/)
 
 # KSP Delta-V Planner
 
