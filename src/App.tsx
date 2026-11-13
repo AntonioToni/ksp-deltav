@@ -15,6 +15,7 @@ import ExtensionOutlined from '@mui/icons-material/ExtensionOutlined'
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 import AirRounded from '@mui/icons-material/AirRounded'
 import SatelliteAltRounded from '@mui/icons-material/SatelliteAltRounded'
+import GitHub from '@mui/icons-material/GitHub'
 import { stockPack } from './data/stock'
 import { builtInConfigurations, changeBaseConfiguration, getBasePackId, planetPacks, primaryPlanetPacks } from './data/planetPacks'
 import type { PlanetPack } from './types/planner'
@@ -323,12 +324,12 @@ export default function App() {
 
   return (
     <Box sx={{ width: '100%', height: '100dvh', display: 'grid', gridTemplateRows: '44px minmax(0, 1fr) auto', overflow: 'hidden', '@media (max-height: 500px)': { gridTemplateRows: '34px minmax(0, 1fr) auto' } }}>
-      <Box component="header" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: { xs: 1.25, sm: 2.5 }, borderBottom: '1px solid', borderColor: 'divider', gap: 1, background: 'linear-gradient(100deg, #111d32, #0c1628)', boxShadow: 'inset 0 1px 0 #ffffff04' }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
-          <RocketLaunchRounded sx={{ color: 'primary.main', fontSize: 21 }} />
-          <Typography component="h1" sx={{ fontWeight: 700, fontSize: { xs: 14, sm: 16 }, letterSpacing: '-.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>KSP DeltaV Planner</Typography>
+      <Box component="header" sx={{ minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: { xs: 1.25, sm: 2.5 }, borderBottom: '1px solid', borderColor: 'divider', gap: 1, background: 'linear-gradient(100deg, #111d32, #0c1628)', boxShadow: 'inset 0 1px 0 #ffffff04' }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0, flex: '1 1 auto' }}>
+          <RocketLaunchRounded sx={{ color: 'primary.main', fontSize: 21, flexShrink: 0 }} />
+          <Typography component="h1" sx={{ minWidth: 0, fontWeight: 700, fontSize: { xs: 14, sm: 16 }, letterSpacing: '-.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>KSP DeltaV Planner</Typography>
         </Stack>
-        <Stack direction="row" spacing={{ xs: .5, sm: 1 }} sx={{ alignItems: 'center', minWidth: 0 }}>
+        <Stack direction="row" spacing={{ xs: .5, sm: 1 }} sx={{ alignItems: 'center', minWidth: 0, flexShrink: 0 }}>
           <Tooltip title="Configure ideal atmospheric capture and landing allowances. Map arrows show potential assistance; bundled transfers keep their reference cost.">
             <Box role="note" aria-label="Aerobraking legend">
             <Button aria-label="Atmospheric assistance" aria-haspopup="dialog" aria-expanded={showAtmosphere} aria-pressed={hasAtmosphericOptions} onClick={() => {
@@ -359,6 +360,12 @@ export default function App() {
             }} sx={{ minWidth: 28, minHeight: 28, px: { xs: .5, sm: .75 }, gap: .5, border: '1px solid #73c8fa35', borderRadius: 4, color: 'primary.main', bgcolor: '#73c8fa08', whiteSpace: 'nowrap', '&:hover': { bgcolor: '#73c8fa18' } }}>
               <SatelliteAltRounded sx={{ fontSize: 17 }} />
               <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' }, fontSize: 10 }}>Relays</Box>
+            </Button>
+          </Tooltip>
+          <Tooltip title="GitHub project (opens in a new tab)">
+            <Button component="a" href="https://github.com/AntonioToni/ksp-deltav" target="_blank" rel="noopener noreferrer" aria-label="GitHub project (opens in a new tab)" sx={{ minWidth: 28, minHeight: 28, px: { xs: .5, sm: .75 }, gap: .5, border: '1px solid #73c8fa35', borderRadius: 4, color: 'text.secondary', bgcolor: '#73c8fa08', whiteSpace: 'nowrap', '&:hover': { bgcolor: '#73c8fa18', color: 'text.primary' } }}>
+              <GitHub sx={{ fontSize: 17 }} />
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' }, fontSize: 10 }}>GitHub</Box>
             </Button>
           </Tooltip>
           <Typography variant="caption" color="text.secondary" title={pack.name} sx={{ display: { xs: 'none', sm: 'block' }, minWidth: 0, fontSize: 10, letterSpacing: '.1em', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.shortName ?? pack.name} · KSP 1</Typography>
