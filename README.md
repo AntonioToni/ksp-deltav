@@ -11,7 +11,7 @@ with Stock or OPM.
 
 **[Open the planner](https://antoniotoni.github.io/ksp-deltav/)**
 
-[Data and assumptions](docs/DATA.md) · [Relay guide](docs/RELAYS.md) ·
+[Changelog](CHANGELOG.md) · [Data and assumptions](docs/DATA.md) · [Relay guide](docs/RELAYS.md) ·
 [Validation record](docs/VALIDATION.md) · [Developer guide](docs/DEVELOPMENT.md)
 
 ## Features
