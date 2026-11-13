@@ -1,4 +1,5 @@
 import type { DataSource } from '../types/planner'
+import { kerbalismRateSources } from './kerbalismRates'
 import {
   clientAntennas, commNetSources, dsnLevels, relayAntennas,
   type CommNetAntenna, type CommNetPowerPreset,
@@ -140,12 +141,13 @@ function withKerbalism(
     : base.id === 'rss' ? 'RSS 20× antenna powers; stock DSN' : 'RSS 20× antenna powers; CustomBarnKit DSN'
   return Object.freeze({
     ...base, id, name, kerbalism: true,
-    description: `${powers}. Includes Communotron 8 and Kerbalism signal damping. Transmission rates in bit/s are not calculated.`,
+    description: `${powers}. Includes Communotron 8, Kerbalism signal damping and science-rate estimates.`,
     clientAntennas: clients,
     vesselAntennas: Object.freeze([...clients, ...base.relayAntennas]),
     sources: Object.freeze([
       ...base.sources.filter(source => source.id !== 'commnet-antenna-combination'),
       ...kerbalismRadioSources,
+      ...kerbalismRateSources,
     ]),
   })
 }

@@ -56,6 +56,9 @@ with Stock or OPM.
   Kcalbeloh systems; manual geometry supports other configurations.
 - **Mixed antenna arrays** with separate relay, surface-client, and interplanetary
   endpoint loadouts, using stock antenna combining rules.
+- **Kerbalism science bitrate estimates** for local relay and interplanetary
+  hops, using antenna loadouts, signal damping, editable antenna speed, and a
+  minimum science rate.
 - **A responsive map** with keyboard and touch selection, a deep-blue starfield,
   and no page or map scrolling.
 
@@ -166,8 +169,18 @@ rules, add **Communotron 8**, and show Kerbalism's **damped signal** alongside
 raw CommNet strength in Network and Signals. Open **Kerbalism damping** to use
 the automatic 3.44 reference exponent or enter your installation's exponent.
 Damping settings are shared by both tabs. Reach and coverage still use raw
-CommNet geometry; the damped percentage is not a transmission rate in bits per
-second. See [Kerbalism radio configuration](docs/RELAYS.md#kerbalism-radio-configuration).
+CommNet geometry; the damped percentage and science bitrate are separate results.
+See [Kerbalism radio configuration](docs/RELAYS.md#kerbalism-radio-configuration).
+
+With a Kerbalism preset, **Neighbor science rate** and **Surface → relay rate**
+estimate the selected local hops. Signals shows the sending endpoint's rate
+toward the chosen receiver. Open **Science rate settings** and set **Antenna
+speed** to your game setting; the default is **1.5× (Normal)**.
+**Minimum science rate** defaults to **1 bit/s**;
+set it to zero to disable that floor. These settings are shared by both tabs.
+For custom power, enter the craft's full-strength rate in **bit/s** before speed
+and damping; leaving it blank keeps the bitrate unknown without hiding signal
+results. These are single-hop estimates, before any slower onward relay links.
 
 Choose **Antenna array…** under **Relay antenna** or **Surface antenna** to mix
 catalog parts and counts, then choose **Apply**. A relay loadout is fitted to each
@@ -279,8 +292,9 @@ paths remain unchecked. The radio presets use stock CommNet rules with explicit
 Stock, RSS, and Kerbalism configurations. Communotron 8 cannot forward relay
 traffic. Signals checks the receiving endpoint's relay capability for one hop;
 it does not establish a complete connection to mission control.
-Kerbalism damping is calculated, while absolute science rates, ElectricCharge
-availability, antenna deployment, and storms are not modeled. RealAntennas and
+Kerbalism estimates science bitrates for the selected hops; complete-path
+throughput and ElectricCharge availability, antenna deployment, breakage,
+plasma, and storms are not modeled. RealAntennas and
 RemoteTech use different models and are not simulated; custom powers do not
 reproduce those models. The
 [validation record](docs/VALIDATION.md) describes the
@@ -309,7 +323,6 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 ## Planned additions
 
-- Kerbalism science transmission-rate estimates in bits per second.
 - Additional planet packs, rescaled systems, and alternative starting-homeworld
   configurations.
 - Advanced relay planning: inclined and polar constellations for coverage beyond

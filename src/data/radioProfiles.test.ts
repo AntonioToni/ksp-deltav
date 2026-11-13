@@ -61,7 +61,7 @@ describe('CommNet installation profiles', () => {
     expect(profile.kerbalism).toBe(true)
     expect(base.kerbalism).toBeUndefined()
     expect(profile.description).toContain('Kerbalism signal damping')
-    expect(profile.description).toContain('Transmission rates in bit/s are not calculated')
+    expect(profile.description).toContain('science-rate estimates')
     expect(profile.clientAntennas).toEqual([...base.clientAntennas, shortAntenna])
     expect(profile.vesselAntennas.filter(antenna => antenna.id !== 'communotron-8')).toEqual(base.vesselAntennas)
     expect(profile.vesselAntennas.filter(antenna => antenna.id === 'communotron-8')).toEqual([shortAntenna])
@@ -99,6 +99,11 @@ describe('CommNet installation profiles', () => {
       `${sourceBase}/GameData/KerbalismConfig/Parts/ShortAntenna/kerbalism-antenna.cfg`,
       `${sourceBase}/src/Kerbalism/Comms/CommHandlerCommNetBase.cs`,
       `${sourceBase}/src/Kerbalism/Sim.cs`,
+      `${sourceBase}/GameData/KerbalismConfig/System/ScienceRework/Patches-Antennas.cfg`,
+      `${sourceBase}/src/Kerbalism/Comms/CommHandlerCommNetVessel.cs`,
+      `${sourceBase}/src/Kerbalism/Lib.cs`,
+      `${sourceBase}/src/Kerbalism/System/Preferences.cs`,
+      `${sourceBase}/GameData/KerbalismConfig/Settings.cfg`,
     ])
     expect(kerbalismSources.every(source => source.title.includes('3.44'))).toBe(true)
     expect(sources.some(source => source.url.includes('Kerbalism4'))).toBe(false)

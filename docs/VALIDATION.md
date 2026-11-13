@@ -563,9 +563,53 @@ The checks include unavailable-part recovery, direct-only receiver correction,
 DSN and swap behavior, invalid overrides, fallback, and preserved mission inputs.
 Phone **320 × 568** and landscape **667 × 375** layouts were inspected and stay
 within the page, with additional controls accessible inside the dialog.
-Absolute transmission rates
-in bits per second remain deferred; no antenna base rates, minimum-rate floors,
-or end-to-end relay bottlenecks are inferred from the signal percentages.
+At that revision, absolute transmission rates in bits per second were deferred;
+the following extension adds selected-hop rates. Complete relay-path bottlenecks
+remain outside the model.
+
+### Kerbalism science bitrate extension — 13 November 2026
+
+The default-science antenna rates, decimal units, antenna-speed settings, and
+positive-rate floor were checked against the same pinned Kerbalism **3.44**
+revision, `39f9f43afe8b4f77aff0086c3866044287694475`. The
+[relay guide](RELAYS.md#kerbalism-science-rates) links the part patches,
+vessel adapter, rate-floor implementation, unit definitions, and difficulty
+presets. Internal code/config units are decimal MB/s, converted using
+**8,000,000 bits per MB**; the patch's “Mb/s” comment is not used as a unit
+definition. RSS power scaling does not multiply these known-part science rates.
+
+Independent scalar fixtures with Antenna Speed **1×** and exponent **6** include:
+
+| Reference | Expected science rate |
+| --- | ---: |
+| HG-5, raw signal 50% | 562.5 bit/s |
+| RA-100, raw signal 80% | 1,006,632.96 bit/s |
+| Communotron 8, raw signal 10% | 0.012 bit/s before the floor; 1 bit/s with its default |
+| Communotron 16 + RA-100, full-strength base | 259,969.228948 bit/s |
+| Two Communotron 16 + RA-100, full-strength base | 105,954.365072 bit/s |
+| Two RA-100, full-strength base | 3,840,000 bit/s; identical rates are not added |
+
+The additional unit fixtures check every reference part in all three Kerbalism
+profiles, physical antenna counts, internal-antenna exclusion, noncombinable
+external parts, and mixed sending arrays. They also cover explicit custom rates,
+missing and unavailable parts, invalid settings, zero signal, obstruction,
+out-of-range links, and strict-positive floors. The rate engine keeps the
+source's MB/s multiplication order so numeric underflow stays zero rather than
+creating a spurious minimum rate.
+
+All **1,262 unit tests across 45 files**, ESLint, strict TypeScript, and the
+production build passed. The 10 added browser scenarios cover rates, sending
+direction, swaps, floors, missing and invalid inputs, arrays, internal/DSN
+distinctions, and shared settings. Desktop and mobile checks include
+**320 × 568**, **667 × 375**, and **1920 × 1080** layouts, fixed close controls,
+and the preserved **5,120 m/s** Kerbin–Mun mission. Existing relay, signal,
+damping, antenna-array, and radio-profile checks also passed. Manual-orbit
+swapping was checked after exposing its existing swap behavior in the controls.
+
+The displayed rate belongs to the sender's selected hop. A receiving vessel's
+base rate does not cap incoming science; its own onward link can constrain the
+complete path. The planner does not solve that path, simulate antenna activation,
+or verify power, plasma, failures, storms, or successful in-game delivery.
 
 ## Calculation checks
 

@@ -26,7 +26,8 @@ resets the workspace; reloading the page resets its inputs.
    best current sample-station signal, orbital period, and maximum DSN range.
    **Rotate relays** changes the constellation's phase so you can inspect the
    sample surface station's links. Kerbalism profiles show their damped signal
-   with raw CommNet strength separately; see [Kerbalism damping](#kerbalism-damping).
+   with raw CommNet strength separately, plus estimated science bitrates for
+   those hops; see [Kerbalism science rates](#kerbalism-science-rates).
 4. Under **Body data**, choose **Full radius** occlusion for conservative
    spherical geometry, or the selected radio setup's normal effective occlusion
    factors. The range multiplier applies to the antenna range calculation and
@@ -55,6 +56,9 @@ does not apply another count or assume a combinability exponent for custom
 parts. This uses the same stock range formula with your value; it does not
 switch to a different radio model. Custom powers are final values: changing
 **Radio setup** preserves them and never applies a power multiplier to them.
+With Kerbalism selected, custom craft power also needs a full-strength science
+rate in bit/s before antenna speed and damping. Blank means unknown; signal
+and coverage calculations remain available.
 
 ## Antenna arrays
 
@@ -143,13 +147,16 @@ complete network path or place a ground station on the visible side of a planet.
    **Kerbalism signal**), and circular-reference nearest/farthest range-only
    strengths. A Kerbalism profile shows the damped percentage and a separate
    raw CommNet value. Its phase chart adds the raw curve for comparison with
-   the damped range-only and obstruction-aware curves.
+   the damped range-only and obstruction-aware curves. The science rate uses
+   the sending craft's loadout and follows the selected receiving direction;
+   the full-strength sender rate includes the chosen antenna speed.
 6. Choose **Signal geometry → Manual orbits** for an unknown custom pack or a
    different reference configuration. Enter **Orbit radius A** and **Orbit radius B**
    in **Gm**, and **Central radius** in **km**. Manual values are user assumptions;
    no physical orbit data is inferred from Delta-V map costs or imported body names.
 
-**Radio setup**, **Kerbalism damping**, and the **Range multiplier** are shared
+**Radio setup**, **Kerbalism damping**, **Antenna speed**, **Minimum science
+rate**, and the **Range multiplier** are shared
 with local relay planning. Changing the radio setup preserves part identities and array counts,
 recalculating compatible powers from its catalog. Unavailable choices remain
 visible for correction or restoring their radio setup. Custom powers remain
@@ -263,6 +270,10 @@ weakest signal across all covered longitudes, the constellation's worst case,
 or an end-to-end DSN connection. A blocked or out-of-range hop contributes zero;
 a body without a surface has no station signal. Kerbalism profiles display
 `S^k` and retain separate raw CommNet readouts for these hops.
+With Kerbalism selected, **Neighbor science rate** uses the relay sender's
+loadout. **Surface → relay rate** uses the surface client's loadout and its
+best currently usable station hop. These are local hop estimates, before any
+slower relay links farther along the path to the DSN.
 
 **DSN range** is the maximum distance allowed by the selected relay loadout and
 DSN power. It does not check where the homeworld is, other bodies or the Sun
@@ -629,13 +640,89 @@ For another Kerbalism version, rescaled system, changed DSN configuration, or a
 `KSP.log` (`DataRateDampingExponent`). A custom imported pack without a reviewed
 home orbit cannot supply a certified automatic exponent.
 
-Absolute science throughput also depends on the
-[geometric mean of active external antenna rates](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/Comms/CommHandlerCommNetVessel.cs),
-the minimum rate along the relay path, settings, and a positive-rate floor.
-These rates in bits per second remain a planned feature. ElectricCharge
-availability, powered/deployed antenna state, failures, and storms are also
-outside the model; a clear reference link
-does not establish control or a complete home connection.
+### Kerbalism science rates
+
+Kerbalism presets estimate the science bitrate of the selected outgoing hop.
+Network shows **Neighbor science rate** and **Surface → relay rate**. Signals
+uses the craft opposite the **Receiving endpoint** as the sender; changing the
+receiving direction changes which loadout supplies its base rate. Swapping
+endpoints moves the saved custom rates with their hardware. A DSN preset
+represents a terminal receiver.
+
+The pinned
+[vessel adapter](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/Comms/CommHandlerCommNetVessel.cs#L49-L111)
+uses the geometric mean of all active external transmitters' rates. For each
+part model with base rate `ri` and count `ni`:
+
+```text
+baseRate = exp(sum(ni × ln(ri)) / sum(ni))
+fullStrengthRate = baseRate × antennaSpeed
+hopRate = fullStrengthRate × S^k
+if hopRate > 0: hopRate = max(hopRate, minimumScienceRate)
+```
+
+The formula here uses bit/s. Internal antennas contribute neither a rate nor
+a count; an internal-only craft has zero science bitrate, even if CommNet can
+control it. Direct and relay antennas both count as transmitters. Noncombinable
+external antennas, including Communotron 16-S, still enter the mean. This rate
+calculation is independent of their power-combination rules. Two identical
+antennas retain the same full-strength base rate; the extra power may improve
+the signal at a distance.
+
+These base rates come from the default science configuration's
+[per-part patches](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/GameData/KerbalismConfig/System/ScienceRework/Patches-Antennas.cfg#L93-L190):
+
+| Antenna | Base rate before antenna speed and damping |
+| --- | ---: |
+| Internal antenna | 0 bit/s |
+| Communotron 8 | 12,000 bit/s |
+| Communotron 16 / 16-S | 17,600 bit/s |
+| HG-5 | 36,000 bit/s |
+| Communotron DTS-M1 | 200,000 bit/s |
+| RA-2 | 144,000 bit/s |
+| RA-15 | 1,320,000 bit/s |
+| Communotron HG-55 | 1,600,000 bit/s |
+| Communotron 88-88 | 4,160,000 bit/s |
+| RA-100 | 3,840,000 bit/s |
+
+The patch [sets the packet interval to 1 second](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/GameData/KerbalismConfig/System/ScienceRework/Patches-Antennas.cfg#L47-L65).
+Although one patch comment says
+“Mb/s”, Kerbalism's
+[unit definitions](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/Lib.cs#L1416-L1419)
+specify decimal **MB/s**, converted here using **8,000,000 bits per MB**. These
+known-part science rates are the same for all three Kerbalism radio profiles;
+RSS scales their CommNet powers rather than these hand-picked science rates.
+
+Open **Science rate settings** to edit **Antenna speed** and **Minimum science
+rate**, shared by Network and Signals. Antenna speed starts at **1.5×**, matching the pinned
+[Normal difficulty preset](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/System/Preferences.cs#L105-L133).
+Easy uses 2×, Moderate 1.2×, and Hard 1×; match your actual save settings.
+The minimum starts at the
+[configured default of 1 bit/s](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/GameData/KerbalismConfig/Settings.cfg#L24-L30).
+Enter zero to disable the floor. As in the
+[CommNet adapter](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/Comms/CommHandlerCommNetBase.cs#L46-L95),
+the floor applies only to a positive rate: blocked, out-of-range, zero-strength,
+and internal-only cases stay at zero.
+
+For **Custom power**, enter the craft's full-strength rate in bit/s **before**
+antenna speed and damping. Power alone cannot determine a science bitrate.
+Leaving the rate blank keeps it unknown while signal results remain usable;
+zero explicitly describes a craft with no science transmission capacity.
+Missing or unavailable catalog parts must be corrected before their rate can be
+calculated. The default catalog does not infer other mods' science patches.
+
+For example, with antenna speed **1×** and exponent **6**, an HG-5 at raw signal
+**50%** gives `36,000 × 0.5^6 = 562.5 bit/s`. Communotron 8 at raw **10%** gives
+`0.012 bit/s` before the floor, or **1 bit/s** with the default minimum. One
+Communotron 16 plus one RA-100 has a geometric-mean base rate of about
+**259,969.23 bit/s**; adding a slower external antenna can lower that mean.
+
+These estimates assume the selected antennas are powered, active, deployed,
+and usable. ElectricCharge availability, breakage, plasma, and storms are not
+simulated. The receiving vessel's base rate does not cap an incoming hop: its
+own onward hop can be slower. Kerbalism takes the minimum rate along the whole
+relay path, which this single-hop tool does not solve. A nonzero rate estimate
+therefore does not establish a complete home connection or guarantee delivery.
 
 ### Retained MIT notice for the antenna reference
 

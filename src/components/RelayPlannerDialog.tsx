@@ -15,10 +15,16 @@ import { calibrateKerbalismDamping } from '../utils/signalStrength'
 import { calculateAntennaArray, type AntennaArrayEntry, type AntennaArrayRole } from '../utils/antennaArray'
 import { calculateRelayPlan, type RelayNetworkInput } from '../utils/relay'
 import { suggestRelayAltitudeKm } from '../utils/relayDefaults'
+import {
+  calculateKerbalismBitrate, resolveKerbalismBaseRate,
+  DEFAULT_KERBALISM_ANTENNA_SPEED, DEFAULT_KERBALISM_MINIMUM_BITS_PER_SECOND,
+} from '../utils/kerbalismBitrate'
+import { formatBitrate } from '../utils/formatBitrate'
 import AntennaArrayDialog from './AntennaArrayDialog'
 import RelayDiagram from './RelayDiagram'
 import InterplanetaryPlanner from './InterplanetaryPlanner'
 import KerbalismDampingControls, { type KerbalismDampingMode } from './KerbalismDampingControls'
+import KerbalismRateControls from './KerbalismRateControls'
 import UnavailableAntennaAlert from './UnavailableAntennaAlert'
 
 interface RelayPlannerDialogProps {
@@ -96,11 +102,11 @@ function Metric({ label, value, testId, color, rawValue, rawTestId }: { label: s
   </Box>
 }
 
-function NumericField({ label, value, onChange, unit, min = 0, optional = false }: { label: string; value: string; onChange: (value: string) => void; unit?: string; min?: number; optional?: boolean }) {
+function NumericField({ label, value, onChange, unit, min = 0, max, optional = false }: { label: string; value: string; onChange: (value: string) => void; unit?: string; min?: number; max?: number; optional?: boolean }) {
   const parsed = numeric(value)
-  const invalid = value !== '' && (!Number.isFinite(parsed) || parsed < min)
+  const invalid = value !== '' && (!Number.isFinite(parsed) || parsed < min || max !== undefined && parsed > max)
   return <TextField fullWidth size="small" type="number" label={label} value={value} error={invalid} onChange={event => onChange(event.target.value)}
-    placeholder={optional ? 'Not supplied' : undefined} slotProps={{ htmlInput: { 'aria-label': label, min, step: 'any' }, input: unit ? { endAdornment: <InputAdornment position="end"><Typography sx={{ fontSize: 10 }}>{unit}</Typography></InputAdornment> } : undefined }} sx={fieldStyles} />
+    placeholder={optional ? 'Not supplied' : undefined} slotProps={{ htmlInput: { 'aria-label': label, min, max, step: 'any' }, input: unit ? { endAdornment: <InputAdornment position="end"><Typography sx={{ fontSize: 10 }}>{unit}</Typography></InputAdornment> } : undefined }} sx={fieldStyles} />
 }
 
 function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogProps, 'open'>) {
@@ -123,6 +129,9 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const calibration = calibrateKerbalismDamping(homeOrbitRadiusM, maximumDsnPowerM)
   const dampingExponent = radioProfile.kerbalism ? dampingMode === 'automatic' ? calibration.exponent : numeric(customExponent) : 1
   const dampingControls = radioProfile.kerbalism ? <KerbalismDampingControls mode={dampingMode} customExponent={customExponent} onModeChange={setDampingMode} onExponentChange={setCustomExponent} calibration={calibration} homeOrbitRadiusM={homeOrbitRadiusM} maximumDsnPowerM={maximumDsnPowerM} /> : null
+  const [antennaSpeed, setAntennaSpeed] = useState(String(DEFAULT_KERBALISM_ANTENNA_SPEED))
+  const [minimumBitsPerSecond, setMinimumBitsPerSecond] = useState(String(DEFAULT_KERBALISM_MINIMUM_BITS_PER_SECOND))
+  const rateControls = radioProfile.kerbalism ? <KerbalismRateControls antennaSpeed={antennaSpeed} minimumBitsPerSecond={minimumBitsPerSecond} onSpeedChange={setAntennaSpeed} onMinimumChange={setMinimumBitsPerSecond} /> : null
   const [tab, setTab] = useState<'network' | 'deployment' | 'body' | 'signals'>(() => !first ? 'signals' : findRelayBodyPreset(first) ? 'network' : 'body')
   const [signalsOpened, setSignalsOpened] = useState(!first)
   const [satelliteCount, setSatelliteCount] = useState(3)
@@ -132,6 +141,8 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const [relayCustomPower, setRelayCustomPower] = useState('')
   const [clientCustomPower, setClientCustomPower] = useState('')
   const [dsnCustomPower, setDsnCustomPower] = useState('')
+  const [relayCustomRate, setRelayCustomRate] = useState('')
+  const [clientCustomRate, setClientCustomRate] = useState('')
   const [relayArray, setRelayArray] = useState<AntennaArrayEntry[] | null>(null)
   const [clientArray, setClientArray] = useState<AntennaArrayEntry[] | null>(null)
   const [editingArray, setEditingArray] = useState<{ role: AntennaArrayRole; entries: AntennaArrayEntry[] } | null>(null)
@@ -217,6 +228,15 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const missingArrayRole = missingRelay.length && relayId === 'array' ? 'relay' : missingClient.length && clientId === 'array' ? 'client' : null
   const result = calculateRelayPlan(input)
   const success = result.status === 'success' ? result : null
+  const relayBaseRate = radioProfile.kerbalism ? resolveKerbalismBaseRate({ selection: relayId, customPower: relayCustomPower, array: relayArray }, vesselAntennas, numeric(relayCustomRate)) : null
+  const clientBaseRate = radioProfile.kerbalism ? resolveKerbalismBaseRate({ selection: clientId, customPower: clientCustomPower, array: clientArray }, vesselAntennas, numeric(clientCustomRate)) : null
+  const rateFor = (base: typeof relayBaseRate, rawStrength: number | null, linkAvailable: boolean) => base?.status === 'success' && rawStrength !== null
+    ? calculateKerbalismBitrate({ baseRateBitsPerSecond: base.baseRateBitsPerSecond, rawStrength, dampingExponent, antennaSpeed: numeric(antennaSpeed), minimumBitsPerSecond: numeric(minimumBitsPerSecond), linkAvailable }) : null
+  const neighborRate = success ? rateFor(relayBaseRate, success.neighborSignalStrength, success.ringLinkStatus === 'available' || success.ringLinkStatus === 'marginal') : null
+  const stationRate = success ? rateFor(clientBaseRate, success.bestStationSignalStrength, success.stationLinks.some(link => link.status === 'available' || link.status === 'marginal')) : null
+  const rateValue = (base: typeof relayBaseRate, rate: typeof neighborRate) => rate?.status === 'success' ? formatBitrate(rate.rateBitsPerSecond)
+    : base?.status === 'needs-rate' ? 'Enter full-strength rate' : base?.status === 'success' ? 'Check rate settings' : 'Check antenna rate'
+  const rateFloorApplied = neighborRate?.status === 'success' && neighborRate.floorApplied || stationRate?.status === 'success' && stationRate.floorApplied
   const ringLabel = success ? ({ available: 'Available', marginal: 'At limit', blocked: 'Body blocks links', 'out-of-range': 'Out of range' } as const)[success.ringLinkStatus] : '—'
   const statusColor = success?.ringLinkStatus === 'available' ? '#92d5c6' : success?.ringLinkStatus === 'marginal' ? 'secondary.main' : '#ee987d'
   const coverage = success?.equatorialCoverageFraction === null ? 'No surface' : success ? `${number.format(success.equatorialCoverageFraction! < 1 ? Math.min(99.9, success.equatorialCoverageFraction! * 100) : 100)}%` : '—'
@@ -260,7 +280,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     </Tabs>
     <DialogContent sx={{ p: 1.5, minWidth: 0, minHeight: 0, overflowY: 'auto', [compact]: { pb: 1 } }}>
       <Box role="tabpanel" id="relay-signals-panel" aria-labelledby="relay-signals-tab" hidden={tab !== 'signals'} sx={{ display: tab === 'signals' ? 'block' : 'none', minWidth: 0 }}>
-        {signalsOpened && <InterplanetaryPlanner pack={pack} initialBodyId={initialBodyId} radioId={radioId} onRadioChange={setRadioId} rangeMultiplier={rangeMultiplier} onRangeMultiplierChange={setRangeMultiplier} dampingExponent={dampingExponent} dampingControls={dampingControls} />}
+        {signalsOpened && <InterplanetaryPlanner pack={pack} initialBodyId={initialBodyId} radioId={radioId} onRadioChange={setRadioId} rangeMultiplier={rangeMultiplier} onRangeMultiplierChange={setRangeMultiplier} dampingExponent={dampingExponent} dampingControls={dampingControls} antennaSpeed={numeric(antennaSpeed)} minimumBitsPerSecond={numeric(minimumBitsPerSecond)} rateControls={rateControls} />}
       </Box>
       <Box sx={{ display: tab === 'signals' || !body ? 'none' : 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.25, '@media (min-width: 600px)': { gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' } }}>
         <Box role={tab === 'signals' ? undefined : 'tabpanel'} id={tab === 'signals' ? undefined : `relay-${tab}-panel`} aria-labelledby={tab === 'signals' ? undefined : `relay-${tab}-tab`} sx={{ minWidth: 0, containerType: 'inline-size' }}>
@@ -270,6 +290,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
             </TextField>
             <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>{radioProfile.description}</Typography>
             {dampingControls}
+            {rateControls}
             <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, .7fr)', gap: .75 }}>
               <NumericField label="Orbit altitude" value={current.altitude} unit="km" onChange={value => changeProfile({ altitude: value, altitudeAutomatic: false })} />
               <TextField select fullWidth size="small" label="Relay count" value={satelliteCount} onChange={event => setSatelliteCount(Number(event.target.value))} sx={fieldStyles}>
@@ -287,6 +308,11 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               {dsnId === 'custom' && <NumericField label="DSN power" value={dsnCustomPower} onChange={setDsnCustomPower} unit="m" min={Number.MIN_VALUE} />}
             </Box>}
             {(relayId === 'custom' || clientId === 'custom' || dsnId === 'custom') && <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Custom values are final effective powers; profile scaling is not applied.</Typography>}
+            {radioProfile.kerbalism && (relayId === 'custom' || clientId === 'custom') && <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', columnGap: .75, rowGap: 1.5 }}>
+              {relayId === 'custom' && <NumericField label="Relay full-strength rate" value={relayCustomRate} onChange={setRelayCustomRate} unit="bit/s" max={1e18} optional />}
+              {clientId === 'custom' && <NumericField label="Surface full-strength rate" value={clientCustomRate} onChange={setClientCustomRate} unit="bit/s" max={1e18} optional />}
+            </Box>}
+            {radioProfile.kerbalism && (relayId === 'custom' || clientId === 'custom') && <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Enter your hardware's science rate before Antenna Speed and damping. Blank leaves its bitrate unknown; signal and coverage still calculate.</Typography>}
             {success ? <>
               <Typography role="status" data-testid="relay-ring-status" sx={{ fontSize: 11, color: statusColor, lineHeight: 1.3 }}>Neighbor links · {ringLabel}<Box component="span" data-testid="relay-coverage-status" sx={{ color: 'text.secondary' }}> · {success.coverageStatus === null ? 'No surface' : ({ full: 'Full equator', partial: 'Partial equator', marginal: 'Coverage at boundary', none: 'No surface links' } as const)[success.coverageStatus]}</Box></Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .5 }}>
@@ -296,8 +322,15 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
                 <Metric label="Maximum DSN range" value={range(success.dsnRangeM)} testId="relay-dsn-range" />
                 <Metric label={radioProfile.kerbalism ? 'Neighbor Kerbalism signal' : 'Neighbor signal'} value={signalPercent(radioProfile.kerbalism ? success.neighborDampedStrength : success.neighborSignalStrength)} testId="relay-neighbor-signal" rawValue={radioProfile.kerbalism ? signalPercent(success.neighborSignalStrength) : undefined} rawTestId="relay-neighbor-raw-signal" />
                 <Metric label={radioProfile.kerbalism ? 'Best station Kerbalism signal' : 'Best station signal'} value={success.bestStationSignalStrength === null ? 'No surface' : signalPercent((radioProfile.kerbalism ? success.bestStationDampedStrength : success.bestStationSignalStrength)!)} testId="relay-station-signal" rawValue={radioProfile.kerbalism && success.bestStationSignalStrength !== null ? signalPercent(success.bestStationSignalStrength) : undefined} rawTestId="relay-station-raw-signal" />
+                {radioProfile.kerbalism && <>
+                  <Metric label="Neighbor science rate" value={rateValue(relayBaseRate, neighborRate)} testId="relay-neighbor-rate" color="primary.light" />
+                  <Metric label="Surface → relay rate" value={success.bestStationSignalStrength === null ? 'No surface' : rateValue(clientBaseRate, stationRate)} testId="relay-station-rate" color="primary.light" />
+                </>}
               </Box>
-              <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Station signal is the best visible hop from the sample surface point at this rotation. Coverage and link reach use raw CommNet strength.{radioProfile.kerbalism ? ' Kerbalism signal is S^k before any minimum-rate floor; it is not a bit/s estimate.' : ''}</Typography>
+              <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Station signal is the best visible hop from the sample surface point at this rotation. Coverage and link reach use raw CommNet strength.</Typography>
+              {radioProfile.kerbalism && <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Science rates are for each selected hop before downstream relay bottlenecks. All selected external antennas are assumed active and powered; a complete path home is still required.</Typography>}
+              {radioProfile.kerbalism && clientBaseRate?.status === 'success' && clientBaseRate.externalCount === 0 && success.bestStationSignalStrength !== null && <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Internal antennas provide control but do not transmit science.</Typography>}
+              {radioProfile.kerbalism && rateFloorApplied && <Typography data-testid="relay-rate-floor" sx={{ fontSize: 10, lineHeight: 1.4, color: 'secondary.main' }}>Minimum science rate of {formatBitrate(numeric(minimumBitsPerSecond))} applied to a positive hop rate.</Typography>}
             </> : missingIds.length ? <UnavailableAntennaAlert names={missingNames} restoreLabel={getRadioProfile(restoreProfileId).name} onRestore={() => setRadioId(restoreProfileId)}
               replaceLabel={missingArrayRole ? 'Edit antenna array' : missingRelay.length ? 'Use HG-5' : 'Use Communotron 16'} onReplace={() => {
                 if (missingArrayRole) openArray(missingArrayRole)
