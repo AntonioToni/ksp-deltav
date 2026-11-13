@@ -1,6 +1,6 @@
-[![KSP DeltaV Planner — Delta-V map, relay coverage diagram, and signal-strength chart](docs/assets/planner-preview.png?v=3)](https://antoniotoni.github.io/ksp-deltav/)
+[![KSP Delta-V Planner — Mission budgets & CommNet planning](docs/assets/planner-preview.png?v=4)](https://antoniotoni.github.io/ksp-deltav/)
 
-# KSP DeltaV Planner
+# KSP Delta-V Planner
 
 A browser-based Delta-V and CommNet planner for Kerbal Space Program.
 Calculate mission budgets, plan local relay coverage, and compare antenna
