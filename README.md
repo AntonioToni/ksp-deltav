@@ -320,8 +320,12 @@ Suggestions, bug reports, and contributions are welcome through
 
 ## License
 
-The application is licensed under the [MIT License](LICENSE). Reference-map
-attribution and licensing are documented in the [data guide](docs/DATA.md), and
-relay references in the [relay guide](docs/RELAYS.md).
+Copyright © 2026 Antonio Toni. The application is licensed under the
+[GNU General Public License v3.0 only](LICENSE) (`GPL-3.0-only`).
+Versions previously distributed under MIT retain their original license.
+
+Third-party notices and reference-data attribution remain under their respective
+terms, documented in the [data guide](docs/DATA.md) and
+[relay guide](docs/RELAYS.md).
 Kerbal Space Program is the property of its respective owners; this is a
 community project.

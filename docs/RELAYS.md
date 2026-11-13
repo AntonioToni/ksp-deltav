@@ -448,7 +448,7 @@ homeworlds, or other physics patches may require edits.
   uses `a × (mu_body / mu_parent)^(2/5)` from the pinned orbital constants.
   The reference project's [license is CC BY-NC-ND 3.0](https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/KSPTOT_License.txt).
   The catalog reorganizes numerical reference facts; no source config code,
-  artwork, textures, or layout is bundled with the application's MIT code.
+  artwork, textures, or layout is bundled with the application's GPLv3 code.
 - OPM physical constants: [official Kopernicus configs](https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs).
   Radius, `geeASL`, and atmosphere `altitude` are taken from the pinned version.
   The catalog derives `mu = 9.80665 × geeASL × R²` in SI units. Eeloo retains
