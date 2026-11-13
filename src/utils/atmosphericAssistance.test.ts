@@ -74,7 +74,7 @@ describe('effective atmospheric graph', () => {
     expect(changed).not.toBe(original)
     expect(changed.sourceId).toBe(original.sourceId)
     expect(changed.assumptions.slice(0, -1)).toEqual(original.assumptions)
-    expect(changed.assumptions.at(-1)).toContain('user-supplied powered allowance of 100 m/s')
+    expect(changed.assumptions.at(-1)).toContain('your 100 m/s engine-burn budget')
     expect(edge(graph, original.id)?.deltaV).toBe(1450)
     expect(edge(result.graph, edgeId('duna', 'surface', 'orbit'))?.deltaV).toBe(1450)
     expect(edge(result.graph, edgeId('duna', 'orbit', 'elliptical'))?.deltaV).toBe(360)

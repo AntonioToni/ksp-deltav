@@ -229,7 +229,7 @@ describe('local CommNet strength and Kerbalism damping', () => {
 
   it('rejects derived ranges that underflow instead of throwing from the strength helper', () => {
     const input = example({ relayPower: Number.MIN_VALUE, rangeMultiplier: Number.MIN_VALUE })
-    expect(calculateRelayPlan(input)).toMatchObject({ status: 'invalid', errors: [expect.stringContaining('numerical range')] })
+    expect(calculateRelayPlan(input)).toMatchObject({ status: 'invalid', errors: [expect.stringContaining('too large or too small')] })
   })
 })
 
@@ -293,8 +293,8 @@ describe('resonant carrier deployment', () => {
     delete input.body.sphereOfInfluenceM
     const unchecked = success(input)
     expect(unchecked.deployment.status).toBe('unchecked')
-    expect(unchecked.warnings.join(' ')).toContain('unchecked')
-    expect(unchecked.deployment.issues.join(' ')).toContain('No sphere of influence')
+    expect(unchecked.warnings.join(' ')).toContain('cannot be checked')
+    expect(unchecked.deployment.issues.join(' ')).toContain('sphere of influence is missing')
     input.altitudeM = 600_000
     expect(success(input).deployment.status).toBe('blocked')
   })
@@ -334,7 +334,7 @@ describe('relay input validation', () => {
   it('rejects finite inputs whose derived orbit overflows instead of returning NaN or Infinity', () => {
     const input = example()
     input.body.gravitationalParameter = Number.MIN_VALUE
-    expect(calculateRelayPlan(input)).toMatchObject({ status: 'invalid', errors: [expect.stringContaining('numerical range')] })
+    expect(calculateRelayPlan(input)).toMatchObject({ status: 'invalid', errors: [expect.stringContaining('too large or too small')] })
   })
 
   it('does not mutate either the supplied body or network input', () => {

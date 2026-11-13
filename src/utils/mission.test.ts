@@ -378,7 +378,7 @@ describe('return-only missions', () => {
     ], [edge('capture', 'elliptical', 'orbit', 1e308, 'capture'), edge('land', 'orbit', 'surface', 1e308, 'descent')])
     expect(findMissionRoute(graph, 'surface', 'elliptical', 'return-only')).toMatchObject({
       status: 'invalid', failedLeg: 'return', outbound: null, returnRoute: null,
-      message: expect.stringMatching(/^Return leg: .*numeric range/),
+      message: expect.stringMatching(/^Return leg: .*too large/),
     })
   })
 })

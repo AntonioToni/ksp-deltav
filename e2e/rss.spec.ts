@@ -192,7 +192,7 @@ test('retains the Earth RSS hub while offering direct alternatives and RSS-speci
   await node(page, 'rss:mars:orbit').click()
   await node(page, 'rss:venus:orbit').click()
   await expect(page.getByTestId('route-total')).toHaveText('7,850 m/s')
-  await expect(page.getByText(/Earth parking-orbit layover/)).toHaveCount(0)
+  await expect(page.getByText(/Includes an intermediate transfer via Earth/)).toHaveCount(0)
   const edges = await page.locator('[data-route-edge="true"]').evaluateAll(elements => elements.map(element => element.getAttribute('data-edge-id')))
   expect(edges).toEqual(['direct:rss:mars:orbit->rss:venus:orbit'])
 
@@ -302,7 +302,7 @@ for (const viewport of [
     if (viewport.width === 320) {
       await packButton(page, 'OPM').click()
       await assertSettingsVisible(page)
-      const analyticNotice = page.getByRole('button', { name: 'Analytic estimates', exact: true })
+      const analyticNotice = page.getByRole('button', { name: 'Calculated estimates', exact: true })
       await expect(analyticNotice).toBeInViewport({ ratio: 1 })
       const noticeBounds = await analyticNotice.boundingBox()
       const packBounds = await page.getByRole('group', { name: 'Planet pack', exact: true }).boundingBox()

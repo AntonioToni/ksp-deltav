@@ -139,7 +139,7 @@ describe('RSS modern outer-system references', () => {
         const source = rssReferencePack.maneuvers.find(edge => edge.id === edgeId)!
         const retained = overlay.maneuvers.find(edge => edge.id === edgeId)!
         expect(retained).toMatchObject({ deltaV: source.deltaV, sourceId: source.sourceId })
-        expect(retained.assumptions.join(' ')).toMatch(/not (?:recalibrated|calibrated)|uncalibrated/)
+        expect(retained.assumptions.join(' ')).toMatch(/not (?:recalibrated|calibrated)|uncalibrated|not been recalculated/)
       }
     }
     for (const source of rssReferencePack.maneuvers) {

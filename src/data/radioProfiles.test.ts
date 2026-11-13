@@ -81,7 +81,7 @@ describe('CommNet installation profiles', () => {
     expect(clientArray.effectivePower).toBe(shortAntennaPower * 2)
     expect(clientArray.weightedExponent).toBe(1)
     const relayArray = calculateAntennaArray(entries, 'relay', profile.vesselAntennas)
-    expect(relayArray).toEqual({ status: 'invalid', errors: ['Relay forwarding arrays can only contain relay-capable antennas.'] })
+    expect(relayArray).toEqual({ status: 'invalid', errors: ['Choose only relay-capable antennas for a relay setup.'] })
   })
 
   it('pins both RSS patch and occlusion references', () => {

@@ -97,8 +97,8 @@ export function applyAtmosphericAssistance(graph: PlannerGraph, pack: PlanetPack
       changed = true
       adjustments.set(edge.id, { kind: maneuver.kind, originalDeltaV: edge.deltaV, deltaV })
       const assumption = maneuver.kind === 'capture'
-        ? 'Ideal atmospheric assistance replaces this standalone capture with a 0 m/s powered-burn estimate; entry feasibility and cleanup burns are not modeled.'
-        : `Atmospheric landing uses a user-supplied powered allowance of ${deltaV} m/s, replacing the source descent estimate of ${edge.deltaV} m/s.`
+        ? 'Assumes the atmosphere replaces this capture burn with 0 m/s of engine burns. Safe entry and later correction burns are not calculated.'
+        : `Uses your ${deltaV} m/s engine-burn budget for landing instead of the source’s ${edge.deltaV} m/s descent figure.`
       return { ...edge, deltaV, assumptions: [...edge.assumptions, assumption] }
     })
     if (changed) adjacency.set(nodeId, updated)

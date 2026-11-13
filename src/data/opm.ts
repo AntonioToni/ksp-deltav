@@ -10,12 +10,12 @@ const mapSourceId = 'kowgan-opm-1.8.1'
 const analyticSourceId = 'opm-analytic-2.2.12'
 const references = new Map(opmReferences.map(reference => [reference.bodyId, reference]))
 const analyticAssumptions = [
-  'Analytic OPM 2.2.12 reference estimate from pinned official physical and orbital constants; each segment is rounded upward to a whole m/s.',
-  'Nominal Hohmann transfer in the parent reference plane to a circularized target at its semi-major axis. Arrival relative speed uses the configured inclination at an assumed orbital-node encounter, including retrograde Thatmo.',
-  'No launch date, eccentric trajectory, node alignment, parking-plane reorientation, B-plane constraints, gravity assists, or finite-thrust losses are solved. Parking-orbit orientation is unconstrained; chained mission totals remain schematic estimates.',
-  'Paired reverse edges reuse the same nominal reference costs; they are not a solved return at a particular epoch. Add a vehicle-specific mission margin.',
+  'Calculated from official OPM 2.2.12 body and orbit data at the linked source revision. Each maneuver is rounded up to a whole m/s.',
+  'Uses a Hohmann transfer between circular reference orbits at the listed orbital distances. Arrival speed includes orbital tilt at an assumed crossing of the orbital planes, including Thatmo\'s backward orbit.',
+  'Does not choose a launch date, track changing distances along eccentric orbits, or solve the alignment and aiming of successive encounters. Parking-orbit orientation, gravity assists, and losses during real engine burns are also excluded. A multi-stop sum is a budget estimate, not a simulated flight.',
+  'The return direction reuses the same reference cost. It is not calculated for a particular return date. Add a reserve for your craft and flight.',
 ]
-const atmosphericAllowance = 'Retained historical OPM 1.8.1 atmospheric allowance; it is not calibrated for the chosen modern parking altitude or a particular vehicle. It is neither a verified launch/landing cost nor an upper bound.'
+const atmosphericAllowance = 'Uses the older OPM 1.8.1 atmospheric launch/landing allowance. It has not been recalculated for this orbit height or your craft, and is not a verified cost or a guaranteed maximum.'
 
 const bodyRows: {
   id: string
@@ -107,7 +107,7 @@ for (const reference of opmReferences) {
   const { bodyId, parentBodyId, gravitationalParameter: mu, radiusM, parkingAltitudeM } = reference
   const name = nameOf(bodyId)
   const parkingRadius = radiusM + parkingAltitudeM
-  const orbitNote = `Reference circular parking altitude: ${parkingAltitudeM / 1000} km; planner choice above the current atmosphere, not a mod-supplied orbit.`
+  const orbitNote = `Assumed circular parking orbit: ${parkingAltitudeM / 1000} km above the surface. The planner chose this height above the current atmosphere; the mod does not prescribe it.`
   const assumptions = [...analyticAssumptions, orbitNote, `Physical/orbital source: ${opmConfigBase}/${reference.configPath}`]
   let arrivalExcessSpeed: number
 
@@ -120,7 +120,7 @@ for (const reference of opmReferences) {
     const increment = Math.max(0, Math.ceil(fullHomeBurn) - homeEscapeBudget)
     addPair('stock:kerbin:encounter', nodeId(bodyId, 'encounter'), increment, 'transfer', 'transfer', `Kerbin → ${name} transfer`, `${name} → Kerbin transfer`, [
       ...assumptions,
-      `Increment beyond the separately charged ${homeEscapeBudget} m/s Kerbin escape/capture edge. Together they equal the rounded ${Math.ceil(fullHomeBurn)} m/s nominal 80 km parking-orbit burn.`,
+      `Extra cost after the separately listed ${homeEscapeBudget} m/s Kerbin escape/capture burn. The two add up to ${Math.ceil(fullHomeBurn)} m/s from the assumed 80 km parking orbit, rounded up.`,
     ])
   } else {
     const parent = references.get(parentBodyId)!
@@ -129,15 +129,15 @@ for (const reference of opmReferences) {
     arrivalExcessSpeed = hohmannArrivalSpeed(parent.gravitationalParameter, parentParkingRadius, reference.semiMajorAxisM, reference.inclinationDeg)
     addPair(nodeId(parentBodyId, 'orbit'), nodeId(bodyId, 'encounter'), transfer.departureDeltaV, 'transfer', 'transfer', `${nameOf(parentBodyId)} → ${name} transfer`, `${name} → ${nameOf(parentBodyId)} transfer`, [
       ...assumptions,
-      `Hohmann departure from ${nameOf(parentBodyId)} low orbit; local ${name} capture is charged separately.`,
+      `Hohmann transfer from ${nameOf(parentBodyId)} low orbit. The burn to enter orbit around ${name} is listed separately.`,
     ])
   }
 
-  const encounterNote = `Nominal relative encounter speed: ${arrivalExcessSpeed.toFixed(3)} m/s at source inclination ${reference.inclinationDeg}°. This is not a general plane-change solution.`
+  const encounterNote = `Assumed approach speed relative to the body: ${arrivalExcessSpeed.toFixed(3)} m/s, using the source orbital tilt of ${reference.inclinationDeg}°. This does not solve every possible orbital-plane change.`
   if (ellipticalBodies.has(bodyId)) {
     const apoapsisRadius = reference.sphereOfInfluenceM / 2
     const split = splitCapture(mu, parkingRadius, apoapsisRadius, arrivalExcessSpeed)
-    const ellipseNote = `Reference high ellipse: periapsis altitude ${parkingAltitudeM / 1000} km, apoapsis radius ${(apoapsisRadius / 1000).toFixed(3)} km from the center (0.5 × nominal SOI).`
+    const ellipseNote = `Assumed high ellipse: closest point ${parkingAltitudeM / 1000} km above the surface; farthest point ${(apoapsisRadius / 1000).toFixed(3)} km from the center, halfway to the nominal sphere-of-influence boundary.`
     addPair(nodeId(bodyId, 'orbit'), nodeId(bodyId, 'elliptical'), split.circularization, 'escape', 'capture', `${name}: low orbit → elliptical orbit`, `${name}: elliptical orbit → low orbit`, [...assumptions, encounterNote, ellipseNote])
     addPair(nodeId(bodyId, 'elliptical'), nodeId(bodyId, 'encounter'), split.captureToEllipse, 'escape', 'capture', `${name}: elliptical orbit → encounter`, `${name}: encounter → elliptical orbit`, [...assumptions, encounterNote, ellipseNote])
   } else {
@@ -151,10 +151,10 @@ for (const reference of opmReferences) {
     const surfaceAssumptions = atmosphericBudget !== null ? [
       atmosphericAllowance,
       orbitNote,
-      'Powered descent reuses the historical ascent allowance. No parachute or atmospheric savings are credited; use the optional user-entered landing allowance when appropriate.',
+      'Powered landing reuses the older launch allowance. Parachutes and atmospheric braking do not reduce it automatically; you can enter your own landing allowance in Atmosphere.',
     ] : [
       ...assumptions,
-      'Vacuum surface-to-orbit lower bound: two instantaneous impulses from a nonrotating surface. Descent reuses the ideal reverse cost; terrain, rotation, gravity losses, and vehicle performance are excluded.',
+      'Minimum airless launch estimate using two instantaneous burns from a nonrotating surface. Landing reuses the reverse cost. Terrain, rotation, gravity losses, and craft performance are not included.',
     ]
     addPair(nodeId(bodyId, 'surface'), nodeId(bodyId, 'orbit'), surfaceCost, 'ascent', 'descent', `${name} ascent`, `${name} powered descent`, surfaceAssumptions, atmosphericBudget !== null ? mapSourceId : analyticSourceId)
   }
@@ -164,9 +164,9 @@ export const opmPack: PlanetPack = withSiblingTransfers(withDirectTransfers({
   id: 'opm',
   name: 'Outer Planets Mod',
   shortName: 'OPM',
-  dataNotice: 'Analytic estimates',
+  dataNotice: 'Calculated estimates',
   version: '2.2.12-analytic.4',
-  description: 'Stock plus Outer Planets Mod 2.2.12: config-based analytical orbital and vacuum estimates, direct planetary and sibling-moon transfers, and explicitly retained historical atmospheric surface allowances for Tekto and Thatmo.',
+  description: 'Stock plus Outer Planets Mod 2.2.12. Orbital and airless surface budgets are calculated from mod data, including direct planet and moon transfers. Tekto and Thatmo keep older atmospheric launch/landing allowances.',
   transferHubBodyId: 'stock:kerbin',
   sources: [
     ...stockPack.sources.map(source => ({ ...source })),
@@ -192,13 +192,13 @@ export const opmPack: PlanetPack = withSiblingTransfers(withDirectTransfers({
   assumptions: [
     ...stockPack.assumptions.filter(note => !note.startsWith('Kerbol has no selectable') && !note.startsWith('All budgets are in') && !note.startsWith('No atmospheric assistance')),
     ...analyticAssumptions,
-    'Baseline costs include no atmospheric savings. Optional atmospheric choices adjust the effective graph without validating entry or landing feasibility.',
-    'Unaffected stock bodies retain their stock-map budgets. Eeloo is a Sarnus moon with recalculated OPM transfer, capture, and vacuum surface costs; Stock Eeloo is unchanged.',
-    'Modern parking altitudes include Sarnus 600 km, Urlum 350 km, Neidon 280 km, Thatmo 50 km, and Tekto 120 km. These are selected reference orbits, not terrain clearance guarantees.',
-    'Sarnus, Urlum, Neidon, and Plock high ellipses have periapsis at their selected parking altitude and apoapsis radius 0.5 × nominal SOI. Moon branches leave parent low orbit, including Tal from Wal and Karen from Plock.',
-    'Inclination affects relative speed at an assumed orbital-node encounter, including retrograde Thatmo. Eccentricity and changing orbital distances are not propagated; Plock (e = 0.26) and Nissee (e = 0.72) can differ substantially from these nominal costs.',
-    'Tekto and Thatmo retain historical atmospheric ascent/descent allowances of 2600 and 950 m/s. They are not recalibrated for the modern reference orbits or a particular vehicle, are not verified landing costs, and are not upper bounds. Vehicle performance and atmospheric entry are not modeled.',
-    'Kerbol has no selectable states. Jool, Sarnus, Urlum, and Neidon have no landable surface states. Third-body effects and optional SigmaBinary patches are excluded.',
+    'Default costs include no savings from the atmosphere. Atmosphere options can change the route budget, but do not test whether your craft can survive entry or land.',
+    'Unchanged Stock bodies keep their map figures. In OPM, Eeloo orbits Sarnus and has recalculated transfer, orbit-entry, and airless surface costs. Choosing Stock keeps the original Eeloo.',
+    'Assumed parking heights include Sarnus 600 km, Urlum 350 km, Neidon 280 km, Thatmo 50 km, and Tekto 120 km. These are reference orbits, not guarantees of terrain clearance.',
+    'High ellipses at Sarnus, Urlum, Neidon, and Plock have their closest point at the selected parking height. Their farthest point is at half the nominal sphere-of-influence radius, measured from the body\'s center. Moon transfers start from the parent\'s low orbit, including Tal from Wal and Karen from Plock.',
+    'Orbital tilt affects approach speed where the reference orbital planes cross, including Thatmo\'s backward orbit. Changing distances along eccentric orbits are not tracked; Plock (e = 0.26) and Nissee (e = 0.72) can differ substantially from these estimates.',
+    'Tekto and Thatmo use older atmospheric launch/landing allowances of 2600 and 950 m/s. They have not been recalculated for the modern reference orbits or your craft, and are not verified landing costs or guaranteed maximums. Craft performance and atmospheric entry are not simulated.',
+    'Kerbol has no selectable states. Jool, Sarnus, Urlum, and Neidon have no landable surface states. Gravity from additional bodies and optional SigmaBinary patches are not included.',
   ],
   bodies,
   nodes,

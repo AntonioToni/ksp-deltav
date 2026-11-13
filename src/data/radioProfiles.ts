@@ -88,7 +88,7 @@ const baseProfilesById: Readonly<Record<'stock' | 'rss' | 'rss-cbk', CommNetRadi
   stock: Object.freeze({
     id: 'stock',
     name: 'Stock CommNet',
-    description: 'Stock antenna powers, DSN levels and Normal difficulty occlusion defaults.',
+    description: 'Stock antenna and ground-station powers, with Normal difficulty settings for body blocking.',
     relayAntennas: stockRelayAntennas,
     clientAntennas: stockClientAntennas,
     vesselAntennas: Object.freeze([...stockClientAntennas, ...stockRelayAntennas]),
@@ -100,7 +100,7 @@ const baseProfilesById: Readonly<Record<'stock' | 'rss' | 'rss-cbk', CommNetRadi
   rss: Object.freeze({
     id: 'rss',
     name: 'RSS CommNet (without CBK)',
-    description: 'RSS increases stock antenna powers by 20×. Without CustomBarnKit, DSN powers remain stock.',
+    description: 'RSS increases stock antenna powers by 20×. Ground-station powers stay stock when CustomBarnKit is absent.',
     relayAntennas: rssRelayAntennas,
     clientAntennas: rssClientAntennas,
     vesselAntennas: rssVesselAntennas,
@@ -112,7 +112,7 @@ const baseProfilesById: Readonly<Record<'stock' | 'rss' | 'rss-cbk', CommNetRadi
   'rss-cbk': Object.freeze({
     id: 'rss-cbk',
     name: 'RSS + CustomBarnKit',
-    description: 'RSS antenna powers with the stronger DSN levels applied when CustomBarnKit is installed.',
+    description: 'RSS antenna powers with the stronger ground stations supplied by the RSS CustomBarnKit patch.',
     relayAntennas: rssRelayAntennas,
     clientAntennas: rssClientAntennas,
     vesselAntennas: rssVesselAntennas,
@@ -137,11 +137,11 @@ function withKerbalism(
   // Base catalogs already contain final powers; scale only the added antenna.
   const shortAntenna = Object.freeze({ ...kerbalismShortAntenna, power: kerbalismShortAntenna.power * powerScale })
   const clients = Object.freeze([...base.clientAntennas, shortAntenna])
-  const powers = base.id === 'stock' ? 'Stock antenna and DSN powers'
-    : base.id === 'rss' ? 'RSS 20× antenna powers; stock DSN' : 'RSS 20× antenna powers; CustomBarnKit DSN'
+  const powers = base.id === 'stock' ? 'Stock antenna and ground-station powers'
+    : base.id === 'rss' ? 'RSS 20× antenna powers; stock ground stations' : 'RSS 20× antenna powers; CustomBarnKit ground stations'
   return Object.freeze({
     ...base, id, name, kerbalism: true,
-    description: `${powers}. Includes Communotron 8, Kerbalism signal damping and science-rate estimates.`,
+    description: `${powers}. Adds Communotron 8 and Kerbalism signal damping for science-rate estimates.`,
     clientAntennas: clients,
     vesselAntennas: Object.freeze([...clients, ...base.relayAntennas]),
     sources: Object.freeze([

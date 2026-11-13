@@ -74,12 +74,12 @@ export function validatePlanetPack(pack: unknown): string[] {
   index(connections, 'unpriced connection')
   index(regions, 'map region')
   if (bodies.length === 0) errors.push('A planet pack must contain at least one body.')
-  if (nodes.length === 0) errors.push('A planet pack must contain at least one routing node.')
+  if (nodes.length === 0) errors.push('Add at least one map point to the pack’s nodes list.')
   if (isText(raw.transferHubBodyId)) {
     const hub = bodyById.get(raw.transferHubBodyId)
     if (!hub || hub.kind !== 'planet') errors.push('Pack transferHubBodyId must reference a planet.')
     else if (!nodes.some(node => node.bodyId === raw.transferHubBodyId && node.kind === 'orbit')) {
-      errors.push('Pack transfer hub must have a low-orbit routing state.')
+      errors.push('The transfer hub needs a low-orbit map point in the nodes list.')
     }
   }
 
@@ -106,7 +106,7 @@ export function validatePlanetPack(pack: unknown): string[] {
     let ancestor = body.parentId
     while (typeof ancestor === 'string' && bodyById.has(ancestor)) {
       if (seen.has(ancestor)) {
-        errors.push(`${label} belongs to a cyclic parent hierarchy.`)
+        errors.push(`${label}: parentId links form a loop. A body cannot orbit itself through its parent chain.`)
         break
       }
       seen.add(ancestor)
@@ -142,7 +142,7 @@ export function validatePlanetPack(pack: unknown): string[] {
     const from = typeof fromId === 'string' ? nodeById.get(fromId) : undefined
     const to = typeof toId === 'string' ? nodeById.get(toId) : undefined
     if (!from || !to) {
-      errors.push(`${label} references an unknown routing endpoint.`)
+      errors.push(`${label}: from and to must identify existing map points in the nodes list.`)
       return
     }
     const fromBody = typeof from.bodyId === 'string' ? bodyById.get(from.bodyId) : undefined

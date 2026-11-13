@@ -219,7 +219,7 @@ describe('ordered mission modes and stages', () => {
     const graph = graphFrom(['a', 'b', 'c'].map(id => node(id)), [edge('a', 'b', 1e308), edge('b', 'c', 1e308)])
     expect(findMissionRoute(graph, 'a', 'c', 'one-way', ['b'])).toMatchObject({
       status: 'invalid', failedLeg: 'outbound', outbound: null,
-      message: expect.stringMatching(/Stage 2 to c: .*numeric range/),
+      message: expect.stringMatching(/Stage 2 to c: .*too large/),
     })
   })
 

@@ -29,7 +29,7 @@ describe('effective maneuver budget basis', () => {
   it('distinguishes published map figures from OPM analytic estimates', () => {
     expect(describeManeuverBasis(stockAscent, stockPack)).toMatchObject({ kind: 'reference', label: 'Reference map', source: { budgetType: 'reference' } })
     expect(describeManeuverBasis(kcalAscent, opmKcalbelohPack).kind).toBe('reference')
-    expect(describeManeuverBasis(haleAscent, opmPack)).toMatchObject({ kind: 'model', label: 'Analytic model', source: { budgetType: 'model' } })
+    expect(describeManeuverBasis(haleAscent, opmPack)).toMatchObject({ kind: 'model', label: 'Calculated estimate', source: { budgetType: 'model' } })
     const earthAscent = edge(rssPack, 'rss:earth:surface', 'rss:earth:orbit')
     expect(describeManeuverBasis(earthAscent, rssPack).kind).toBe('reference')
   })
@@ -37,7 +37,7 @@ describe('effective maneuver budget basis', () => {
   it('labels default atmospheric descent as a placeholder rather than a verified upper bound', () => {
     const basis = describeManeuverBasis(dunaLanding, stockPack)
     expect(basis).toMatchObject({ kind: 'placeholder', label: 'Landing placeholder' })
-    expect(basis.description).toContain('not a verified landing calculation or upper bound')
+    expect(basis.description).toContain('not a guaranteed maximum')
     const vacuumLanding = edge(stockPack, 'stock:mun:orbit', 'stock:mun:surface')
     expect(describeManeuverBasis(vacuumLanding, stockPack).kind).toBe('reference')
   })
@@ -92,7 +92,7 @@ describe('effective maneuver budget basis', () => {
     const summaries = summarizeBudgetBasis(legs, pack, { allowanceEdgeIds: new Set(edges.map(edge => edge.id)), atmosphericPlan: plan })
     expect(summaries).toEqual([
       { kind: 'reference', label: 'Reference map', deltaV: stockAscent.deltaV * 2 + kcalAscent.deltaV, maneuvers: 3 },
-      { kind: 'model', label: 'Analytic model', deltaV: haleAscent.deltaV, maneuvers: 1 },
+      { kind: 'model', label: 'Calculated estimate', deltaV: haleAscent.deltaV, maneuvers: 1 },
       { kind: 'user', label: 'Your allowance', deltaV: 0, maneuvers: 1 },
       { kind: 'ideal', label: 'Ideal capture', deltaV: 0, maneuvers: 1 },
       { kind: 'placeholder', label: 'Landing placeholder', deltaV: dunaLanding.deltaV, maneuvers: 1 },

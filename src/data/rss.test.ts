@@ -133,7 +133,7 @@ describe('the reference-based RSS pack', () => {
     expect(rssPack.nodes.find(node => node.id === 'rss:earth:orbit')?.altitudeKm).toBe(250)
     expect(rssPack.nodes.find(node => node.id === 'rss:venus:orbit')?.altitudeKm).toBe(400)
     expect(rssPack.nodes.find(node => node.id === 'rss:titan:orbit')?.altitudeKm).toBe(1000)
-    expect(rssPack.assumptions.join(' ')).toContain('no visible version/date')
+    expect(rssPack.assumptions.join(' ')).toContain('no visible version, date, or author credit')
     expect(rssPack.assumptions.join(' ')).toContain('placeholders')
   })
 

@@ -17,6 +17,9 @@ const linkColors: Record<LinkStatus, string> = {
 }
 const format = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
 const signalFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
+const linkNames: Record<LinkStatus, string> = {
+  available: 'available', marginal: 'at a blocking or range limit', blocked: 'blocked by the body', 'out-of-range': 'beyond antenna range',
+}
 
 /** Merge footprint intervals so overlapping caps do not hide narrow gaps. */
 function coverageIntervals(angles: readonly number[], halfAngle: number): [number, number][] {
@@ -70,14 +73,14 @@ export default function RelayDiagram({ input, result, bodyName, bodyColor, onRot
     x: centerX + bodyRadius * Math.cos(angle),
     y: centerY - bodyRadius * Math.sin(angle),
   })
-  const signalDetails = (raw: number, damped: number) => `Raw CommNet signal ${signalFormat.format(raw * 100)}%.${input.dampingExponent !== undefined && input.dampingExponent !== 1 ? ` Kerbalism factor ${signalFormat.format(damped * 100)}%.` : ''}`
+  const signalDetails = (raw: number, damped: number) => `Raw CommNet signal ${signalFormat.format(raw * 100)}%.${input.dampingExponent !== undefined && input.dampingExponent !== 1 ? ` Kerbalism signal ${signalFormat.format(damped * 100)}%.` : ''}`
 
   return <Box component="figure" sx={{ m: 0, minWidth: 0, width: '100%' }}>
     <Box component="svg" role="img" aria-label={`${bodyName} equatorial relay diagram`} aria-describedby={`${prefix}-description`}
       viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet"
       sx={{ display: 'block', width: '100%', height: compact ? 100 : 250, minHeight: 100, maxHeight: 260, overflow: 'hidden' }}>
       <title>{`${bodyName} circular relay constellation`}</title>
-      <desc id={`${prefix}-description`}>{input.satelliteCount} equally spaced relays in a circular equatorial orbit {format.format(input.altitudeM / 1000)} km above {bodyName}. The body and orbit use their physical radius ratio. Colored neighbor lines show local line-of-sight and antenna-range results. Surface arcs show equatorial client footprints, not global coverage or a checked home connection.{input.occlusionFactor < 1 ? ` Dashed inner boundary uses an occlusion radius factor of ${input.occlusionFactor}.` : ''}</desc>
+      <desc id={`${prefix}-description`}>{input.satelliteCount} equally spaced relays in a circular orbit above {bodyName}'s equator, {format.format(input.altitudeM / 1000)} km above the surface. Body and orbit sizes use the same scale. Lines show which nearby relays can communicate. Green surface arcs mark the parts of the equator that can reach a relay; they do not show whole-surface coverage or a route home.{input.occlusionFactor < 1 ? ` The dashed inner circle is the radio-blocking radius, ${input.occlusionFactor} times the body's radius.` : ''}</desc>
       <circle cx={centerX} cy={centerY} r={orbitRadius} fill="none" stroke="#647e9d" strokeOpacity={.5} strokeDasharray="3 5" strokeWidth={1} />
       {result.neighborLinks.map(link => {
         const from = satellites[link.fromIndex]
@@ -87,7 +90,7 @@ export default function RelayDiagram({ input, result, bodyName, bodyColor, onRot
           stroke={linkColors[link.status]} strokeWidth={strokeWidth} strokeOpacity={link.status === 'available' || link.status === 'marginal' ? .9 : .65}
           strokeDasharray={link.status === 'blocked' ? '5 4' : link.status === 'out-of-range' ? '2 4' : undefined}
           data-relay-link="neighbor" data-from-index={link.fromIndex} data-to-index={link.toIndex} data-link-status={link.status} data-raw-signal={link.signalStrength} data-damped-signal={link.dampedStrength}>
-          <title>{`Relay ${link.fromIndex + 1} ↔ ${link.toIndex + 1}: ${link.status}; ${format.format(link.distanceM / 1000)} km apart; ${format.format(link.clearanceM / 1000)} km occluder clearance. ${signalDetails(link.signalStrength, link.dampedStrength)}`}</title>
+          <title>{`Relay ${link.fromIndex + 1} ↔ ${link.toIndex + 1}: ${linkNames[link.status]}; ${format.format(link.distanceM / 1000)} km apart. Radio path clearance from the blocking radius: ${format.format(link.clearanceM / 1000)} km (negative is inside). ${signalDetails(link.signalStrength, link.dampedStrength)}`}</title>
         </line>
       })}
       <circle cx={centerX} cy={centerY} r={bodyRadius} fill="#101b2f" fillOpacity={.85} />
@@ -110,12 +113,12 @@ export default function RelayDiagram({ input, result, bodyName, bodyColor, onRot
         return <line key={link.satelliteIndex} x1={station.x} y1={station.y} x2={satellite.x} y2={satellite.y}
           stroke={link.status === 'marginal' ? '#e7bd7b' : '#73c8fa'} strokeWidth={strokeWidth} strokeDasharray="2 3" strokeOpacity={.9}
           data-relay-station-link={link.satelliteIndex} data-link-status={link.status} data-raw-signal={link.signalStrength} data-damped-signal={link.dampedStrength}>
-          <title>{`Surface client → relay ${link.satelliteIndex + 1}: ${link.status}; ${format.format(link.distanceM / 1000)} km. ${signalDetails(link.signalStrength, link.dampedStrength)}`}</title>
+          <title>{`Surface craft → relay ${link.satelliteIndex + 1}: ${linkNames[link.status]}; ${format.format(link.distanceM / 1000)} km apart. ${signalDetails(link.signalStrength, link.dampedStrength)}`}</title>
         </line>
       })}
       {input.hasSurface && <g transform={`translate(${station.x} ${station.y})`} data-relay-station="true">
         <path d="M 0 -4.5 L 4.5 0 L 0 4.5 L -4.5 0 Z" fill="#73c8fa" stroke="#101b2f" strokeWidth={1} />
-        <title>{`Equatorial surface client at longitude ${format.format(input.stationLongitudeDeg)}°`}</title>
+        <title>{`Example surface craft on the equator at longitude ${format.format(input.stationLongitudeDeg)}°`}</title>
       </g>}
       {satellites.map((satellite, index) => <g key={index} transform={`translate(${satellite.x} ${satellite.y})`} data-relay-satellite={index}>
         <circle r={markerRadius} fill="#172d42" stroke="#b3e3ff" strokeWidth={1.2} />
@@ -125,13 +128,13 @@ export default function RelayDiagram({ input, result, bodyName, bodyColor, onRot
       {input.occlusionFactor < 1 && <text x={width / 2} y={height - 4} textAnchor="middle" fill="#a3b0c4" fontSize={compact ? 8 : 10}>Dashed boundary: {input.occlusionFactor}× body radius</text>}
     </Box>
     <Box component="figcaption" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', columnGap: .5, rowGap: .25, minWidth: 0 }}>
-      <Typography sx={{ fontSize: 10, lineHeight: 1.2, color: 'text.secondary', minWidth: 0 }}>Equatorial cross-section</Typography>
+      <Typography sx={{ fontSize: 10, lineHeight: 1.2, color: 'text.secondary', minWidth: 0 }}>View through the equator</Typography>
       <Button size="small" aria-label="Rotate relays" onClick={onRotate} startIcon={<RotateRightRounded sx={{ fontSize: '15px !important' }} />}
         sx={{ minHeight: 26, minWidth: 0, px: .5, py: .25, fontSize: 10, lineHeight: 1.2, whiteSpace: 'nowrap', '& .MuiButton-startIcon': { mr: .25 } }}>Rotate relays</Button>
       <Stack direction="row" sx={{ gridColumn: '1 / -1', flexWrap: 'wrap', gap: { xs: .75, sm: 1.25 }, alignItems: 'center' }}>
         {[
-          ['#8fcdbd', 'Available', false], ['#e7bd7b', 'At limit', false], ['#c1808c', 'Blocked/range', true],
-          ...(input.hasSurface ? [['#73c8fa', 'Client', true]] : []),
+          ['#8fcdbd', 'Available', false], ['#e7bd7b', 'At limit', false], ['#c1808c', 'Blocked / too far', true],
+          ...(input.hasSurface ? [['#73c8fa', 'Surface craft', true]] : []),
         ].map(([color, label, dashed]) => <Stack key={String(label)} direction="row" sx={{ alignItems: 'center', gap: .4 }}>
           <Box component="span" aria-hidden="true" sx={{ width: 10, height: 0, borderTop: `2px ${dashed ? 'dashed' : 'solid'} ${String(color)}`, flexShrink: 0 }} />
           <Typography sx={{ fontSize: { xs: 9, sm: 10 }, lineHeight: 1.2, color: 'text.secondary', whiteSpace: 'nowrap' }}>{label}</Typography>

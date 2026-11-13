@@ -153,7 +153,7 @@ export function parsePlanetPackJson(text: string): PackImportResult {
   } catch {
     return { status: 'error', errors: ['The file is not valid JSON. Export a planet pack to see the expected format.'] }
   }
-  if (!isEntry(raw)) return { status: 'error', errors: ['Planet pack must be an object.'] }
+  if (!isEntry(raw)) return { status: 'error', errors: ['The JSON must contain one planet-pack object at its top level.'] }
   const bounds = validateImportLimits(raw)
   if (bounds.length) return { status: 'error', errors: bounds }
   const errors = validatePlanetPack(raw)

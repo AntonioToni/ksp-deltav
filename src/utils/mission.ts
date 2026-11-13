@@ -48,10 +48,10 @@ export function findMissionRoute(graph: PlannerGraph, start: string, goal: strin
     return invalid('A mission supports up to four intermediate stops.')
   }
   if (!graph.nodes.has(start) || !graph.nodes.has(goal)) {
-    return invalid('Choose a start and destination from the active planet pack.')
+    return invalid('Choose an origin and destination from the selected planet pack.')
   }
   for (const [index, id] of waypointIds.entries()) {
-    if (typeof id !== 'string' || !graph.nodes.has(id)) return invalid(`Stop ${index + 1} must be a state from the active planet pack.`)
+    if (typeof id !== 'string' || !graph.nodes.has(id)) return invalid(`Choose stop ${index + 1} from the selected planet pack.`)
   }
 
   const forward = [start, ...waypointIds, goal]

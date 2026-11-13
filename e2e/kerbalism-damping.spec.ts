@@ -220,7 +220,7 @@ test('uses the RSS home orbit for automatic exponents below one and labels a CBK
   await expect(dampingSummary(page)).toContainText('fallback')
   await expect(metric(page, 'signal-strength')).toHaveText('1.56%')
   await openDamping(page)
-  await expect(planner(page).getByText(/No usable reference calibration point/)).toBeVisible()
+  await expect(planner(page).getByText(/Automatic calculation found no suitable reference distance/)).toBeVisible()
 })
 
 test('labels unknown custom home systems as a fallback and allows a save-specific override', async ({ page }) => {
@@ -236,7 +236,7 @@ test('labels unknown custom home systems as a fallback and allows a save-specifi
   await expect(dampingSummary(page)).toContainText('k = 6')
   await expect(dampingSummary(page)).toContainText('fallback')
   await openDamping(page)
-  await expect(planner(page).getByText(/Home-system orbit is unknown/)).toBeVisible()
+  await expect(planner(page).getByText(/The homeworld’s orbit is unknown/)).toBeVisible()
   await manualHalfRange(page)
   await expect(metric(page, 'signal-strength')).toHaveText('1.56%')
   await customExponent(page, '1')

@@ -40,7 +40,7 @@ describe('Kcalbeloh installations with wormholes disabled', () => {
     expect(disabled.unpricedConnections).toEqual(enabled.unpricedConnections!.filter(connection => connection.id !== 'kcalbeloh:wormhole'))
     expect(disabled.bodies.some(body => body.kind === 'wormhole')).toBe(false)
     expect(disabled.assumptions.join(' ')).toContain('Wormholes disabled')
-    expect(disabled.assumptions.join(' ')).toContain('No direct interstellar transfer is supplied')
+    expect(disabled.assumptions.join(' ')).toContain('No direct star-to-star transfer is supplied')
     expect(disabled.assumptions.join(' ')).not.toContain('WH-3141-A orbits')
     expect(disabled.sources).toEqual(enabled.sources)
   })

@@ -64,7 +64,7 @@ describe('the two Kcalbeloh add-on configurations', () => {
     expect(wormhole.forwardKind).toBe('wormhole')
     expect(wormhole.reverseKind).toBe('wormhole')
     expect(wormhole.assumptions.join(' ')).toContain('approach')
-    expect(wormhole.assumptions.join(' ')).toContain('exit matching')
+    expect(wormhole.assumptions.join(' ')).toContain('course and speed adjustments after the exit')
   })
 
   it('does not mutate or reuse the reference catalog, base Eeloo hierarchy, or other composed pack records', () => {
@@ -108,7 +108,7 @@ describe('published Kcalbeloh numerical facts', () => {
     expect(mapEdges).toHaveLength(106)
     for (const edge of mapEdges) {
       expect(stockKcalbelohPack.sources.some(source => source.id === edge.sourceId)).toBe(true)
-      expect(edge.assumptions.join(' ')).toContain('map estimate')
+      expect(edge.assumptions.join(' ')).toContain('Estimate from the published Kcalbeloh')
       const opposite = mapEdges.find(item => item.from === edge.to && item.to === edge.from)!
       expect(opposite.deltaV).toBe(edge.deltaV)
       expect(opposite.assumptions).not.toBe(edge.assumptions)
@@ -165,7 +165,7 @@ describe('unknown Kcalbeloh source connections', () => {
     for (const connection of pack.unpricedConnections!) {
       expect(pack.maneuvers.some(edge => (edge.from === connection.from && edge.to === connection.to) || (edge.from === connection.to && edge.to === connection.from)), connection.id).toBe(false)
       expect(pack.sources.some(source => source.id === connection.sourceId), connection.id).toBe(true)
-      expect(connection.assumptions.join(' ')).toContain('blank direction remains unavailable')
+      expect(connection.assumptions.join(' ')).toContain('Blank leaves that direction unavailable')
     }
     for (const target of [local('sera'), local('arorua'), local('rouqea'), local('noira'), local('efil')]) {
       expect(findLowestCostPath(buildGraph(pack), 'stock:kerbin:surface', target).status).toBe('unreachable')

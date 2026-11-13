@@ -239,7 +239,7 @@ test('respects imported atmosphere support metadata without inventing assistance
   await manager.getByRole('button', { name: `Use ${pack.name}`, exact: true }).click()
   await openEditor(page)
   await expect(editor(page).getByRole('checkbox')).toHaveCount(0)
-  await expect(editor(page).getByText('This pack has no supported standalone atmospheric capture or landing maneuvers.', { exact: true })).toBeVisible()
+  await expect(editor(page).getByText('This pack has no separate atmospheric arrival or landing burns that these options can change.', { exact: true })).toBeVisible()
   await expect(apply(page)).toBeEnabled()
 })
 

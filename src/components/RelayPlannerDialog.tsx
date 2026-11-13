@@ -272,7 +272,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
       </TextField>
       <Typography sx={{ display: usesRssBodyData ? 'block' : { xs: 'none', sm: 'block' }, flexBasis: usesRssBodyData ? { xs: '100%', sm: 'auto' } : undefined, fontSize: 11, lineHeight: 1.35, color: 'text.secondary', minWidth: 0, overflowWrap: 'anywhere' }}>{usesRssBodyData ? 'RSS body data' : pack.shortName ?? pack.name} · {radioProfile.name}</Typography>
     </Box>
-    <Tabs value={tab} onChange={(_, value: typeof tab) => { setTab(value); if (value === 'signals') setSignalsOpened(true) }} aria-label="Relay planner sections" variant="fullWidth" sx={{ px: 1.5, minHeight: 32, borderBottom: '1px solid', borderColor: 'divider', '& .MuiTab-root': { minHeight: 32, minWidth: 0, py: .5, px: 1, fontSize: 12, textTransform: 'none' } }}>
+    <Tabs value={tab} onChange={(_, value: typeof tab) => { setTab(value); if (value === 'signals') setSignalsOpened(true) }} aria-label="Relay planner sections" variant="fullWidth" sx={{ px: 1.5, minHeight: { xs: 40, sm: 32 }, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider', '& .MuiTab-root': { minHeight: { xs: 40, sm: 32 }, minWidth: 0, py: .5, px: 1, fontSize: 12, textTransform: 'none' } }}>
       <Tab id="relay-network-tab" aria-controls="relay-network-panel" value="network" label="Network" disabled={!body} />
       <Tab id="relay-deployment-tab" aria-controls="relay-deployment-panel" value="deployment" label="Deployment" disabled={!body} />
       <Tab id="relay-body-tab" aria-controls="relay-body-panel" value="body" label="Body data" disabled={!body} />
@@ -307,12 +307,12 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               {clientId === 'custom' && <NumericField label="Surface power" value={clientCustomPower} onChange={setClientCustomPower} unit="m" min={Number.MIN_VALUE} />}
               {dsnId === 'custom' && <NumericField label="DSN power" value={dsnCustomPower} onChange={setDsnCustomPower} unit="m" min={Number.MIN_VALUE} />}
             </Box>}
-            {(relayId === 'custom' || clientId === 'custom' || dsnId === 'custom') && <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Custom values are final effective powers; profile scaling is not applied.</Typography>}
+            {(relayId === 'custom' || clientId === 'custom' || dsnId === 'custom') && <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Enter the antenna's final KSP power rating in metres. The radio setup does not multiply custom values again.</Typography>}
             {radioProfile.kerbalism && (relayId === 'custom' || clientId === 'custom') && <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', columnGap: .75, rowGap: 1.5 }}>
               {relayId === 'custom' && <NumericField label="Relay full-strength rate" value={relayCustomRate} onChange={setRelayCustomRate} unit="bit/s" max={1e18} optional />}
               {clientId === 'custom' && <NumericField label="Surface full-strength rate" value={clientCustomRate} onChange={setClientCustomRate} unit="bit/s" max={1e18} optional />}
             </Box>}
-            {radioProfile.kerbalism && (relayId === 'custom' || clientId === 'custom') && <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Enter your hardware's science rate before Antenna Speed and damping. Blank leaves its bitrate unknown; signal and coverage still calculate.</Typography>}
+            {radioProfile.kerbalism && (relayId === 'custom' || clientId === 'custom') && <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Enter the science rate from your antenna configuration, before speed or signal adjustments. Leave it blank to calculate signal and coverage without a bitrate.</Typography>}
             {success ? <>
               <Typography role="status" data-testid="relay-ring-status" sx={{ fontSize: 11, color: statusColor, lineHeight: 1.3 }}>Neighbor links · {ringLabel}<Box component="span" data-testid="relay-coverage-status" sx={{ color: 'text.secondary' }}> · {success.coverageStatus === null ? 'No surface' : ({ full: 'Full equator', partial: 'Partial equator', marginal: 'Coverage at boundary', none: 'No surface links' } as const)[success.coverageStatus]}</Box></Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .5 }}>
@@ -327,17 +327,18 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
                   <Metric label="Surface → relay rate" value={success.bestStationSignalStrength === null ? 'No surface' : rateValue(clientBaseRate, stationRate)} testId="relay-station-rate" color="primary.light" />
                 </>}
               </Box>
-              <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Station signal is the best visible hop from the sample surface point at this rotation. Coverage and link reach use raw CommNet strength.</Typography>
-              {radioProfile.kerbalism && <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Science rates are for each selected hop before downstream relay bottlenecks. All selected external antennas are assumed active and powered; a complete path home is still required.</Typography>}
+              <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Best station signal is the strongest link from the blue surface point at the current relay positions.</Typography>
+              {radioProfile.kerbalism && <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Science rates assume active, powered antennas. A relay's next link may be slower; the complete route home is not checked. Coverage still uses raw CommNet signal.</Typography>}
               {radioProfile.kerbalism && clientBaseRate?.status === 'success' && clientBaseRate.externalCount === 0 && success.bestStationSignalStrength !== null && <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Internal antennas provide control but do not transmit science.</Typography>}
-              {radioProfile.kerbalism && rateFloorApplied && <Typography data-testid="relay-rate-floor" sx={{ fontSize: 10, lineHeight: 1.4, color: 'secondary.main' }}>Minimum science rate of {formatBitrate(numeric(minimumBitsPerSecond))} applied to a positive hop rate.</Typography>}
+              {radioProfile.kerbalism && rateFloorApplied && <Typography data-testid="relay-rate-floor" sx={{ fontSize: 10, lineHeight: 1.4, color: 'secondary.main' }}>A positive science rate was raised to the configured minimum of {formatBitrate(numeric(minimumBitsPerSecond))}.</Typography>}
             </> : missingIds.length ? <UnavailableAntennaAlert names={missingNames} restoreLabel={getRadioProfile(restoreProfileId).name} onRestore={() => setRadioId(restoreProfileId)}
               replaceLabel={missingArrayRole ? 'Edit antenna array' : missingRelay.length ? 'Use HG-5' : 'Use Communotron 16'} onReplace={() => {
                 if (missingArrayRole) openArray(missingArrayRole)
                 else { if (missingRelay.length) setRelayId('hg-5'); if (missingClient.length) setClientId('communotron-16') }
               }} /> : <Alert severity="info" sx={{ py: .25, fontSize: 11, '& .MuiAlert-message': { minWidth: 0 } }}>{result.status === 'invalid' ? result.errors[0] : 'Enter the body and orbit data to calculate a network.'}</Alert>}
-            <Typography sx={{ fontSize: 10, lineHeight: 1.35, color: 'text.secondary' }}>Same loadout on each relay · Equatorial coverage only · DSN range is not a home link.</Typography>
-            <Typography sx={{ fontSize: 10, lineHeight: 1.35, color: 'text.secondary' }}>RealAntennas and RemoteTech are not modeled. Custom powers do not reproduce their radio systems.</Typography>
+            <Typography sx={{ fontSize: 10, lineHeight: 1.35, color: 'text.secondary' }}>Every relay uses this antenna setup. Coverage checks only the equator, not the whole surface.</Typography>
+            <Typography sx={{ fontSize: 10, lineHeight: 1.35, color: 'text.secondary' }}>DSN is the Tracking Station ground network. Maximum DSN range is a distance limit, not a checked connection home.</Typography>
+            <Typography sx={{ fontSize: 10, lineHeight: 1.35, color: 'text.secondary' }}>RealAntennas and RemoteTech use different radio systems; custom powers cannot reproduce them.</Typography>
           </Stack>}
 
           {tab === 'deployment' && <Stack spacing={1}>
@@ -352,7 +353,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               }} />
             </Box>
             {success ? <>
-              <Typography component="output" role="status" data-testid="relay-deployment-status" sx={{ display: 'block', fontSize: 12, color: success.deployment.status === 'clear' ? '#92d5c6' : success.deployment.status === 'blocked' ? '#ee987d' : 'secondary.main' }}>{({ clear: 'Clear of modeled limits', blocked: 'Deployment blocked', marginal: 'Deployment at boundary', unchecked: 'SOI limit not checked' } as const)[success.deployment.status]}</Typography>
+              <Typography component="output" role="status" data-testid="relay-deployment-status" sx={{ display: 'block', fontSize: 12, color: success.deployment.status === 'clear' ? '#92d5c6' : success.deployment.status === 'blocked' ? '#ee987d' : 'secondary.main' }}>{({ clear: 'Orbit fits entered limits', blocked: 'Deployment blocked', marginal: 'Orbit at a limit', unchecked: 'Outer orbit limit not checked' } as const)[success.deployment.status]}</Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .5 }}>
                 <Metric label="Carrier periapsis" value={distance(success.deployment.periapsisAltitudeM)} testId="relay-periapsis" />
                 <Metric label="Carrier apoapsis" value={distance(success.deployment.apoapsisAltitudeM)} testId="relay-apoapsis" />
@@ -363,7 +364,12 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               </Box>
               {success.deployment.issues.map((issue, index) => <Typography key={index} sx={{ fontSize: 11, lineHeight: 1.4, color: 'secondary.main' }}>{issue}</Typography>)}
             </> : <Alert severity="info" sx={{ py: .25, fontSize: 11 }}>{result.status === 'invalid' ? result.errors[0] : 'Enter a valid orbit first.'}</Alert>}
-            <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>Start in the target circular orbit, then release one relay per carrier orbit at the shared apsis. Burns and elapsed time begin at the first release; launch and insertion are separate from your Delta-V mission.</Typography>
+            <Typography sx={{ fontSize: 10, lineHeight: 1.4, color: 'text.secondary' }}>The carrier is the ship that releases the relays. Its lower orbit completes a lap sooner than the target circle; its higher orbit takes longer. Release one relay per lap at the same point, then circularize it. Times begin at the first release; burns are not added to your mission budget.</Typography>
+            <Box component="details" sx={{ fontSize: 10, color: 'text.secondary', '& summary': { cursor: 'pointer', color: 'primary.main', minHeight: 24 } }}>
+              <Box component="summary">Deployment field guide</Box>
+              <Typography sx={{ mt: .5, fontSize: 10, lineHeight: 1.4 }}>Periapsis is the carrier's lowest altitude; apoapsis is its highest. Clearance margin is the extra height required above the surface or atmosphere. The carrier must also stay inside the body's sphere of influence, where KSP uses that body as the main source of gravity.</Typography>
+              <Typography sx={{ mt: .5, fontSize: 10, lineHeight: 1.4 }}>Carrier injection moves from the target circular orbit into the release orbit. Each relay circularizes by burning back into the target circle after release. Launch, travel to this body, and arrival into the target orbit are excluded.</Typography>
+            </Box>
           </Stack>}
 
           {tab === 'body' && <Stack spacing={1}>
@@ -381,8 +387,13 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               </TextField>
               <Box sx={{ gridArea: 'multiplier', minWidth: 0 }}><NumericField label="Range multiplier" value={rangeMultiplier} min={Number.MIN_VALUE} onChange={setRangeMultiplier} /></Box>
             </Box>
-            <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Occlusion uses {occlusion === 'full' ? 'the full body radius' : `${normalOcclusionFactor.toFixed(2)} × the body radius (${radioProfile.normalOcclusionLabel.replace(/ \(.*\)$/, '')})`}. Ground receivers remain at the physical radius. A missing SOI leaves the orbit limit unchecked.</Typography>
-            <Typography sx={{ fontSize: 11, color: 'text.secondary', lineHeight: 1.4 }}>{usesRssBodyData ? 'RSS presets supply body physics.' : 'Body data is editable for your installation.'} Radio setup is selected separately on the Network tab. RealAntennas and RemoteTech are not modeled. Terrain and orbital perturbations are not modeled.</Typography>
+            <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Signal blocking uses {occlusion === 'full' ? 'the full body radius' : `${normalOcclusionFactor.toFixed(2)} × the body radius (${radioProfile.normalOcclusionLabel.replace(/ \(.*\)$/, '')})`}. Surface craft stay on the actual surface. Without a sphere-of-influence value, the outer orbit limit is not checked.</Typography>
+            <Typography sx={{ fontSize: 11, color: 'text.secondary', lineHeight: 1.4 }}>{usesRssBodyData ? 'RSS presets provide this body’s size, atmosphere and gravity.' : 'Edit these values only if they differ in your installation.'} Choose antenna rules under Radio setup on Network. Terrain, gravity from other bodies, RealAntennas and RemoteTech are not simulated.</Typography>
+            <Box component="details" sx={{ fontSize: 11, color: 'text.secondary', '& summary': { cursor: 'pointer', color: 'primary.main', minHeight: 24 } }}>
+              <Box component="summary">Body field guide</Box>
+              <Typography sx={{ mt: .5, fontSize: 10, lineHeight: 1.4 }}>Body radius is the distance from the center to the surface. Atmosphere height is measured above that surface. Gravitational parameter (GM) describes the body's gravity for orbit calculations. It uses m³/s², not the surface-gravity value in m/s².</Typography>
+              <Typography sx={{ mt: .5, fontSize: 10, lineHeight: 1.4 }}>Sphere of influence is the radius of the region where KSP uses this body's gravity, measured from its center. Leave it blank if unknown. Occlusion chooses the radius used to block radio signals; it does not resize the body or atmosphere. Range multiplier scales antenna link distances to match your CommNet settings.</Typography>
+            </Box>
             {source && <Link href={source.url} target="_blank" rel="noreferrer" sx={{ fontSize: 11, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{source.title}</Link>}
             {radioProfile.sources.filter(reference => reference.id.startsWith('commnet-rss-') || reference.id.startsWith('commnet-kerbalism-')).map(reference => <Link key={reference.id} href={reference.url} target="_blank" rel="noreferrer" sx={{ fontSize: 11, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{reference.title}</Link>)}
           </Stack>}
@@ -390,8 +401,8 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
 
         <Box sx={{ minWidth: 0, display: tab === 'body' ? { xs: 'none', sm: 'block' } : 'block' }}>
           {success && body ? <RelayDiagram input={input} result={success} bodyName={body.name} bodyColor={body.color} onRotate={() => setPhase(value => (value + 15) % 360)} />
-            : <Box sx={{ minHeight: 130, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 1 }}><Typography sx={{ textAlign: 'center', color: 'text.secondary', fontSize: 12 }}>Enter valid body and orbit data to preview the constellation.</Typography></Box>}
-          {success && body && !body.hasSurface && <Typography sx={{ mt: .5, fontSize: 10, color: 'text.secondary', lineHeight: 1.35 }}>No landable surface. This view checks relay links and DSN range, without a ground receiver.</Typography>}
+            : <Box sx={{ minHeight: 130, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 1 }}><Typography sx={{ textAlign: 'center', color: 'text.secondary', fontSize: 12 }}>Enter valid body and orbit data to preview the relay positions.</Typography></Box>}
+          {success && body && !body.hasSurface && <Typography sx={{ mt: .5, fontSize: 10, color: 'text.secondary', lineHeight: 1.35 }}>This body has no landable surface, so only relay links and the DSN distance limit are shown.</Typography>}
           {success?.warnings.map((warning, index) => <Typography key={index} sx={{ mt: .5, fontSize: 10, lineHeight: 1.35, color: 'secondary.main' }}>{warning}</Typography>)}
         </Box>
       </Box>

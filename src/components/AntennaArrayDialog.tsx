@@ -71,8 +71,8 @@ function ArrayContent({ role, entries, antennas: catalog = vesselAntennas, radio
       {radioLabel && <Typography sx={{ mb: .25, fontSize: 11, lineHeight: 1.4, color: 'primary.light' }}>{radioLabel}</Typography>}
       <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>
         {description ?? (role === 'relay'
-          ? 'This loadout is fitted to each relay. Antennas on separate satellites do not combine.'
-          : 'This loadout describes one surface craft. Direct and relay antennas may combine for this endpoint.')}
+          ? 'Choose the antennas carried by each relay. Antennas on different satellites never combine.'
+          : 'Choose the antennas on one surface craft. Direct and relay antennas can both contribute when it sends.')}
       </Typography>
     </Box>
     <DialogContent sx={{ px: 1.5, pt: .5, pb: .75, minWidth: 0, minHeight: 0, overflowY: 'auto' }}>
@@ -91,9 +91,9 @@ function ArrayContent({ role, entries, antennas: catalog = vesselAntennas, radio
             <TextField required size="small" type="number" label="Count" value={entry.count} error={invalidCount} onChange={event => update(entry.key, { count: event.target.value })} slotProps={{ htmlInput: { 'aria-label': `Antenna count ${index + 1}`, min: 1, max: 100, step: 1 } }} sx={{ minWidth: 0, '& .MuiInputBase-root': { fontSize: 12, minHeight: 38 }, '& .MuiInputLabel-root': { fontSize: 11 }, '& .MuiInputBase-input': { px: 1, py: 1 } }} />
             <IconButton size="small" aria-label={`Remove antenna ${index + 1}`} onClick={() => setDraft(previous => previous.filter(other => other.key !== entry.key))} sx={{ width: 30, height: 32 }}><CloseRounded sx={{ fontSize: 17 }} /></IconButton>
             {antenna && <Typography sx={{ gridColumn: '1 / -1', fontSize: 10.5, lineHeight: 1.35, color: 'text.secondary', overflowWrap: 'anywhere' }}>
-              Power {formatPower(antenna.power)} · {!antenna.combinable ? 'Does not combine' : antenna.combinabilityExponent === 1 ? 'Combines linearly' : 'Combines with diminishing returns'}
+              Power {formatPower(antenna.power)} · {!antenna.combinable ? 'Copies do not add power' : antenna.combinabilityExponent === 1 ? 'Identical copies add their power' : 'Each identical copy adds less power'}
             </Typography>}
-            {invalidCount && <Typography sx={{ gridColumn: '1 / -1', fontSize: 10.5, lineHeight: 1.35, color: 'error.main' }}>Enter a whole count from 1 to 100.</Typography>}
+            {invalidCount && <Typography sx={{ gridColumn: '1 / -1', fontSize: 10.5, lineHeight: 1.35, color: 'error.main' }}>Enter a whole number from 1 to 100.</Typography>}
           </Box>
         })}
       </Box>
@@ -111,7 +111,7 @@ function ArrayContent({ role, entries, antennas: catalog = vesselAntennas, radio
         <Typography sx={{ flexShrink: 0, fontSize: 11, color: 'text.secondary', whiteSpace: 'nowrap' }}><Box component="output" data-testid="antenna-array-count">{result.status === 'success' ? result.totalCount : '—'}</Box> antennas</Typography>
       </Stack>
       {result.status === 'invalid' ? <Typography role="status" sx={{ mt: .5, fontSize: 11, lineHeight: 1.35, color: 'secondary.main', overflowWrap: 'anywhere' }}>{result.errors[0]}</Typography>
-        : <Typography sx={{ mt: .5, fontSize: 10.5, lineHeight: 1.35, color: 'text.secondary' }}>Only combinable antennas add to the combined power. Non-combining parts can provide their own single-antenna power.</Typography>}
+        : <Typography sx={{ mt: .5, fontSize: 10.5, lineHeight: 1.35, color: 'text.secondary' }}>Power is KSP's range rating, not electrical power or an actual link distance. Antennas combine according to the rules shown above; non-combining parts keep their own rating.</Typography>}
     </Box>
     <DialogActions sx={{ px: 1.5, py: .75, gap: .5 }}>
       <Button size="small" onClick={onClose} sx={{ minHeight: 36, px: 1.25, fontSize: 12 }}>Cancel</Button>

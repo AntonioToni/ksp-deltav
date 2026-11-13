@@ -15,23 +15,25 @@ function validate(input: InterplanetarySignalInput): string[] {
   const raw: unknown = input
   if (!isRecord(raw)) return ['Interplanetary signal inputs must be an object.']
   const errors: string[] = []
-  const positive = (value: unknown, label: string, maximum: number) => {
+  const positive = (value: unknown, label: string, maximum: number, unit = '', displayScale = 1) => {
     if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > maximum) {
-      errors.push(`${label} must be finite, greater than zero, and at most ${maximum}.`)
+      const displayedMaximum = maximum / displayScale
+      const limit = displayedMaximum >= 1e9 ? displayedMaximum.toExponential(0).replace('e+', 'e') : displayedMaximum.toLocaleString('en-US')
+      errors.push(`${label}: enter a number greater than 0 and no more than ${limit}${unit ? ` ${unit}` : ''}.`)
     }
   }
-  positive(raw.orbitRadiusAM, 'Orbit A radius', 1e16)
-  positive(raw.orbitRadiusBM, 'Orbit B radius', 1e16)
-  positive(raw.centralRadiusM, 'Central body radius', 1e12)
-  positive(raw.powerA, 'Endpoint A power', 1e18)
-  positive(raw.powerB, 'Endpoint B power', 1e18)
+  positive(raw.orbitRadiusAM, 'Orbit radius A', 1e16, 'Gm', 1e9)
+  positive(raw.orbitRadiusBM, 'Orbit radius B', 1e16, 'Gm', 1e9)
+  positive(raw.centralRadiusM, 'Central body radius', 1e12, 'km', 1000)
+  positive(raw.powerA, 'Endpoint A power', 1e18, 'm')
+  positive(raw.powerB, 'Endpoint B power', 1e18, 'm')
   positive(raw.rangeMultiplier, 'Range multiplier', 100)
   positive(raw.occlusionFactor, 'Occlusion factor', 1)
   if (raw.dampingExponent !== undefined) positive(raw.dampingExponent, 'Damping exponent', MAX_DAMPING_EXPONENT)
-  if (typeof raw.phaseDeg !== 'number' || !Number.isFinite(raw.phaseDeg)) errors.push('Relative phase must be finite.')
+  if (typeof raw.phaseDeg !== 'number' || !Number.isFinite(raw.phaseDeg)) errors.push('Enter a valid angle for Relative phase.')
   if (errors.length) return errors
   if (input.orbitRadiusAM <= input.centralRadiusM || input.orbitRadiusBM <= input.centralRadiusM) {
-    errors.push('Both circular reference orbits must lie outside the central body’s physical radius.')
+    errors.push('Each orbit radius must be larger than the central body’s radius.')
   }
   return errors
 }
@@ -82,7 +84,7 @@ export function calculateInterplanetarySignal(input: InterplanetarySignalInput):
   const maximumRangeM = pairRange * input.rangeMultiplier
   const occlusionRadiusM = input.centralRadiusM * input.occlusionFactor
   if (!(maximumRangeM > 0) || !Number.isFinite(maximumRangeM) || !(occlusionRadiusM > 0)) {
-    return { status: 'invalid', errors: ['These inputs exceed the supported numerical range for signal calculations.'] }
+    return { status: 'invalid', errors: ['These values are too large or too small for the signal calculation. Use values within the supported ranges.'] }
   }
   const centralClearanceM = closestSegmentRadius(pointA.x, pointA.y, pointB.x, pointB.y) - occlusionRadiusM
   // A very small but positive effective occluder must still block a ray

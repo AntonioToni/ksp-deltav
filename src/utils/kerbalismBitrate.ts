@@ -90,19 +90,19 @@ export function calculateKerbalismBitrate(input: KerbalismBitrateInput): Kerbali
   const errors: string[] = []
   const rate = (value: number, name: string) => {
     if (!Number.isFinite(value) || value < 0 || value > MAX_KERBALISM_RATE_BITS_PER_SECOND) {
-      errors.push(`${name} must be finite, nonnegative, and at most 1e18 bit/s.`)
+      errors.push(`${name}: enter a number from 0 to 1e18 bit/s.`)
     }
   }
   rate(input.baseRateBitsPerSecond, 'Full-strength science rate')
   rate(input.minimumBitsPerSecond, 'Minimum science rate')
   if (!Number.isFinite(input.rawStrength) || input.rawStrength < 0 || input.rawStrength > 1) {
-    errors.push('Raw CommNet strength must be between zero and one.')
+    errors.push('Raw CommNet strength must be a number from 0 to 1 (0% to 100%).')
   }
   if (!Number.isFinite(input.dampingExponent) || input.dampingExponent <= 0 || input.dampingExponent > MAX_DAMPING_EXPONENT) {
-    errors.push('Damping exponent must be greater than zero and at most 1,000,000.')
+    errors.push('Damping exponent: enter a number greater than 0 and no more than 1,000,000.')
   }
   if (!Number.isFinite(input.antennaSpeed) || input.antennaSpeed < 0 || input.antennaSpeed > MAX_KERBALISM_ANTENNA_SPEED) {
-    errors.push('Antenna Speed must be finite, nonnegative, and at most 1,000.')
+    errors.push('Antenna Speed: enter a number from 0 to 1,000.')
   }
   if (typeof input.linkAvailable !== 'boolean') errors.push('Link availability must be specified.')
   if (errors.length) return { status: 'invalid', errors }

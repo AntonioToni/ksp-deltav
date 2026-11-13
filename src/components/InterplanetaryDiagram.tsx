@@ -76,11 +76,17 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
   const blockedStart = blockedSamples[0]?.samplePhaseDeg
   const blockedEnd = blockedSamples.at(-1)?.samplePhaseDeg
   const linkColor = colors[result.linkStatus]
+  const linkDescription = {
+    available: 'available',
+    marginal: 'at the antenna range or the edge of the blocking body',
+    blocked: `blocked by ${centerName}`,
+    'out-of-range': 'out of antenna range',
+  }[result.linkStatus]
   const currentStrength = kerbalism ? result.dampedStrength : result.signalStrength
   const legend: { color: string; label: string; dashed: boolean }[] = [
     ...(kerbalism ? [{ color: '#8cbde7', label: 'Raw CommNet', dashed: true }] : []),
-    { color: '#9fb2cd', label: kerbalism ? 'Damped, range only' : 'Range only', dashed: true },
-    { color: '#92d5c6', label: kerbalism ? 'Damped with occlusion' : 'With central occlusion', dashed: false },
+    { color: '#9fb2cd', label: kerbalism ? 'Adjusted, clear path' : 'Clear path', dashed: true },
+    { color: '#92d5c6', label: kerbalism ? 'Adjusted, with blocking' : 'With blocking', dashed: false },
   ]
   const card = { minWidth: 0, border: '1px solid', borderColor: 'divider', borderRadius: 1.25, bgcolor: '#080f2145', overflow: 'hidden' } as const
 
@@ -101,13 +107,13 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
         data-testid="signals-orbit-diagram" data-signal-phase={result.phaseDeg} data-signal-receiver={receivingEndpoint} viewBox={`0 0 ${width} ${orbitHeight}`} preserveAspectRatio="xMidYMid meet"
         sx={{ display: 'block', width: '100%', height: compact ? 140 : 180 }}>
         <title>{`${nameA} ↔ ${nameB} around ${centerName}`}</title>
-        <desc id={`${prefix}-orbit-description`}>{`Circular coplanar reference orbits around ${centerName}. Relative phase ${format.format(result.phaseDeg)} degrees. The arrow points ${receivingEndpoint === 'a' ? 'from B to receiving endpoint A' : 'from A to receiving endpoint B'}; the link is ${result.linkStatus.replaceAll('-', ' ')}. Orbital radii use their physical ratio; endpoint markers and very small central disks are enlarged. The calculation uses the exact effective central radius, not the enlarged marker. Local endpoint horizons and other bodies are not checked.`}</desc>
+        <desc id={`${prefix}-orbit-description`}>{`Two circular orbits in the same plane around ${centerName}. The bodies are ${format.format(result.phaseDeg)} degrees apart. The arrow points ${receivingEndpoint === 'a' ? 'from sending craft B to receiving craft A' : 'from sending craft A to receiving craft B'}; the link is ${linkDescription}. Orbit sizes show relative distances; small craft and central-body markers are enlarged for visibility. Blocking uses the radius from your inputs, even when the marker is enlarged. Other planets, moons and the horizon near either craft are not checked.`}</desc>
         <defs><marker id={`${prefix}-receive-arrow`} markerWidth={6} markerHeight={6} refX={8} refY={3} orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 6 3 L 0 6 Z" fill={linkColor} /></marker></defs>
         {[{ radius: input.orbitRadiusAM, color: colorA }, { radius: input.orbitRadiusBM, color: colorB }].map((orbit, index) => <circle key={index} cx={centerX} cy={centerY} r={orbit.radius * scale} fill="none" stroke={orbit.color} strokeOpacity={.38} strokeWidth={1} strokeDasharray={index ? '3 4' : undefined} />)}
         <circle cx={centerX} cy={centerY} r={Math.max(1.5, input.centralRadiusM * scale)} fill={input.occlusionFactor < 1 ? 'none' : '#102037'} fillOpacity={.95} stroke={centerColor} strokeOpacity={input.occlusionFactor < 1 ? .45 : 1} strokeWidth={1} data-signal-central-radius-m={input.centralRadiusM} />
         <line x1={senderPoint.x} y1={senderPoint.y} x2={receiverPoint.x} y2={receiverPoint.y} stroke={linkColor} strokeWidth={2} markerEnd={`url(#${prefix}-receive-arrow)`} strokeDasharray={result.linkStatus === 'available' ? undefined : '5 4'}
           data-signal-link-status={result.linkStatus} data-signal-clearance-m={result.centralClearanceM}>
-          <title>{`${format.format(result.distanceM / 1e9)} Gm separation; ${format.format(currentStrength * 100)}% ${kerbalism ? 'Kerbalism damped' : 'current'} signal.${kerbalism ? ` Raw CommNet ${format.format(result.signalStrength * 100)}%.` : ''}`}</title>
+          <title>{`Distance ${format.format(result.distanceM / 1e9)} Gm; ${format.format(currentStrength * 100)}% ${kerbalism ? 'Kerbalism-adjusted' : 'current'} signal.${kerbalism ? ` Raw CommNet ${format.format(result.signalStrength * 100)}%.` : ''}`}</title>
         </line>
         <circle cx={centerX} cy={centerY} r={Math.max(input.occlusionFactor < 1 ? 1 : 1.5, input.centralRadiusM * input.occlusionFactor * scale)} fill="#102037" fillOpacity={.95} />
         <circle cx={centerX} cy={centerY} r={Math.max(input.occlusionFactor < 1 ? 1 : 1.5, input.centralRadiusM * input.occlusionFactor * scale)} fill={centerColor} fillOpacity={.24} stroke={centerColor} strokeWidth={1} strokeDasharray={input.occlusionFactor < 1 ? '2 2' : undefined} data-signal-occlusion-factor={input.occlusionFactor} />
@@ -116,16 +122,16 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
         {endpoint(pointB, nameB, colorB, 'B', false)}
         <text x={width / 2} y={orbitHeight - 5} textAnchor="middle" fill="#9db1ca" fontSize={10}>{format.format(result.phaseDeg)}° relative phase</text>
       </Box>
-      <Typography component="figcaption" sx={{ px: 1, pb: .75, fontSize: 10, lineHeight: 1.3, color: 'text.secondary' }}>Markers enlarged; circular reference geometry.</Typography>
+      <Typography component="figcaption" sx={{ px: 1, pb: .75, fontSize: 10, lineHeight: 1.3, color: 'text.secondary' }}>Small markers are enlarged for visibility.</Typography>
     </Box>
 
     <Box component="figure" sx={{ m: 0, ...card }}>
-      <Typography component="figcaption" sx={{ px: 1, pt: .75, fontSize: 11, lineHeight: 1.3, color: 'text.secondary' }}>Signal across a relative-phase cycle{kerbalism ? ' · Kerbalism S^k' : ''}</Typography>
+      <Typography component="figcaption" sx={{ px: 1, pt: .75, fontSize: 11, lineHeight: 1.3, color: 'text.secondary' }}>Signal at each angle between the bodies{kerbalism ? ' · Kerbalism adjustment' : ''}</Typography>
       <Box component="svg" role="img" aria-label="Signal strength by relative phase" aria-describedby={`${prefix}-chart-description`}
         data-testid="signals-strength-chart" data-signal-damping-exponent={kerbalism ? input.dampingExponent : undefined} viewBox={`0 0 ${width} ${chartHeight}`} preserveAspectRatio="xMidYMid meet"
         sx={{ display: 'block', width: '100%', height: compact ? 92 : 112 }}>
-        <title>{kerbalism ? 'Kerbalism damping and central-body occlusion' : 'Range-only strength and central-body occlusion'}</title>
-        <desc id={`${prefix}-chart-description`}>{kerbalism ? 'The blue dotted curve is raw CommNet strength with occlusion. The gray dashed curve applies the selected exponent S^k before occlusion, and the green solid curve includes central-body blocking. These damped values are factors, not transmission rates; range and reach are unchanged. ' : 'The dashed curve shows antenna strength before occlusion. The solid curve includes the central body blocking the link. '}The shaded band is the blocked phase interval. The vertical marker follows the phase control. This reference cycle does not predict calendar dates.</desc>
+        <title>{kerbalism ? 'Kerbalism-adjusted signal with a clear path and with blocking' : 'Signal with a clear path and with blocking'}</title>
+        <desc id={`${prefix}-chart-description`}>{kerbalism ? 'The blue dotted curve shows raw CommNet strength with blocking. The gray dashed curve shows Kerbalism-adjusted strength for a clear path. The green solid curve also includes blocking by the central body. These are signal percentages, not rates in bits per second; the adjustment does not change maximum antenna range. ' : 'The dashed curve shows signal strength for a clear path. The solid curve also includes blocking by the central body. '}The shaded band marks angles where the central body blocks the link. The vertical marker shows the selected angle. Positions are chosen with the slider, not predicted from an in-game date.</desc>
         <defs><clipPath id={`${prefix}-plot-clip`}><rect x={plot.left} y={plot.top} width={plot.right - plot.left} height={plot.bottom - plot.top} /></clipPath></defs>
         {[0, .5, 1].map(value => <g key={value}>
           <line x1={plot.left} x2={plot.right} y1={chartY(value)} y2={chartY(value)} stroke="#677f9e" strokeOpacity={.25} strokeWidth={1} />

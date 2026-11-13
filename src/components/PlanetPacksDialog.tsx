@@ -90,7 +90,7 @@ function PackContent({ currentPack, customPacks, storageWarning, onImport, onSel
       <Tab value="addons" label="Add-ons" /><Tab value="custom" label="Custom packs" />
     </Tabs>
     <Typography id="planet-packs-description" sx={{ mb: 1, fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>
-      Choose a reviewed configuration or import your own maneuver data. Imported files stay in this browser.
+      Choose a built-in map or import your own planet and Delta-V data as JSON. Imports stay in this browser and aren't uploaded.
     </Typography>
     {tab === 'addons' && <>
     <Typography component="h3" sx={{ mb: .75, fontSize: 12, fontWeight: 500, color: 'text.secondary' }}>Built-in configurations</Typography>
@@ -99,21 +99,21 @@ function PackContent({ currentPack, customPacks, storageWarning, onImport, onSel
         <FormControlLabel label="Wormholes" control={<Switch size="small" checked={wormholes} onChange={(_, checked) => setWormholes(checked)} slotProps={{ input: { 'aria-describedby': 'wormhole-setting-help' } }} />} sx={{ m: 0, gap: .5, '& .MuiFormControlLabel-label': { fontSize: 12 } }} />
         <Typography aria-hidden="true" sx={{ fontSize: 11, color: 'text.secondary' }}>{wormholes ? 'Enabled' : 'Disabled'}</Typography>
       </Box>
-      <Typography id="wormhole-setting-help" sx={{ fontSize: 11, lineHeight: 1.4, color: 'text.secondary' }}>Choose Use to apply this setting.</Typography>
-      {!wormholes && <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.4, color: 'text.secondary' }}>Local system routes remain available. No Kerbol–Kcalbeloh transfer is supplied with wormholes off.</Typography>}
+      <Typography id="wormhole-setting-help" sx={{ fontSize: 11, lineHeight: 1.4, color: 'text.secondary' }}>Match your Kcalbeloh installation, then choose Use beside a configuration.</Typography>
+      {!wormholes && <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.4, color: 'text.secondary' }}>Routes within each system remain available. This planner has no Kerbol–Kcalbeloh connection with wormholes off.</Typography>}
     </Box>
     <Box component="ul" aria-label="Built-in planet configurations" sx={{ listStyle: 'none', m: 0, mb: 1.25, p: 0, display: 'grid', gap: .5 }}>
       {matchingConfigurations.map(({ pack }) => <Box component="li" key={pack.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, px: 1, py: .5, border: '1px solid', borderColor: pack.id === currentPack.id ? '#73c8fa80' : 'divider', borderRadius: 1, bgcolor: pack.id === currentPack.id ? '#73c8fa0a' : '#ffffff03' }}>
         <Box sx={{ minWidth: 0 }}>
           <Typography sx={{ fontSize: 12, fontWeight: 500 }}>{pack.name}</Typography>
-          <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>Official map · unpriced links need allowances</Typography>
+          <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>Official map · set missing costs in Link allowances</Typography>
         </Box>
         <Button size="small" aria-label={`Use ${pack.name}`} onClick={() => onSelect(pack.id)} sx={{ minHeight: 36, minWidth: 44, px: .75, fontSize: 11 }}>{pack.id === currentPack.id ? 'Active' : 'Use'}</Button>
       </Box>)}
     </Box>
     {currentConfiguration && <Button size="small" onClick={() => onSelect(currentConfiguration.basePackId)} sx={{ mb: .5, minHeight: 32, fontSize: 11 }}>Disable Kcalbeloh</Button>}
     {(currentPack.unpricedConnections?.length ?? 0) > 0 && <Button variant="outlined" size="small" onClick={onEditAllowances} sx={{ mb: 1.25, ml: .5, minHeight: 34, fontSize: 11 }}>Link allowances</Button>}
-    <Typography sx={{ mb: 1, fontSize: 10.5, lineHeight: 1.4, color: 'text.secondary' }}>Stock/OPM switches keep Kcalbeloh and the selected wormhole setting. RSS disables Kcalbeloh.</Typography>
+    <Typography sx={{ mb: 1, fontSize: 10.5, lineHeight: 1.4, color: 'text.secondary' }}>Switching Stock ↔ OPM keeps Kcalbeloh and your wormhole choice. Choosing RSS turns Kcalbeloh off.</Typography>
     </>}
     <Box sx={{ display: tab === 'custom' ? 'block' : 'none' }}>
     <Typography component="h3" sx={{ mb: .75, fontSize: 12, fontWeight: 500, color: 'text.secondary' }}>Import and export</Typography>
@@ -141,13 +141,13 @@ function PackContent({ currentPack, customPacks, storageWarning, onImport, onSel
     </Stack>
     <Typography component="h3" sx={{ mb: .75, fontSize: 12, fontWeight: 500, color: 'text.secondary' }}>Your packs <Box component="span" sx={{ ml: .5, fontVariantNumeric: 'tabular-nums' }}>{customPacks.length}/{MAX_CUSTOM_PACKS}</Box></Typography>
     {customPacks.length === 0 && <Typography sx={{ px: 1.25, py: 1.5, fontSize: 12, lineHeight: 1.4, border: '1px dashed', borderColor: 'divider', borderRadius: 1, color: 'text.secondary' }}>
-      No custom packs yet. Export an existing pack as a starting point, then give it a new ID before importing.
+      No custom packs yet. Export a pack as a starting point, then change the pack's id in the JSON before importing.
     </Typography>}
     <Box component="ul" aria-label="Custom planet packs" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: .75 }}>
       {customPacks.map(pack => <Box component="li" key={pack.id} sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', columnGap: .5, px: 1, py: .75, border: '1px solid', borderColor: pack.id === currentPack.id ? '#73c8fa80' : 'divider', bgcolor: pack.id === currentPack.id ? '#73c8fa0a' : '#ffffff03', borderRadius: 1 }}>
         <Box sx={{ minWidth: 0 }}>
           <Typography sx={{ fontSize: 12, fontWeight: 500, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{pack.name}</Typography>
-          <Typography sx={{ mt: .25, fontSize: 10, lineHeight: 1.35, color: 'text.secondary', overflowWrap: 'anywhere' }}>v{pack.version} · {pack.bodies.length} bodies · {pack.nodes.length} states</Typography>
+          <Typography sx={{ mt: .25, fontSize: 10, lineHeight: 1.35, color: 'text.secondary', overflowWrap: 'anywhere' }}>v{pack.version} · {pack.bodies.length} bodies · {pack.nodes.length} map points</Typography>
         </Box>
         <Stack direction="row" sx={{ alignItems: 'center' }}>
           <Button size="small" aria-label={`Use ${pack.name}`} disabled={busy} onClick={() => onSelect(pack.id)} startIcon={pack.id === currentPack.id ? <CheckRounded sx={{ fontSize: '14px !important' }} /> : undefined} sx={{ minWidth: 42, minHeight: 32, px: .75, fontSize: 11 }}>{pack.id === currentPack.id ? 'Active' : 'Use'}</Button>

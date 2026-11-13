@@ -59,7 +59,7 @@ describe('complete sibling-moon transfer references', () => {
       expect(toBody.kind).toBe('moon')
       expect(fromBody.parentId).toBe(toBody.parentId)
       expect(edge.deltaV).toBeGreaterThan(0)
-      expect(edge.assumptions.join(' ')).toContain('Atmospheric assistance does not discount this bundled pair')
+      expect(edge.assumptions.join(' ')).toContain('Atmosphere options do not reduce')
     }
     expect(pack.sources.find(source => source.id === siblingTransferSource.id)?.budgetType).toBe('model')
   })

@@ -69,7 +69,7 @@ describe('the reviewed stock reference pack', () => {
     const landing = stockPack.maneuvers.find((edge) => edge.from === 'stock:eve:orbit' && edge.to === 'stock:eve:surface')
     expect(landing?.kind).toBe('descent')
     expect(landing?.assumptions.join(' ')).toContain('placeholder')
-    expect(stockPack.assumptions.join(' ')).toContain('Plane-change')
+    expect(stockPack.assumptions.join(' ')).toContain('orbital-plane changes')
   })
 
   it('uses a complete direct estimate between non-Kerbin parking orbits without a homeworld layover', () => {

@@ -46,14 +46,14 @@ test('exposes modern parking altitudes above the affected atmospheres', async ({
 })
 
 test('explains the analytic model and the atmospheric allowances behind the visible notice', async ({ page }) => {
-  await button(page, 'Analytic estimates').click()
+  await button(page, 'Calculated estimates').click()
   const info = page.getByRole('dialog', { name: 'About these estimates', exact: true })
   await expect(info).toBeVisible()
   await expect(info).toContainText('OPM 2.2.12')
-  await expect(info).toContainText('retrograde Thatmo')
-  await expect(info).toContainText('0.5 × nominal SOI')
-  await expect(info).toContainText('Tekto and Thatmo retain historical atmospheric ascent/descent allowances of 2600 and 950 m/s')
-  await expect(info).toContainText('are not upper bounds')
+  await expect(info).toContainText("Thatmo's backward orbit")
+  await expect(info).toContainText('half the nominal sphere-of-influence radius')
+  await expect(info).toContainText('Tekto and Thatmo use older atmospheric launch/landing allowances of 2600 and 950 m/s')
+  await expect(info).toContainText('are not verified landing costs or guaranteed maximums')
   await expect(info.getByRole('link', { name: /Official OPM 2.2.12/ })).toHaveAttribute('href', /ffedf02e23d2d620e1018d1467f5e485f7950fa0/)
 })
 
@@ -124,5 +124,5 @@ test('exports modern source costs independently of assistance and preserves the 
   await expect(total(page)).toHaveText('7,480 m/s')
   await expect(page.locator('[data-route-edge="true"][data-edge-id*="stock:jool:"]')).toHaveCount(0)
   await expect(page.locator('[data-route-edge="true"][data-edge-id*="stock:duna:"]')).toHaveCount(0)
-  await expect(button(page, 'Analytic estimates')).toHaveCount(0)
+  await expect(button(page, 'Calculated estimates')).toHaveCount(0)
 })

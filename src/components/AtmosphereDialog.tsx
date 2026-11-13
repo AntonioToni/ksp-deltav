@@ -62,10 +62,10 @@ function AtmosphereContent({ pack, plan, onApply, onClose }: Omit<AtmosphereDial
     <DialogTitle id="atmosphere-heading" sx={{ px: 1.5, py: 1, fontSize: 16, lineHeight: 1.5 }}>Atmospheric assistance</DialogTitle>
     <Box id="atmosphere-description" sx={{ px: 1.5, pb: 1 }}>
       <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>
-        Ideal capture uses 0 m/s for standalone capture and circularization burns; cleanup burns are excluded. Landing uses the powered allowance you enter.
+        Ideal capture assumes the atmosphere does all the braking into orbit (0 m/s of engine burns). Landing uses the engine Delta-V you enter below.
       </Typography>
       <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.4, color: 'text.secondary' }}>
-        Entry heating, guidance, and parachute performance are not simulated. Bundled transfer costs stay in the budget, even where arrows show atmospheric braking.
+        Only separately listed arrival burns can change; transfers that combine departure and arrival keep their full cost. Heating, guidance, parachutes and extra correction burns aren't calculated.
       </Typography>
     </Box>
     {capabilities.length > 0 && <Box aria-hidden="true" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 90px 76px', mx: 1.5, px: 1, py: .5, borderBottom: '1px solid', borderColor: 'divider', fontSize: 10, lineHeight: 1.2, color: 'text.secondary' }}>
@@ -73,7 +73,7 @@ function AtmosphereContent({ pack, plan, onApply, onClose }: Omit<AtmosphereDial
     </Box>}
     <DialogContent sx={{ px: 1.5, pt: .75, pb: .75, minWidth: 0, minHeight: 0, overflowY: 'auto' }}>
       {capabilities.length === 0 && <Typography sx={{ fontSize: 12, color: 'text.secondary', py: 1 }}>
-        This pack has no supported standalone atmospheric capture or landing maneuvers.
+        This pack has no separate atmospheric arrival or landing burns that these options can change.
       </Typography>}
       <Box component="ul" aria-label="Atmospheric body options" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: .5 }}>
         {capabilities.map(({ body, capture, landing }) => {
@@ -88,7 +88,7 @@ function AtmosphereContent({ pack, plan, onApply, onClose }: Omit<AtmosphereDial
               : <Typography aria-label={`Capture not available at ${body.name}`} sx={{ textAlign: 'center', fontSize: 12, color: 'text.secondary' }}>—</Typography>}
             {landing ? <Checkbox size="small" checked={entry.landing} onChange={(_, checked) => updateBody(body.id, { landing: checked })} slotProps={{ input: { 'aria-label': `Atmospheric landing at ${body.name}` } }} sx={{ justifySelf: 'center', p: .5, '& .MuiSvgIcon-root': { fontSize: 20 } }} />
               : <Typography aria-label={`Landing not available at ${body.name}`} sx={{ textAlign: 'center', fontSize: 12, color: 'text.secondary' }}>—</Typography>}
-            {entry.landing && <TextField required fullWidth size="small" type="number" label={`Landing allowance at ${body.name}`} value={entry.landingText} error={entry.landingText !== '' && invalid} onChange={event => updateBody(body.id, { landingText: event.target.value })} helperText={invalid ? 'Enter 0–1,000,000 m/s. Zero is a fully atmospheric landing.' : 'Replaces the reference allowance for each selected descent.'} slotProps={{
+            {entry.landing && <TextField required fullWidth size="small" type="number" label={`Landing allowance at ${body.name}`} value={entry.landingText} error={entry.landingText !== '' && invalid} onChange={event => updateBody(body.id, { landingText: event.target.value })} helperText={invalid ? 'Enter 0–1,000,000 m/s. Zero assumes no landing engine burn.' : 'Replaces the budget for each separate landing step at this body.'} slotProps={{
               htmlInput: { 'aria-label': `Landing allowance at ${body.name}`, min: 0, max: 1_000_000, step: 'any' },
               input: { endAdornment: <InputAdornment position="end"><Typography sx={{ fontSize: 11 }}>m/s</Typography></InputAdornment> },
             }} sx={{ gridColumn: '1 / -1', mt: 1, mb: .25, '& .MuiInputBase-root': { fontSize: 12 }, '& .MuiInputLabel-root': { fontSize: 12 }, '& .MuiFormHelperText-root': { mx: 0, fontSize: 10, lineHeight: 1.35 } }} />}

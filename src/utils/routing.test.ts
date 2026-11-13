@@ -101,7 +101,7 @@ describe('planet pack validation', () => {
     const pack = makePack()
     pack.bodies = pack.bodies.map(body => body.id === 'kerbin' ? { ...body, parentId: 'mun' } : body.id === 'duna' ? { ...body, parentId: 'missing' } : body)
     const errors = validatePlanetPack(pack)
-    expect(errors.some(error => error.includes('cyclic'))).toBe(true)
+    expect(errors.some(error => error.includes('parentId links form a loop'))).toBe(true)
     expect(errors.some(error => error.includes('unknown parent missing'))).toBe(true)
   })
 
@@ -112,7 +112,7 @@ describe('planet pack validation', () => {
     const errors = validatePlanetPack(pack)
     expect(errors.some(error => error.includes('valid HTTPS URL'))).toBe(true)
     expect(errors.some(error => error.includes('unknown source missing'))).toBe(true)
-    expect(errors.some(error => error.includes('unknown routing endpoint'))).toBe(true)
+    expect(errors.some(error => error.includes('existing map points in the nodes list'))).toBe(true)
   })
 
   it.each([-1, Infinity, -Infinity, NaN])('rejects unsupported Delta-V %s', deltaV => {

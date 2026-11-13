@@ -205,11 +205,11 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
         <MenuItem value="array" onClick={() => setEditingArray(endpoint)} sx={{ fontSize: 12 }}>Antenna array…</MenuItem>
         <MenuItem value="custom" sx={{ fontSize: 12 }}>Custom power</MenuItem>
       </TextField>
-      {isReceiver && resolved.status === 'success' && resolved.ignoredDirectCount > 0 && <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>{resolved.ignoredDirectCount} direct antenna{resolved.ignoredDirectCount === 1 ? '' : 's'} retained; only relay antennas add receiving power.</Typography>}
-      {isReceiver && draft.selection === 'custom' && <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Custom power assumes relay-capable receiving hardware.</Typography>}
+      {isReceiver && resolved.status === 'success' && resolved.ignoredDirectCount > 0 && <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>{resolved.ignoredDirectCount} direct antenna{resolved.ignoredDirectCount === 1 ? '' : 's'} retained for sending; only relay antennas help receive this link.</Typography>}
+      {isReceiver && draft.selection === 'custom' && <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>This custom value assumes the receiving craft has a working relay antenna.</Typography>}
       {draft.selection === 'custom' && <NumberField label={`Power ${label}`} value={draft.customPower} onChange={value => setDraft(endpoint, { customPower: value })} min={Number.MIN_VALUE} max={1e18} unit="m" />}
       {radio.kerbalism && draft.selection === 'custom' && <NumberField label={`Full-strength rate ${label}`} value={draft.customRate} onChange={value => setDraft(endpoint, { customRate: value })} max={1e18} unit="bit/s"
-        helperText="From your antenna configuration, before antenna speed and damping. Needed when this endpoint sends science." />}
+        helperText="Science rate at full signal, before the Antenna speed multiplier. Needed only when this craft sends science." />}
     </Stack>
   }
 
@@ -243,7 +243,7 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
             {radioProfileOptions.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 12 }}>{option.name}</MenuItem>)}
           </TextField>
         </Box>
-        <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>{radioId === 'stock' ? 'Stock antenna and DSN powers.' : radio.description}</Typography>
+        <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>{radioId === 'stock' ? 'Uses stock antenna and ground-station power ratings.' : radio.description}</Typography>
         {radio.kerbalism && dampingControls}
         {radio.kerbalism && rateControls}
         {reference ? <>
@@ -264,20 +264,20 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
             <NumberField label="Orbit radius B" value={manual.b} onChange={value => setManual(previous => ({ ...previous, b: value, initialized: true }))} unit="Gm" min={Number.MIN_VALUE} />
           </Box>
           <NumberField label="Central radius" value={manual.center} onChange={value => setManual(previous => ({ ...previous, center: value, initialized: true }))} unit="km" min={Number.MIN_VALUE} />
-          <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Enter both orbit radii from the same center, plus the central body's radius. Separate star systems and wormholes aren't modeled.</Typography>
+          <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Enter both orbit radii from the same center, not as altitudes above a surface. Central radius is the radius of the body at that center. Separate star systems and wormholes aren't modeled.</Typography>
         </>}
         <TextField select fullWidth size="small" label="Receiving endpoint" value={receivingEndpoint} onChange={event => setReceivingEndpoint(event.target.value as 'a' | 'b')} sx={fieldStyles}>
           <MenuItem value="a" sx={{ fontSize: 12 }}>A · Relay / DSN</MenuItem><MenuItem value="b" sx={{ fontSize: 12 }}>B · Relay / DSN</MenuItem>
         </TextField>
-        <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>{receivingEndpoint === 'a' ? 'B → A' : 'A → B'} · The receiving vessel needs a relay-capable antenna. Only relay antennas in its array contribute to receiving power; a DSN can receive directly.</Typography>
+        <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>{receivingEndpoint === 'a' ? 'B sends → A receives' : 'A sends → B receives'}. A receiving craft needs a relay antenna; only relay antennas in its array count. DSN can receive directly.</Typography>
         <Box sx={{ pt: .25, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1 }}>{endpointFields('a')}{endpointFields('b')}</Box>
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1 }}>
           <NumberField label="Range multiplier" value={rangeMultiplier} onChange={onRangeMultiplierChange} min={Number.MIN_VALUE} max={100} />
           <NumberField label="Occlusion factor" value={occlusionFactor} onChange={setOcclusionFactor} min={Number.MIN_VALUE} max={1} />
         </Box>
-        <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Occlusion factor sets the central body's blocking size: 1 uses its full radius; 0.9 uses 90%.</Typography>
+        <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Range multiplier scales maximum link distance; 2 doubles it. Occlusion factor scales the blocking radius: 1 is full size, 0.9 is 90%.</Typography>
         {(aDraft.selection.startsWith('dsn:') || bDraft.selection.startsWith('dsn:')) && <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>DSN is KSP's ground-station network. The selected Tracking Station level sets its receiving power.</Typography>}
-        {(aDraft.selection === 'custom' || bDraft.selection === 'custom') && <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Custom power is used as entered, without radio-profile scaling.</Typography>}
+        {(aDraft.selection === 'custom' || bDraft.selection === 'custom') && <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>Custom power uses KSP's antenna rating in metres, not watts. It is used as entered; Radio setup does not rescale it.</Typography>}
       </Stack>
       <Stack spacing={1} sx={{ minWidth: 0 }}>
         {firstMissing ? <UnavailableAntennaAlert
@@ -286,7 +286,7 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
           replaceLabel={firstMissing.draft.selection === 'array' ? 'Edit antenna array' : 'Use RA-100'}
           onReplace={() => { if (firstMissing.draft.selection === 'array') setEditingArray(firstMissing.endpoint); else setDraft(firstMissing.endpoint, { selection: 'ra-100' }) }}
         /> : receiverNeedsRelay ? <Alert severity="warning" data-testid="signal-receiver-warning" sx={{ fontSize: 12, '& .MuiAlert-message': { minWidth: 0 } }}>
-          <Typography sx={{ fontSize: 12, lineHeight: 1.45 }}>Endpoint {receivingEndpoint.toUpperCase()} needs a relay-capable antenna or DSN to receive this link.</Typography>
+          <Typography sx={{ fontSize: 12, lineHeight: 1.45 }}>Choose a relay antenna or a DSN level for receiving endpoint {receivingEndpoint.toUpperCase()}.</Typography>
           <Button size="small" onClick={() => setDraft(receivingEndpoint, { selection: 'ra-100' })} sx={{ mt: .5, minHeight: 32, px: 1, fontSize: 11 }}>Use RA-100</Button>
         </Alert> : success ? <>
           <Typography role="status" data-testid="signal-link-status" sx={{ fontSize: 12, fontWeight: 500, color: colors[success.linkStatus] }}>{status}</Typography>
@@ -300,7 +300,7 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
               <Metric label={`Science rate · ${scienceDirection}`} value={rate ? formatBitrate(rate.rateBitsPerSecond) : ratePlaceholder} testId="signal-science-rate" />
               <Metric label="Full-strength sender rate" value={rate ? formatBitrate(rate.fullStrengthBitsPerSecond) : ratePlaceholder} testId="signal-full-strength-rate" />
             </Box>
-            {rate?.floorApplied && <Typography data-testid="signal-rate-floor" sx={{ fontSize: 10, color: 'secondary.main', lineHeight: 1.4 }}>Configured minimum of {formatBitrate(minimumBitsPerSecond)} applied to this positive rate.</Typography>}
+            {rate?.floorApplied && <Typography data-testid="signal-rate-floor" sx={{ fontSize: 10, color: 'secondary.main', lineHeight: 1.4 }}>The calculated rate is below your minimum; using {formatBitrate(minimumBitsPerSecond)}. Disconnected links stay at zero.</Typography>}
             <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.4 }}>
               {senderBaseRate?.status === 'dsn' ? 'A DSN receives science; choose a vessel as the sender to estimate a science rate.'
                 : senderBaseRate?.status === 'success' && senderBaseRate.externalCount === 0 ? 'Internal antennas do not transmit science. Select an external antenna for a science rate.'
@@ -320,15 +320,15 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
         <Metric label={`Worst / farthest · ${distance(success.maximumDistanceM)}`} value={strength(radio.kerbalism ? success.worstDampedStrength : success.worstRangeStrength)} testId="signal-worst" />
       </Box>
     </Box>}
-    <Typography sx={{ mt: 1, fontSize: 10, color: 'text.secondary', lineHeight: 1.45 }}>Checks this direct link and blocking by {names.center}. Local horizons, other bodies and relay chains aren't checked.</Typography>
+    <Typography sx={{ mt: 1, fontSize: 10, color: 'text.secondary', lineHeight: 1.45 }}>Checks this direct link and blocking by {names.center}. Other bodies, the ground near either craft, and routes through extra relays aren't checked.</Typography>
     <Box component="details" sx={{ mt: 1, fontSize: 11, color: 'text.secondary', '& summary': { cursor: 'pointer', minHeight: 28, color: 'primary.main' } }}>
       <Box component="summary">Signal assumptions and sources</Box>
-      <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.45 }}>Both positions use circular orbits in one plane around the same central body. The angle slider sets their relative positions manually; it does not use an in-game date. Manual mode changes the radii around that same center, rather than modeling separate star systems or wormholes. Closest and farthest strengths ignore blockage and are reference figures for these circles, not universal bounds for eccentric or inclined orbits.</Typography>
-      <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.45 }}>Stock CommNet: maximum range = √(sender power × receiving relay/DSN power) × range multiplier. The sender uses its complete antenna loadout; only relay-capable antennas contribute to a receiving vessel's power. Custom receiver power assumes suitable relay hardware. Signal uses the stock smoothstep curve; the central spherical occluder masks it to zero when blocked. Exact limb and range boundaries are marginal. Antennas on different craft never combine into one endpoint. RealAntennas and RemoteTech are not modeled.</Typography>
-      {radio.kerbalism && <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.45 }}>Kerbalism science rate = the sender's geometric-mean external antenna rate × antenna speed × S^k. S is raw CommNet strength; Kerbalism signal is S^k, while link range still uses the raw value. All selected external antennas are assumed active, enabled, deployed, and unbroken; internal antennas are excluded. The full-strength readout includes antenna speed. The configured minimum applies only to positive rates; blocked and out-of-range links stay at zero. The receiving vessel's onward rate can limit the complete path. ElectricCharge availability and storms are not calculated; a complete forwarding path or home connection remains unchecked.</Typography>}
+      <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.45 }}>Both bodies follow circular orbits in the same plane around one central body. Relative phase sets their angle apart; no date or save file is used. Manual orbits changes the two distances from that shared center. It cannot represent bodies orbiting different stars or travel through a wormhole. Closest and farthest values use these circles and ignore blockage; real eccentric or tilted orbits can produce different distances.</Typography>
+      <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.45 }}>Stock CommNet: maximum range = √(sender power × receiving relay/DSN power) × Range multiplier. Power values are KSP antenna ratings in metres, not watts. The sender uses its full antenna loadout; only relay antennas count on a receiving craft. Custom receiving power assumes relay hardware. Strength follows stock CommNet's distance curve and becomes zero when the central body blocks the link. A boundary result means the link is at its antenna range or touches the edge of the blocking body. Antennas on separate craft never combine. Only the central body is checked for blocking; other planets, moons and terrain near either craft are not checked. RealAntennas and RemoteTech use different rules and are unsupported.</Typography>
+      {radio.kerbalism && <Typography sx={{ mt: .5, fontSize: 11, lineHeight: 1.45 }}>Raw CommNet strength is S; Kerbalism's adjusted signal is S^k, where k is the damping exponent. Science rate = the sender's geometric-mean external antenna rate × Antenna speed × S^k. The base rate uses all active external antenna rates, counted by quantity; it does not add them. Full-strength sender rate includes Antenna speed before signal loss. Selected antennas are assumed powered, enabled, deployed and working. Internal antennas send no science. A positive calculated rate uses your minimum science-rate setting when needed; blocked, out-of-range or zero rates stay at zero. Each extra relay can lower the final rate. Those extra links, power availability, failures, plasma blackouts and storms are not checked.</Typography>}
       <Stack spacing={.5} sx={{ mt: .75 }}>{sources.map(source => <Link key={source.id} href={source.url} target="_blank" rel="noreferrer" sx={{ fontSize: 11, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{source.title}</Link>)}</Stack>
     </Box>
-    {editingArray && <AntennaArrayDialog open role="client" title={`Endpoint ${editingArray.toUpperCase()} antenna array`} description={editingArray === receivingEndpoint ? 'This vessel receives the link. Only relay-capable rows contribute receiving power. Direct antennas are retained for sending; the editor’s combined power describes the complete craft loadout.' : 'This loadout is on one sending vessel. Direct and relay-capable antennas may combine; separate vessels never combine their power.'}
+    {editingArray && <AntennaArrayDialog open role="client" title={`Endpoint ${editingArray.toUpperCase()} antenna array`} description={editingArray === receivingEndpoint ? 'Antennas fitted to the receiving craft. Only relay antennas help receive this link. Direct antennas stay in the loadout for sending; the combined power shown here is the sending rating.' : 'Antennas fitted to one sending craft. Direct and relay antennas may work together. Antennas on separate craft do not combine.'}
       entries={editingDraft.array ?? [{ antennaId: radio.vesselAntennas.some(antenna => antenna.id === editingDraft.selection) ? editingDraft.selection : 'ra-100', count: 1 }]}
       antennas={radio.vesselAntennas} radioLabel={radio.name} onClose={() => setEditingArray(null)} onApply={entries => { setDraft(editingArray, { selection: 'array', array: entries }); setEditingArray(null) }} />}
   </Box>

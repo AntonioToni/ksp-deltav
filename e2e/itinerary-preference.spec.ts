@@ -136,7 +136,7 @@ test('uses the destination moon branch without inserting unrelated Titan or Tita
     await expect(page.locator(`[data-route-edge="true"][data-edge-id="rss:${example.parent}:elliptical->rss:${example.body}:encounter"]`)).toHaveCount(1)
     await expect(direct(page)).toHaveAttribute('data-edge-id', `direct:rss:mercury:orbit->rss:${example.parent}:elliptical`)
     await expect(selected(page).and(page.locator('[data-edge-id*="rss:earth:"]'))).toHaveCount(0)
-    await expect(page.getByTestId('route-status')).not.toContainText('Earth parking-orbit layover')
+    await expect(page.getByTestId('route-status')).not.toContainText('Includes an intermediate transfer via Earth')
     await direction(page, 'rss:mercury:orbit', `rss:${example.body}:orbit`)
   }
 })

@@ -38,10 +38,10 @@ export default function KerbalismRateControls({ antennaSpeed, minimumBitsPerSeco
           slotProps={{ htmlInput: { 'aria-label': 'Minimum science rate', min: 0, max: MAX_KERBALISM_RATE_BITS_PER_SECOND, step: 'any' }, input: { endAdornment: <InputAdornment position="end"><Typography sx={{ fontSize: 10 }}>bit/s</Typography></InputAdornment> } }} />
       </Box>
       <Typography sx={{ fontSize: 10, lineHeight: 1.45, color: 'text.secondary' }}>
-        Antenna Speed starts at the Normal reference of 1.5×. Easy uses 2×, Moderate 1.2× and Hard 1×; match your save's Science settings.
+        Antenna speed multiplies the full-strength science rate. Match your save's Antenna Speed setting: Normal 1.5× (the default here), Easy 2×, Moderate 1.2× or Hard 1×.
       </Typography>
       <Typography sx={{ fontSize: 10, lineHeight: 1.45, color: 'text.secondary' }}>
-        Kerbalism's minimum defaults to 1 bit/s and applies only to positive rates. Zero disables the floor; a blocked or out-of-range link still carries no science. Settings are shared by Network and Signals.
+        Minimum science rate raises a positive estimate to at least this many bit/s. Kerbalism defaults to 1 bit/s. Set 0 to remove the minimum; a zero rate stays zero, including blocked or out-of-range links. Network and Signals share these settings.
       </Typography>
     </Stack>
   </Box>

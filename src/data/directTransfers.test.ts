@@ -62,7 +62,7 @@ describe('complete coplanar direct-transfer estimates', () => {
       expect(toBody.parentId).toBe('stock:kerbol')
       expect([fromBody.id, toBody.id]).not.toContain('stock:kerbin')
       expect(pack.sources.find(source => source.id === edge.sourceId)?.budgetType).toBe('model')
-      expect(edge.assumptions.join(' ')).toContain('Atmospheric assistance does not discount this bundled pair')
+      expect(edge.assumptions.join(' ')).toContain('Atmosphere options do not reduce')
     }
     expect(opmPack.maneuvers.filter(edge => edge.directTransfer && edge.sourceId === directTransferSource.id).some(edge =>
       edge.from.startsWith('stock:eeloo:') || edge.to.startsWith('stock:eeloo:'))).toBe(false)
@@ -148,7 +148,7 @@ describe('complete coplanar direct-transfer estimates', () => {
       for (const { edge } of transfers) {
         expect(edge.deltaV).toBe(1068)
         expect(edge.label).toContain('elliptical orbit')
-        expect(edge.assumptions.join(' ')).toContain('Map-calibrated high-orbit energy')
+        expect(edge.assumptions.join(' ')).toContain('High-orbit speed at the closest point')
       }
       expect(result.nodeIds).not.toContain('stock:kerbin:orbit')
       expect(result.legs.every(({ edge }) => edge.deltaV > 0)).toBe(true)
@@ -158,13 +158,13 @@ describe('complete coplanar direct-transfer estimates', () => {
   })
 
   it('retains explicit high-orbit source provenance and rounds each OPM endpoint before summing', () => {
+    expect(opmPack.assumptions.join(' ')).toContain('calculated before rounding')
     const high = opmPack.maneuvers.filter(edge => edge.directTransfer &&
       [edge.from, edge.to].some(id => id.startsWith('opm:') && id.endsWith(':elliptical')))
     expect(high.length).toBeGreaterThan(0)
     let distinguishesPrematureRounding = false
     for (const edge of high) {
-      expect(edge.assumptions.join(' ')).toContain('Explicit reference apoapsis radius')
-      expect(edge.assumptions.join(' ')).toContain('calculated before rounding')
+      expect(edge.assumptions.join(' ')).toContain('Assumed farthest point')
       const lowFrom = edge.from.replace(':elliptical', ':orbit')
       const lowTo = edge.to.replace(':elliptical', ':orbit')
       const low = opmPack.maneuvers.find(candidate => candidate.directTransfer && candidate.from === lowFrom && candidate.to === lowTo)!

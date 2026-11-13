@@ -8,8 +8,8 @@ import { rssInnerOrbitReferences, withRssInnerReferences } from './rssInnerRefer
 const mapSourceId = 'rss-community-solar-system-map'
 const mapCommit = 'dc472f56101b260baee8814a94de985f44a6c9b2'
 const configCommit = '75139b961567f4dab61af83fe162a7e52026558b'
-const referenceEstimate = 'Community Solar System map estimate, using idealized Hohmann transfers and low-periapsis burns. This is not a launch-window or vehicle simulation.'
-const noAssists = 'Plane changes, gravity assists, atmospheric savings, finite-thrust losses, and launch-window constraints are excluded; add a mission margin.'
+const referenceEstimate = 'Community Solar System map estimate using ideal Hohmann transfers and burns near the lowest point of an orbit. The planner does not choose a launch window or simulate your craft.'
+const noAssists = 'Extra orbital-plane changes, gravity assists, atmospheric savings, losses during real engine burns, and launch timing are not included. Add a reserve.'
 
 type BodyRow = {
   id: string
@@ -106,13 +106,13 @@ function surfaceBudget(body: string, deltaV: number) {
   const atmospheric = bodyRows.find(row => row.id === body)?.atmosphere ?? false
   edge(nodeId(body, 'surface'), nodeId(body, 'orbit'), deltaV, 'ascent', `${name} ascent`, [
     referenceEstimate,
-    atmospheric ? 'Source ascent allowance; launch vehicle, thrust-to-weight ratio, and flight profile affect the actual budget.' : 'Idealized vacuum surface/orbit allowance; terrain and vehicle losses are not simulated.',
+    atmospheric ? 'Source launch allowance. Your craft, thrust-to-weight ratio, and flight path affect the actual cost.' : 'Ideal airless launch allowance. Terrain and craft losses are not simulated.',
   ])
   edge(nodeId(body, 'orbit'), nodeId(body, 'surface'), deltaV, 'descent', `${name} powered descent`, [
     referenceEstimate,
     atmospheric
-      ? 'Placeholder powered-descent allowance equal to the source ascent budget. This is not a verified landing calculation; no parachute, aerobraking, or aerocapture savings are credited.'
-      : 'Powered descent reverses the source vacuum surface/orbit allowance; vehicle losses and landing trajectory are not simulated.',
+      ? 'Landing placeholder equal to the source launch budget. It is not a verified landing estimate, and includes no savings from parachutes or atmospheric braking.'
+      : 'Powered landing uses the source airless launch allowance in reverse. Craft losses and your descent path are not simulated.',
   ])
 }
 
@@ -122,7 +122,7 @@ function localBudget(body: string, fromKind: 'orbit' | 'elliptical', toKind: 'el
   const fromLabel = fromKind === 'orbit' ? 'low orbit' : 'elliptical capture orbit'
   const toLabel = toKind === 'elliptical' ? 'elliptical capture orbit' : 'encounter'
   const assumptions = [referenceEstimate, noAssists,
-    `Sum of the source's adjacent local orbit segments: ${segments.join(' + ')} = ${deltaV} m/s. Intermediate transfer-rail junctions are consolidated without adding a landing or parking-orbit stop.`,
+    `Adds these neighboring map segments: ${segments.join(' + ')} = ${deltaV} m/s. Intermediate junctions are combined without adding a landing or parking stop.`,
   ]
   edge(nodeId(body, fromKind), nodeId(body, toKind), deltaV, 'escape', `${name}: ${fromLabel} → ${toLabel}`, [...assumptions])
   edge(nodeId(body, toKind), nodeId(body, fromKind), deltaV, 'capture', `${name}: ${toLabel} → ${fromLabel}`, [...assumptions])
@@ -131,7 +131,7 @@ function localBudget(body: string, fromKind: 'orbit' | 'elliptical', toKind: 'el
 function planetaryTransfer(body: string, segments: number[]) {
   const deltaV = segments.reduce((total, segment) => total + segment, 0)
   const assumptions = [referenceEstimate, noAssists,
-    `Earth-centered departure increment is the source transfer-rail prefix sum: ${segments.join(' + ')} = ${deltaV} m/s. Earth escape (3210 m/s) and destination capture are charged separately. These rail junctions are transfer-energy references, not intermediate planetary visits.`,
+    `Extra departure cost after Earth escape: the map segments add up to ${segments.join(' + ')} = ${deltaV} m/s. Earth escape (3210 m/s) and destination orbit entry are listed separately. Intermediate junctions describe transfer energy, not visits to those planets.`,
   ]
   edge(nodeId('earth', 'encounter'), nodeId(body, 'encounter'), deltaV, 'transfer', `Earth → ${nameOf(body)} transfer`, [...assumptions])
   edge(nodeId(body, 'encounter'), nodeId('earth', 'encounter'), deltaV, 'transfer', `${nameOf(body)} → Earth transfer`, [...assumptions])
@@ -140,7 +140,7 @@ function planetaryTransfer(body: string, segments: number[]) {
 function moonTransfer(parent: string, moon: string, parentKind: 'orbit' | 'elliptical', segments: number[]) {
   const deltaV = segments.reduce((total, segment) => total + segment, 0)
   const assumptions = [referenceEstimate, noAssists,
-    `Transfer from ${nameOf(parent)} ${parentKind === 'orbit' ? 'low orbit' : 'elliptical capture orbit'} to ${nameOf(moon)} encounter: source prefix segments ${segments.join(' + ')} = ${deltaV} m/s. Intermediate moon-transfer junctions do not represent moon visits or captures.`,
+    `Transfer from ${nameOf(parent)} ${parentKind === 'orbit' ? 'low orbit' : 'elliptical capture orbit'} to ${nameOf(moon)} encounter: map segments add up to ${segments.join(' + ')} = ${deltaV} m/s. Intermediate junctions do not add visits to other moons or burns to enter orbit there.`,
   ]
   edge(nodeId(parent, parentKind), nodeId(moon, 'encounter'), deltaV, 'transfer', `${nameOf(parent)} → ${nameOf(moon)} transfer`, [...assumptions])
   edge(nodeId(moon, 'encounter'), nodeId(parent, parentKind), deltaV, 'transfer', `${nameOf(moon)} → ${nameOf(parent)} transfer`, [...assumptions])
@@ -262,9 +262,9 @@ export const rssReferencePack: PlanetPack = {
   name: 'Real Solar System',
   shortName: 'RSS',
   transferHubBodyId: 'rss:earth',
-  dataNotice: 'Map + model estimates',
+  dataNotice: 'Map + calculations',
   version: 'community-map-dc472f5+rss-75139b9.reference',
-  description: 'Historical community Solar System map budgets for the 33 shared map/config bodies, without modern orbital recalibration.',
+  description: 'Older community Solar System map figures for the 33 bodies shared by the map and RSS configuration. This source-only copy keeps the original orbital budgets.',
   sources: [
     {
       id: mapSourceId,
@@ -279,16 +279,16 @@ export const rssReferencePack: PlanetPack = {
     },
   ],
   assumptions: [
-    'All budgets are in m/s, converted from the community diagram’s km/s. The mirrored diagram has no visible version/date or authorship credit; its exact repository revision is pinned for reproducibility, without claiming official RSS calibration.',
-    'Coverage is the 33 named base RSS bodies also present in the diagram. Optional expansion bodies, diagram-only minor moons/dwarf planets, GEO, Lagrange points, and solar approach/landing missions are outside this pack.',
-    'The source graph follows the main transfer rails; it is a transcription of the diagram, without added direct planetary or sibling-moon estimates.',
-    'The source assumes idealized Hohmann transfers, low-periapsis burns, and favorable geometry. Launch windows, flight duration, inclination changes, gravity assists, finite-thrust losses, and spacecraft performance are not modeled; add a mission margin.',
-    'Transfer-rail increments are summed from Earth rather than treated as independent Earth departure costs. Intermediate rail nodes represent energy references, not planetary or moon visits. Destination capture and Earth escape (3210 m/s) are separate maneuvers.',
+    'All budgets are in m/s, converted from the community diagram’s km/s. The copy has no visible version, date, or author credit. Its exact repository revision is linked so the figures can be checked; they are not claimed to be official RSS calculations.',
+    'Covers the 33 base RSS bodies also shown on the map. Optional expansion bodies, map-only minor moons and dwarf planets, geostationary orbits, Lagrange points, and Sun approach or landing missions are not included.',
+    'The source-only copy follows the map\'s transfer lines, before the planner adds calculated direct planet and moon transfers.',
+    'The source assumes ideal Hohmann transfers, burns near the lowest point of an orbit, and favorable positions. Launch windows, travel time, extra orbital-plane changes, gravity assists, real engine burns, and craft performance are not calculated. Add a reserve.',
+    'Small costs along the map\'s transfer line add up from Earth; they are not each a separate Earth departure burn. Intermediate points on that line describe transfer energy, not visits to those bodies. Destination orbit entry and Earth escape (3210 m/s) are listed separately.',
     'Earth-to-Moon transfer is 3120 m/s; the Moon encounter-to-low-orbit budget is 140 + 680 = 820 m/s. Every other supported moon branches from its parent’s high elliptical capture orbit, not its low orbit.',
-    'No atmospheric assistance is credited. Atmospheric powered-descent allowances reuse source ascent budgets and are placeholders rather than verified landing calculations. Opposite directed edges reuse the source’s idealized budget convention.',
-    'Current RSS atmospheres differ from the diagram. Historical parking altitudes at/inside modern atmospheres are omitted for Saturn, Uranus, Neptune, Pluto, and Triton; costs are not silently recalculated for a new altitude. Pluto and Triton retain their true atmosphere metadata, with atmospheric-braking markers disabled because the reference does not support those opportunities.',
-    'Original interplanetary branches use Earth as the transfer hub. Their encounter arrivals require a low parking-orbit reset before another interplanetary departure. Complete modeled pairs instead pay departure and capture into the stated bound orbits; neither route assumes a free compatible flyby.',
-    'Sun has no selectable states. Jupiter, Saturn, Uranus, and Neptune have no landable surface states. Ceres, Vesta, and Pluto use the domain’s generic planet category for star-orbiting bodies; this is not an IAU classification claim.',
+    'No atmospheric assistance is included in the default figures. Atmospheric landing allowances reuse the map launch figures as placeholders, not verified landing estimates. The reverse direction reuses the source map\'s idealized cost.',
+    'Current RSS atmospheres differ from the diagram. The source-only copy omits old parking heights that lie inside today\'s atmospheres at Saturn, Uranus, Neptune, Pluto, and Triton; it does not silently change their costs. Pluto and Triton keep their actual atmosphere data, but have no atmospheric-braking markers because this source does not support them.',
+    'Original map transfers use Earth as their starting reference. Arriving from one such transfer requires entering low orbit before starting another. Calculated direct pairs instead include departure and arrival burns at their stated orbits. Neither option assumes a free flyby connection.',
+    'Sun has no selectable states. Jupiter, Saturn, Uranus, and Neptune have no landable surface states. The planner groups Ceres, Vesta, and Pluto with planets because they orbit the Sun; this is a navigation category, not an IAU classification.',
   ],
   bodies,
   nodes,
@@ -299,11 +299,11 @@ const modeledReferences = new Map([...rssOuterOrbitReferences, ...rssInnerOrbitR
 export const rssPack: PlanetPack = withDirectTransfers(withSiblingTransfers(withRssInnerReferences(withRssOuterReferences({
   ...rssReferencePack,
   version: 'community-map-dc472f5+rss-75139b9.5',
-  description: 'Real Solar System planning estimates for 33 shared map/config bodies: historical map figures, explicit inner/outer high-orbit reference models, and complete direct planetary and sibling-moon transfers.',
+  description: 'Real Solar System planning estimates for 33 bodies. Combines community-map figures with recalculated high-orbit budgets and direct transfers between planets other than Earth and between moons orbiting the same body.',
   assumptions: [
     ...rssReferencePack.assumptions,
-    'Complete analytic direct planetary transfers connect all ten non-Earth planets’ low and high reference orbits. Vesta and Jupiter retain compatible map-inferred high references; Mercury, Venus, Mars, Ceres, Saturn, Uranus, Neptune, and Pluto use explicit bound ellipse geometry.',
-    'Historical high-state increments at Mercury, Venus, Mars, and Ceres implied unbound orbits with the pinned modern constants. Explicit reference ellipses and recalculated local budgets replace those increments; the original source-map transcription is retained separately for validation.',
+    'Calculated direct transfers connect low and high reference orbits at all ten supported bodies other than Earth that orbit the Sun. Vesta and Jupiter keep high orbits derived from compatible map figures. Mercury, Venus, Mars, Ceres, Saturn, Uranus, Neptune, and Pluto use explicitly chosen ellipses that remain around the body.',
+    'The old Mercury, Venus, Mars, and Ceres low-to-high figures implied escape rather than a bound orbit with current RSS data. Chosen reference ellipses and recalculated local burns replace them. The original map copy is kept separately for checking.',
   ],
 })), rssPhysicalReferences, [rssPhysicsSource]), rssPhysicalReferences.map(reference =>
   modeledReferences.get(reference.bodyId) ?? reference,

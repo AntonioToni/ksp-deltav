@@ -1,13 +1,14 @@
 # CommNet relay and signal planning
 
-Open **Relays** in the planner's header (the satellite icon on phones) to design
-a circular, equally spaced relay constellation around a body in the active
-planet pack, or choose **Signals** for a single interplanetary link. The local
-relay body selector includes physical planets and moons; stellar
-primaries, barycenters, and wormholes are excluded. This workspace is separate
-from the Delta-V route: opening it, editing a constellation, or closing it does
-not change your mission endpoints,
-stops, atmospheric choices, or budget.
+Open **Relays** in the planner's header (the satellite icon on phones) to plan
+equally spaced satellites in a circular orbit above a planet's or moon's equator.
+Choose **Signals** to check one link between craft near two planets. Neither tool
+checks a complete route through relays back to mission control.
+
+The local **Relay body** list includes planets and moons, rather than stars,
+shared centers of mass, or wormholes. This workspace is separate from the
+Delta-V route: opening it, editing the relay setup, or closing it keeps your
+mission endpoints, stops, atmospheric choices, and budget.
 
 Local relay and signal inputs remain available when switching sections or
 closing and reopening the workspace in the same session. Changing planet packs
@@ -17,41 +18,47 @@ resets the workspace; reloading the page resets its inputs.
 
 1. Choose a **Relay body**. A recognized reference preset supplies the physical
    inputs, which remain editable under **Body data**. For an unfamiliar custom
-   body, enter its radius, gravitational parameter, and atmosphere height before
-   planning an orbit. Supply its sphere of influence when known.
-2. Under **Network**, choose the **Orbit altitude** above the body's physical
-   radius and a **Relay count** from 2 to 12. Choose your **Radio setup**, a relay
+   body, enter its radius, gravitational parameter (GM, for calculating orbits),
+   and atmosphere height. Supply its sphere of influence—the radius of KSP's
+   gravity region around that body—when known. **Body field guide** explains
+   these fields and their units.
+2. Under **Network**, choose the **Orbit altitude** above the surface and a
+   **Relay count** from 2 to 12. Choose your **Radio setup**, a relay
    antenna or array, a surface-client antenna or array, and a DSN level.
 3. Inspect equatorial coverage, neighboring links, their signal strength, the
-   best current sample-station signal, orbital period, and maximum DSN range.
-   **Rotate relays** changes the constellation's phase so you can inspect the
-   sample surface station's links. Kerbalism profiles show their damped signal
-   with raw CommNet strength separately, plus estimated science bitrates for
-   those hops; see [Kerbalism science rates](#kerbalism-science-rates).
-4. Under **Body data**, choose **Full radius** occlusion for conservative
-   spherical geometry, or the selected radio setup's normal effective occlusion
-   factors. The range multiplier applies to the antenna range calculation and
-   defaults to 1.
-5. Under **Deployment**, compare a lower or higher resonant carrier orbit and
-   inspect its apsides, release interval, circularization burn, and clearance
-   checks. **Clearance margin** is an additional user-selected distance above the
-   surface or atmosphere.
+   strongest link from the sample point on the equator, orbital period, and
+   maximum DSN range. DSN means KSP's ground-station network; the range figure
+   does not check an actual connection home. **Rotate relays** moves the
+   satellites around their orbit so you can inspect links from the sample point.
+   Kerbalism profiles show their adjusted signal alongside raw CommNet strength,
+   plus estimated science bitrates for those individual links; see
+   [Kerbalism science rates](#kerbalism-science-rates).
+4. Under **Body data**, **Occlusion** chooses how much of the body blocks signals.
+   **Full radius** uses its full size; the other option uses the radio setup's
+   Normal game settings. **Range multiplier** scales maximum antenna link
+   distances: 1 keeps them unchanged, and 2 doubles them.
+5. Under **Deployment**, compare lower and higher orbits for the carrier—the ship
+   releasing the relays. Inspect its lowest and highest altitudes, time between
+   releases, and the burns to place each relay in the target circular orbit.
+   **Clearance margin** adds your chosen height above the surface or atmosphere.
+   **Deployment field guide** explains the terms on the result cards.
 
-The automatic starting altitude is the larger of `4R/3` and the atmosphere
-height plus the clearance margin plus 1 km. If that target orbit reaches the
-SOI boundary, the planner uses the midpoint of the remaining valid altitude interval. Changes
-to body data or clearance update an automatic target; entering an altitude
+The automatic starting altitude is the larger of `4R/3` (where `R` is the body
+radius) and the atmosphere height plus the clearance margin plus 1 km. If that
+target orbit reaches the sphere-of-influence boundary, the planner uses the
+midpoint of the remaining valid altitude interval. Changes to body data or clearance update an automatic target; entering an altitude
 manually keeps that choice. An impossible interval remains invalid rather than
 reducing your clearance margin.
 
 Only relay-capable stock antennas are offered for the forwarding satellites:
 **HG-5**, **RA-2**, **RA-15**, and **RA-100**. Direct antennas can be used for the
 surface client. Its array editor also accepts relay-capable antennas, which can
-serve as ordinary receiving endpoints.
+be used as antennas on that surface craft.
 
 Each antenna or DSN list also offers **Custom power**. Enter the single
-endpoint's **effective** CommNet power in meters, not watts. For a craft with
-multiple antennas, this value is already the combined craft power; the planner
+craft's or station's final CommNet power rating in meters, not watts. This is
+KSP's range rating, rather than electrical consumption or the actual link
+distance. For a craft with multiple antennas, this value is already the combined craft power; the planner
 does not apply another count or assume a combinability exponent for custom
 parts. This uses the same stock range formula with your value; it does not
 switch to a different radio model. Custom powers are final values: changing
@@ -101,8 +108,9 @@ parts. If there are no combinable antennas, `combinedPower` is zero. The stronge
 single antenna is considered across all selected models, including antennas
 that do not combine. Noncombinable antennas do not enter either weighted sum.
 
-**Communotron 16** has exponent **1.0**, so identical copies add linearly. Other
-stock combinable models use **0.75**. The **internal antenna** and
+**Communotron 16** has exponent **1.0**, so identical copies add their power. Other
+stock combinable models use **0.75**, so each extra identical copy adds less
+power than the previous one. The **internal antenna** and
 **Communotron 16-S** do not combine: extra copies do not increase their power.
 
 For example, under **Stock CommNet**, four HG-5 antennas on **each relay**, with
@@ -129,9 +137,9 @@ Kerbalism damping calculation when selected. It does not simulate a
 complete network path or place a ground station on the visible side of a planet.
 
 1. Under **Signal geometry**, choose **Reference planets** and select **Planet A**
-   and **Planet B**. The second list contains other supported planets around
-   the same center. The reference geometry uses their
-   pinned semi-major axes as circular radii in one plane.
+   and **Planet B**. Both must orbit the same body—for example, Kerbin and Duna
+   orbit Kerbol. The model treats their listed orbital distances as circular
+   orbits in the same plane. It does not read their positions from your save.
 2. Choose **Antenna A** and **Antenna B**, mixed arrays, or final custom effective
    powers in **Power A** and **Power B**. A DSN preset may represent the known
    homeworld endpoint in reference mode.
@@ -141,19 +149,25 @@ complete network path or place a ground station on the visible side of a planet.
    the planner can report a link. Choosing a DSN power selects that endpoint as
    the receiver. Swapping endpoints moves the receiving role with its hardware.
 4. Move **Relative phase**, or choose **Closest** or **Opposite**, to change the
-   modeled angle. The orbit diagram and strength chart update together. These
-   angles are not dates, transfer-window angles, or the planets' current positions.
+   angle between the bodies: 0° is closest and 180° is farthest. The orbit diagram
+   and strength chart update together. These angles are not dates,
+   transfer-window angles, or the planets' current positions.
 5. Compare the current distance, maximum antenna range, **Signal now** (or
-   **Kerbalism signal**), and circular-reference nearest/farthest range-only
-   strengths. A Kerbalism profile shows the damped percentage and a separate
-   raw CommNet value. Its phase chart adds the raw curve for comparison with
-   the damped range-only and obstruction-aware curves. The science rate uses
+   **Kerbalism signal**), and signal at the closest and farthest positions on
+   those circles. Those last two values ignore blocking. A Kerbalism profile
+   shows the adjusted percentage and a separate raw CommNet value. Its chart
+   compares raw signal, adjusted signal for a clear path, and adjusted signal
+   with blocking. The science rate uses
    the sending craft's loadout and follows the selected receiving direction;
    the full-strength sender rate includes the chosen antenna speed.
 6. Choose **Signal geometry → Manual orbits** for an unknown custom pack or a
    different reference configuration. Enter **Orbit radius A** and **Orbit radius B**
    in **Gm**, and **Central radius** in **km**. Manual values are user assumptions;
-   no physical orbit data is inferred from Delta-V map costs or imported body names.
+   no orbit data is inferred from Delta-V map costs or imported body names.
+   Orbit radii are measured from one shared center, rather than above a surface.
+   The central radius is the size of the body at that center. Manual orbits still
+   uses two circles in one plane; it cannot join different star systems or model
+   a wormhole.
 
 **Radio setup**, **Kerbalism damping**, **Antenna speed**, **Minimum science
 rate**, and the **Range multiplier** are shared
@@ -194,18 +208,16 @@ as a robust connection. The model does not use an inverse-square strength
 percentage. A distance of one quarter, one half, or three quarters of maximum
 range gives **84.375%**, **50%**, or **15.625%** respectively before occlusion.
 These are raw CommNet percentages. With a Kerbalism profile, the main strength
-and envelope readouts apply `S^k` to that raw fraction, using the selected
+and closest/farthest readouts apply `S^k` to that raw fraction, using the selected
 damping exponent. This changes the displayed Kerbalism signal factor without
 changing maximum range, obstruction, or link status.
 
-The nearest/farthest cards are **circular-reference, range-only** comparisons.
-Eccentricity and inclination can produce other distances in an actual
-installation; these cards are not universal best/worst bounds for those
-trajectories. The displayed current effective strength additionally checks the
-central body's line of sight. At opposite alignment, the central body blocks
-the ray, making effective strength **0%** even when the distance-only value is
-positive. The charts therefore should not be read as uninterrupted coverage
-over a dated orbital period.
+The closest/farthest cards compare **two circular orbits and ignore blocking**.
+Real orbits can be stretched or tilted, giving different closest and farthest
+approaches. The current strength also checks whether the central body blocks the link.
+At opposite alignment it blocks the signal, making strength **0%** even if the
+antennas have enough range. The horizontal chart axis is your chosen angle,
+rather than time in your save.
 
 For example, using one **RA-100 at each endpoint**, **Stock CommNet**, and range
 multiplier 1, a Kerbin–Duna reference has maximum range **100 Gm**:
@@ -223,14 +235,15 @@ reference and radio-source links.
 
 ### Occlusion and reference coverage
 
-The line-of-sight check uses the closest point on the finite segment between
-the two endpoint positions. It compares that distance from the center with
-`centralRadius × occlusionFactor`. Penetration blocks the link; exact limb
-tangency is marginal. The default factor is **1**, using the full physical
-radius. An entered factor changes the effective occluder, not the physical
-orbit radii. The Signals model does not guess a normal game factor from the
-planner's stellar atmosphere metadata; technical stellar atmospheres make that
-classification unsuitable for this purpose.
+Occlusion means a body blocking the radio signal. The calculation finds the
+point on the link between the two craft that passes closest to the central body.
+It compares that distance from the center with
+`centralRadius × occlusionFactor`. A line passing inside that radius is blocked;
+a line just touching its edge is marked at the limit. The default factor is
+**1**, using the body's full size. A factor of **0.9** uses **90%** of that radius
+for blocking. The orbit radii stay unchanged. The Signals model starts at factor 1
+rather than choosing a Normal game factor from the star's atmosphere data;
+some stars have atmospheres defined for technical game purposes.
 
 Reference pairs cover **7 Stock**, **10 OPM**, and **11 RSS** planetary bodies.
 The Stock/Kcalbeloh and OPM/Kcalbeloh configurations offer **20** and **23**
@@ -239,7 +252,8 @@ Maelg (two), Sunorc (four), and Aralc-A (three). The catalog requires a common
 supported physical center and at least two eligible planets in its group.
 Moons, binary-center children, wormholes, cross-star links, and Aralc-B's
 singleton group are excluded from automatic reference pairs. Custom and
-rescaled configurations can use manually supplied circular geometry.
+rescaled configurations can use manually entered circular orbits around one
+shared center, within the same model limits.
 
 The model checks the selected central occluder only. It does not check the
 endpoint planets' local horizons, spacecraft orbital positions, other planets,
@@ -255,10 +269,9 @@ which a receiver can see at least one relay within its antenna range. It is not
 global surface coverage and does not establish coverage at the poles. The
 diagram is an equatorial cross-section of a circular constellation.
 
-**Neighbor links** describe the local relay ring. A link needs both an
-unobstructed line of sight and enough antenna range. Exact limb tangency or a
-distance equal to the maximum antenna range is marginal, not a robust working
-link. Two opposite relays cannot see each other through the body, regardless of
+**Neighbor links** describe the local relay ring. A link needs both a clear
+line between the satellites and enough antenna range. A line just touching the
+body, or a distance exactly equal to maximum range, is marked at the limit. Two opposite relays cannot see each other through the body, regardless of
 how high their circular orbit is.
 
 **Neighbor signal** (**Neighbor Kerbalism signal** with a Kerbalism profile) is
@@ -352,8 +365,9 @@ diagram distinguishes the effective occluder when it differs from the body.
 
 ## Resonant deployment
 
-The target constellation's circular orbit is the reference for the deployment
-burns. A lower carrier returns to the release point sooner than the circular
+The carrier is the ship that releases your relays. Deployment starts with that
+ship in the target circular orbit; its injection burn moves it to an elliptical
+release orbit. Each released relay then burns back into the target circle. A lower carrier returns to the release point sooner than the circular
 relays; a higher carrier returns later. For target period `T`:
 
 ```text
@@ -392,8 +406,9 @@ The target circular orbit must clear the physical surface, atmosphere, and
 chosen clearance margin. Where a sphere of influence is supplied, the orbit
 must also stay inside it.
 
-Deployment checks use the carrier's periapsis and apoapsis, not the effective
-CommNet occlusion radius. A lower carrier can enter the atmosphere even when
+Deployment checks use the carrier's lowest point (periapsis) and highest point
+(apoapsis), against the body's actual radius and atmosphere. Changing the radio
+blocking radius does not change these orbit limits. A lower carrier can enter the atmosphere even when
 the relay ring itself has clear communication links. A higher carrier can
 leave the body's sphere of influence. An unknown sphere of influence leaves
 that bound unchecked; a clear result is not a certification of flight safety.
@@ -517,7 +532,7 @@ calculated there. The separate Signals section checks one common-center
 interplanetary reference link with the limits described above.
 
 Preset values are reference facts for the pinned versions. Relay coverage and
-deployment calculations remain separate from the OPM analytic maneuver model
+deployment calculations remain separate from the calculated OPM maneuver model
 described in the [data guide](DATA.md). These presets do not guarantee
 compatibility with a different mod release or radio overhaul.
 
@@ -599,14 +614,15 @@ Kerbalism signal factor = S^k
 ```
 
 With a custom exponent `k = 6`, raw strength **80%** gives a Kerbalism factor
-of **26.2144%**; raw **50%** gives **1.5625%**. This percentage is the attenuation
-factor before the science-rate floor, not a bit rate or a threshold for control.
+of **26.2144%**; raw **50%** gives **1.5625%**. This percentage multiplies the
+full-strength science rate before the minimum science rate is applied. It is
+not itself a bitrate or a threshold for controlling the craft.
 It does not shorten the antenna's maximum range or remove a geometrically
 available link. A blocked or out-of-range link still has zero effective strength.
 
 With a Kerbalism profile, Network and Signals show the damped percentage as the
-main signal result, alongside raw CommNet strength. The Signals envelope uses
-the same damping for its range-only strengths, and its chart also shows raw
+main signal result, alongside raw CommNet strength. The closest/farthest cards in
+Signals use the same damping for their strengths before blocking, and its chart also shows raw
 CommNet strength. Open **Kerbalism damping** to select **Automatic (3.44)** or
 **Custom exponent**. Mode and custom value remain shared across both tabs and
 closing/reopening the workspace; changing packs resets the session.
@@ -637,8 +653,8 @@ a finite value greater than zero, up to `1,000,000`.
 These automatic values use the planner's default reference configuration.
 For another Kerbalism version, rescaled system, changed DSN configuration, or a
 `DampingExponentOverride`, enter the value from your installation's settings or
-`KSP.log` (`DataRateDampingExponent`). A custom imported pack without a reviewed
-home orbit cannot supply a certified automatic exponent.
+`KSP.log` (`DataRateDampingExponent`). For a custom imported pack without a known home orbit, use the fallback or
+enter your installation's exponent.
 
 ### Kerbalism science rates
 

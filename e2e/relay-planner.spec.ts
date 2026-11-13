@@ -66,7 +66,7 @@ test('calculates the independent Kerbin ring example and rotates its equatorial 
   await expect(metric(page, 'relay-period')).toHaveText('1h 32m 18s')
   await expect(metric(page, 'relay-dsn-range')).toHaveText('1.1 Gm')
   await expect(metric(page, 'relay-ring-status')).toContainText('Available')
-  await expect(planner(page).getByText(/DSN range is not a home link/)).toBeVisible()
+  await expect(planner(page).getByText(/Maximum DSN range is a distance limit, not a checked connection home/)).toBeVisible()
   const diagram = planner(page).getByRole('img', { name: 'Kerbin equatorial relay diagram', exact: true })
   await expect(diagram.locator('[data-relay-satellite]')).toHaveCount(3)
   await expect(diagram.locator('[data-relay-link="neighbor"][data-link-status="available"]')).toHaveCount(3)
@@ -98,7 +98,7 @@ test('marks a tangent ring as marginal and blocks an atmospheric lower carrier',
   await expect(metric(page, 'relay-deployment-status')).toHaveText('Deployment blocked')
   await expect(metric(page, 'relay-periapsis')).toHaveText('31.5 km')
   await planner(page).getByRole('button', { name: 'Higher carrier', exact: true }).click()
-  await expect(metric(page, 'relay-deployment-status')).toHaveText('Clear of modeled limits')
+  await expect(metric(page, 'relay-deployment-status')).toHaveText('Orbit fits entered limits')
 })
 
 test('calculates both carrier choices and rejects an apoapsis outside the supplied sphere of influence', async ({ page }) => {
@@ -192,7 +192,7 @@ test('uses RSS body physics and patched antenna powers while omitting gas-giant 
   await section(page, 'Body data')
   expect(Number(await field(page, 'Body radius').inputValue())).toBeGreaterThan(6000)
   expect(Number(await field(page, 'Gravitational parameter').inputValue())).toBeGreaterThan(1e14)
-  await expect(planner(page).getByText(/RealAntennas and RemoteTech are not modeled/)).toBeVisible()
+  await expect(planner(page).getByText(/RealAntennas and RemoteTech are not simulated/)).toBeVisible()
   await planner(page).getByRole('button', { name: 'Close', exact: true }).click()
   await button(page, 'Stock').click()
   await openPlanner(page)

@@ -186,7 +186,7 @@ describe('installation-specific antenna arrays', () => {
     expect(success(entries, 'relay', catalog).effectivePower).toBe(1_100)
     const result = calculateAntennaArray(entries, 'relay', catalog.slice(0, 2))
     expect(result.status).toBe('invalid')
-    if (result.status === 'invalid') expect(result.errors).toEqual(['Choose between 1 and 2 distinct antenna models.'])
+    if (result.status === 'invalid') expect(result.errors).toEqual(['Choose between 1 and 2 different antenna types.'])
   })
 
   it.each([

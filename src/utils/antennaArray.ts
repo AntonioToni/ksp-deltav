@@ -46,7 +46,7 @@ export function calculateAntennaArray(
     antennasById.set(antenna.id, antenna)
   }
   if (!Array.isArray(entries) || entries.length === 0 || entries.length > catalog.length) {
-    return { status: 'invalid', errors: [`Choose between 1 and ${catalog.length} distinct antenna models.`] }
+    return { status: 'invalid', errors: [`Choose between 1 and ${catalog.length} different antenna types.`] }
   }
 
   const seen = new Set<string>()
@@ -66,9 +66,9 @@ export function calculateAntennaArray(
     }
     const antenna = typeof antennaId === 'string' ? antennasById.get(antennaId) : undefined
     const validCount = typeof count === 'number' && Number.isInteger(count) && count >= 1 && count <= maxAntennas
-    if (!validCount) errors.push(`Antenna row ${index + 1} quantity must be an integer from 1 to ${maxAntennas}.`)
+    if (!validCount) errors.push(`Antenna row ${index + 1}: enter a whole-number quantity from 1 to ${maxAntennas}.`)
     else totalCount += count
-    if (antenna && role === 'relay' && !antenna.relay) errors.push('Relay forwarding arrays can only contain relay-capable antennas.')
+    if (antenna && role === 'relay' && !antenna.relay) errors.push('Choose only relay-capable antennas for a relay setup.')
     if (antenna && validCount) selected.push({ antenna, count })
   }
   if (totalCount > maxAntennas) errors.push(`Use at most ${maxAntennas} antennas on one craft.`)
@@ -97,6 +97,6 @@ export function calculateAntennaArray(
     return { status: 'invalid', errors: ['The selected array exceeds the supported antenna-power range.'] }
   }
   const notes = totalCount > combinableCount
-    ? ['Non-combinable antennas remain separate single antennas; extra copies do not increase their power.'] : []
+    ? ['For antenna types that cannot combine, extra copies do not increase the range.'] : []
   return { status: 'success', effectivePower, totalCount, combinableCount, strongestSinglePower, combinedPower, weightedExponent, notes }
 }

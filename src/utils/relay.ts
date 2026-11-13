@@ -24,40 +24,42 @@ function validate(input: RelayNetworkInput): string[] {
   if (!isRecord(raw)) return ['Relay inputs must be an object.']
   if (!isRecord(raw.body)) return ['Body data must be an object.']
   const errors: string[] = []
-  function number(value: unknown, label: string, min: number, max: number, exclusiveMin = false) {
+  function number(value: unknown, label: string, min: number, max: number, exclusiveMin = false, unit = '', displayScale = 1) {
     if (typeof value !== 'number' || !Number.isFinite(value) || (exclusiveMin ? value <= min : value < min) || value > max) {
-      errors.push(`${label} must be finite and ${exclusiveMin ? 'greater than' : 'at least'} ${min}, and at most ${max}.`)
+      const displayedMaximum = max / displayScale
+      const limit = displayedMaximum >= 1e9 ? displayedMaximum.toExponential(0).replace('e+', 'e') : displayedMaximum.toLocaleString('en-US')
+      errors.push(`${label}: enter a number ${exclusiveMin ? 'greater than' : 'at least'} ${min / displayScale} and no more than ${limit}${unit ? ` ${unit}` : ''}.`)
     }
   }
-  number(raw.body.radiusM, 'Body radius', 1, 1e11)
-  number(raw.body.gravitationalParameter, 'Gravitational parameter', 0, 1e30, true)
-  number(raw.body.atmosphereHeightM, 'Atmosphere height', 0, 1e13)
-  if (raw.body.sphereOfInfluenceM !== undefined) number(raw.body.sphereOfInfluenceM, 'Sphere of influence', 0, 1e15, true)
-  number(raw.altitudeM, 'Orbit altitude', 0, 1e13, true)
+  number(raw.body.radiusM, 'Body radius', 1, 1e11, false, 'km', 1000)
+  number(raw.body.gravitationalParameter, 'Gravitational parameter', 0, 1e30, true, 'm³/s²')
+  number(raw.body.atmosphereHeightM, 'Atmosphere height', 0, 1e13, false, 'km', 1000)
+  if (raw.body.sphereOfInfluenceM !== undefined) number(raw.body.sphereOfInfluenceM, 'Sphere of influence', 0, 1e15, true, 'km', 1000)
+  number(raw.altitudeM, 'Orbit altitude', 0, 1e13, true, 'km', 1000)
   number(raw.satelliteCount, 'Relay count', 2, 12)
-  if (typeof raw.satelliteCount === 'number' && !Number.isInteger(raw.satelliteCount)) errors.push('Relay count must be an integer.')
+  if (typeof raw.satelliteCount === 'number' && !Number.isInteger(raw.satelliteCount)) errors.push('Relay count must be a whole number.')
   for (const [key, label] of [['relayPower', 'Relay antenna power'], ['clientPower', 'Surface antenna power'], ['dsnPower', 'DSN power']] as const) {
-    number(raw[key], label, 0, 1e18, true)
+    number(raw[key], label, 0, 1e18, true, 'm')
   }
   number(raw.rangeMultiplier, 'Range multiplier', 0, 100, true)
   number(raw.occlusionFactor, 'Occlusion factor', 0, 1, true)
   if (raw.dampingExponent !== undefined) number(raw.dampingExponent, 'Damping exponent', 0, MAX_DAMPING_EXPONENT, true)
-  number(raw.safetyMarginM, 'Safety margin', 0, 1e13)
+  number(raw.safetyMarginM, 'Safety margin', 0, 1e13, false, 'km', 1000)
   for (const [key, label] of [['phaseDeg', 'Relay phase'], ['stationLongitudeDeg', 'Surface longitude']] as const) {
-    if (typeof raw[key] !== 'number' || !Number.isFinite(raw[key])) errors.push(`${label} must be finite.`)
+    if (typeof raw[key] !== 'number' || !Number.isFinite(raw[key])) errors.push(`Enter a valid angle for ${label}.`)
   }
-  if (typeof raw.hasSurface !== 'boolean') errors.push('The body must declare whether it has a surface.')
-  if (raw.deploymentMode !== 'lower' && raw.deploymentMode !== 'higher') errors.push('Choose a lower or higher carrier orbit.')
+  if (typeof raw.hasSurface !== 'boolean') errors.push('Specify whether this body has a surface.')
+  if (raw.deploymentMode !== 'lower' && raw.deploymentMode !== 'higher') errors.push('Choose a lower or higher orbit for the deployment ship.')
   if (errors.length) return errors
 
   const { body, altitudeM, safetyMarginM } = input
   const radius = body.radiusM + altitudeM
   if (!(radius > body.radiusM + body.atmosphereHeightM + safetyMarginM)) {
-    errors.push('The circular orbit must be above the body, atmosphere, and requested safety margin.')
+    errors.push('Raise the relay orbit to clear the body and its atmosphere by the chosen safety margin.')
   }
   if (body.sphereOfInfluenceM !== undefined) {
-    if (!(body.sphereOfInfluenceM > body.radiusM)) errors.push('The sphere of influence must exceed the body radius.')
-    if (radius >= body.sphereOfInfluenceM) errors.push('The circular orbit must remain inside the body’s sphere of influence.')
+    if (!(body.sphereOfInfluenceM > body.radiusM)) errors.push('The sphere of influence radius must be larger than the body radius.')
+    if (radius >= body.sphereOfInfluenceM) errors.push('Lower the relay orbit so it stays inside the body’s sphere of influence.')
   }
   return errors
 }
@@ -98,25 +100,25 @@ function deployment(input: RelayNetworkInput, orbitRadiusM: number, orbitalPerio
   if (clearance < -clearanceTolerance) {
     status = 'blocked'
     issues.push(periapsisRadiusM <= body.radiusM
-      ? 'The carrier periapsis intersects the body.'
+      ? 'The deployment ship’s lowest orbital point (periapsis) reaches or enters the body.'
       : periapsisRadiusM <= body.radiusM + body.atmosphereHeightM
-        ? 'The carrier periapsis enters the atmosphere.'
-        : 'The carrier periapsis does not meet the requested safety margin.')
+        ? 'The deployment ship’s lowest orbital point (periapsis) reaches the atmosphere.'
+        : 'The deployment ship’s lowest orbital point (periapsis) leaves less than the chosen safety margin.')
   } else if (Math.abs(clearance) <= clearanceTolerance) {
     status = 'marginal'
-    issues.push('The carrier periapsis is on the requested clearance boundary.')
+    issues.push('The deployment ship’s lowest orbital point (periapsis) is exactly at the chosen safety margin.')
   }
   if (body.sphereOfInfluenceM === undefined) {
     if (status === 'clear') status = 'unchecked'
-    issues.push('No sphere of influence was supplied; the outer orbit limit is unchecked.')
+    issues.push('The sphere of influence is missing, so the outer orbit limit cannot be checked.')
   } else {
     const remaining = body.sphereOfInfluenceM - apoapsisRadiusM
     if (remaining <= 0) {
       status = 'blocked'
-      issues.push('The carrier apoapsis reaches or exceeds the sphere of influence.')
+      issues.push('The deployment ship’s highest orbital point (apoapsis) reaches or exceeds the sphere of influence.')
     } else if (remaining <= tolerance(body.sphereOfInfluenceM, apoapsisRadiusM)) {
       if (status !== 'blocked') status = 'marginal'
-      issues.push('The carrier apoapsis is very close to the sphere of influence.')
+      issues.push('The deployment ship’s highest orbital point (apoapsis) is very close to the sphere of influence.')
     }
   }
   return {
@@ -148,7 +150,7 @@ export function calculateRelayPlan(input: RelayNetworkInput): RelayResult {
   const surfaceRangeM = Math.sqrt(relayPower) * Math.sqrt(clientPower) * rangeMultiplier
   const dsnRangeM = Math.sqrt(relayPower) * Math.sqrt(dsnPower) * rangeMultiplier
   if (![neighborRangeM, surfaceRangeM, dsnRangeM].every(value => Number.isFinite(value) && value > 0)) {
-    return { status: 'invalid', errors: ['These inputs exceed the supported numerical range for signal calculations.'] }
+    return { status: 'invalid', errors: ['These values are too large or too small for the signal calculation. Use values within the supported ranges.'] }
   }
   const ringLinkStatus = satelliteCount === 2 ? 'blocked'
     : linkStatus(neighborClearanceM, tolerance(orbitRadiusM, occlusionRadiusM), neighborDistanceM, neighborRangeM)
@@ -212,10 +214,10 @@ export function calculateRelayPlan(input: RelayNetworkInput): RelayResult {
     deploymentPlan.relayCircularizationDeltaVMps, deploymentPlan.deploymentDurationS,
   ]
   if (numericOutputs.some(value => !Number.isFinite(value)) || circularSpeedMps <= 0 || orbitalPeriodS <= 0) {
-    return { status: 'invalid', errors: ['These inputs exceed the supported numerical range for orbital calculations.'] }
+    return { status: 'invalid', errors: ['These values are too large or too small for the orbit calculation. Use values within the supported ranges.'] }
   }
   const warnings = body.sphereOfInfluenceM === undefined
-    ? ['Sphere of influence is not supplied; outer orbit bounds are unchecked.'] : []
+    ? ['The sphere of influence is missing, so the outer orbit limit cannot be checked.'] : []
   const bestStationSignalStrength = hasSurface ? Math.max(0, ...stationLinks.map(link => link.signalStrength)) : null
   const bestStationDampedStrength = hasSurface ? Math.max(0, ...stationLinks.map(link => link.dampedStrength)) : null
   return {

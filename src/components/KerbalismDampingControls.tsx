@@ -41,6 +41,9 @@ export default function KerbalismDampingControls({ mode, customExponent, onModeC
       Kerbalism damping · k = {Number.isFinite(exponent) ? number.format(exponent) : '—'}{mode === 'automatic' && calibration.source === 'fallback' ? ' · fallback' : ''}
     </Box>
     <Stack spacing={1} sx={{ pt: 1.25, minWidth: 0 }}>
+      <Typography sx={{ fontSize: 10, lineHeight: 1.45, color: 'text.secondary' }}>
+        Damping adjusts how CommNet signal strength affects science transmission. Automatic follows Kerbalism 3.44; Custom lets you match your installation.
+      </Typography>
       <Box sx={{ display: 'grid', gridTemplateColumns: mode === 'custom' ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)', gap: 1 }}>
         <TextField select fullWidth size="small" label="Damping mode" value={mode} onChange={event => onModeChange(event.target.value as KerbalismDampingMode)} sx={fieldStyles}>
           <MenuItem value="automatic" sx={{ fontSize: 12 }}>Automatic (3.44)</MenuItem>
@@ -48,21 +51,21 @@ export default function KerbalismDampingControls({ mode, customExponent, onModeC
         </TextField>
         {mode === 'custom' && <TextField fullWidth size="small" type="number" label="Damping exponent" value={customExponent}
           error={!customValid} onChange={event => onExponentChange(event.target.value)} sx={fieldStyles}
-          helperText={!customValid ? 'Enter k greater than 0, up to 1,000,000.' : undefined}
+          helperText={!customValid ? 'Enter an exponent greater than 0, up to 1,000,000.' : undefined}
           slotProps={{ htmlInput: { 'aria-label': 'Damping exponent', min: Number.MIN_VALUE, max: 1e6, step: 'any' } }} />}
       </Box>
       {mode === 'automatic' && <Typography sx={{ fontSize: 10, lineHeight: 1.45, color: calibration.source === 'fallback' ? 'secondary.main' : 'text.secondary' }}>
         {calibration.source === 'fallback'
           ? homeOrbitRadiusM === null
-            ? 'Home-system orbit is unknown. Using Kerbalism’s fallback k = 6; choose Custom exponent to match your save.'
-            : 'No usable reference calibration point. Using Kerbalism’s fallback k = 6; choose Custom exponent to match your save.'
-          : `Automatic 3.44 reference: home orbit ${distance(homeOrbitRadiusM!)}; maximum DSN preset ${distance(maximumDsnPowerM)}.`}
+            ? 'The homeworld’s orbit is unknown. Using Kerbalism’s fallback k = 6; choose Custom exponent to match your save.'
+            : 'Automatic calculation found no suitable reference distance. Using Kerbalism’s fallback k = 6; choose Custom exponent to match your save.'
+          : `Calculated from the homeworld’s orbit radius (${distance(homeOrbitRadiusM!)}) and strongest ground-station preset (${distance(maximumDsnPowerM)}).`}
       </Typography>}
       <Typography sx={{ fontSize: 10, lineHeight: 1.45, color: 'text.secondary' }}>
-        Automatic calibration uses the home system and maximum DSN preset, independently of the selected DSN level, antennas, or planet pair. Use Custom exponent to match DampingExponentOverride or DataRateDampingExponent in KSP.log.
+        Automatic uses the homeworld and strongest DSN preset, so changing this link's antennas or DSN level does not change the exponent. For a custom installation, enter DampingExponentOverride from Kerbalism's settings or DataRateDampingExponent from KSP.log as the Custom exponent.
       </Typography>
       <Typography sx={{ fontSize: 10, lineHeight: 1.45, color: 'text.secondary' }}>
-        Kerbalism applies S^k to raw CommNet strength S. This factor is not a transmission rate in bit/s; link range and obstruction checks stay unchanged.
+        S is raw CommNet strength from 0 to 1; k is the exponent above. Kerbalism signal is S^k. The science-rate cards convert this factor into bit/s; antenna range and body blocking still use raw CommNet rules.
       </Typography>
     </Stack>
   </Box>

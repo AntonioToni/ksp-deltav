@@ -34,7 +34,7 @@ function Content({ initialSection, pack, customPack, groups, budget, notices }: 
     <DialogContent sx={{ px: 1.5, py: 1.5, minWidth: 0, minHeight: 0 }}>
       {section === 'mission' ? <Box role="tabpanel" id="estimate-mission-panel" aria-labelledby="estimate-mission-tab">
         {budget ? <>
-          <Typography sx={{ fontSize: 12, lineHeight: 1.5, color: 'text.secondary', mb: 1.25 }}>Costs for the selected mission mode, before reserve. Each repeated maneuver is counted.</Typography>
+          <Typography sx={{ fontSize: 12, lineHeight: 1.5, color: 'text.secondary', mb: 1.25 }}>Delta-V for your selected trip, before the reserve. A maneuver counts each time the route uses it.</Typography>
           <Stack component="ul" aria-label="Budget basis" spacing={.75} sx={{ listStyle: 'none', m: 0, p: 0 }}>
             {groups.map(group => <Box component="li" key={group.kind} data-budget-summary-kind={group.kind} sx={{ px: 1.25, py: .75, display: 'flex', gap: 1, justifyContent: 'space-between', alignItems: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: '#ffffff03' }}>
               <Box sx={{ minWidth: 0 }}>
@@ -52,22 +52,22 @@ function Content({ initialSection, pack, customPack, groups, budget, notices }: 
             <Box component="dt" sx={{ fontWeight: 700 }}>Planning total</Box><Box component="dd" sx={{ fontWeight: 700 }}>{format.format(budget.totalDeltaV)} m/s</Box>
           </Box>
           <Stack spacing={.75} sx={{ mt: 1.5 }}>
-            {groups.some(group => group.kind === 'reference') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>Map figures use the source's reference conditions. Actual flight costs vary.</Typography>}
-            {groups.some(group => group.kind === 'model') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>Analytic estimates use idealized reference orbits. Dates, vehicle losses, and a flown trajectory are not solved.</Typography>}
-            {groups.some(group => group.kind === 'user') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: basisColors.user }}>Your allowances are personal planning inputs, including explicit zero values. Source links describe their context and do not verify those costs.</Typography>}
-            {groups.some(group => group.kind === 'placeholder') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: basisColors.placeholder }}>Atmospheric landing uses an ascent-sized placeholder. It is not a verified landing cost or upper bound. Atmosphere options can replace it with your allowance.</Typography>}
-            {groups.some(group => group.kind === 'ideal') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: basisColors.ideal }}>Ideal capture assumes 0 m/s for eligible capture burns. Entry feasibility and cleanup burns are excluded; a percentage reserve adds nothing to a zero-cost burn.</Typography>}
-            {groups.some(group => group.kind === 'imported') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>Imported or unclassified figures come from the pack author. Declared sources and model labels have not been independently verified by this planner.</Typography>}
+            {groups.some(group => group.kind === 'reference') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>Published map figures assume the orbits and conditions listed by their authors. Your flight may need different Delta-V.</Typography>}
+            {groups.some(group => group.kind === 'model') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>Calculated estimates use simplified orbits. They do not predict an exact flight date or account for losses from your vehicle and how you fly it.</Typography>}
+            {groups.some(group => group.kind === 'user') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: basisColors.user }}>These are Delta-V amounts you entered, including any zeros. Source links explain the route but do not verify your numbers.</Typography>}
+            {groups.some(group => group.kind === 'placeholder') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: basisColors.placeholder }}>Until you enter a landing allowance, this pack reuses the launch Delta-V as a default for atmospheric landings. It is not a verified landing cost or guaranteed maximum. Open Atmosphere to set your powered-landing Delta-V.</Typography>}
+            {groups.some(group => group.kind === 'ideal') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: basisColors.ideal }}>Selected capture burns count as 0 m/s, assuming the atmosphere removes all the required speed. Entry safety and correction burns are not calculated; adding a percentage reserve to zero still gives zero.</Typography>}
+            {groups.some(group => group.kind === 'imported') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>These figures come from the pack author, including any costs without a map or calculation source. This planner has not independently checked their declared sources or calculation method.</Typography>}
             {notices.map(notice => <Typography key={notice} sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>{notice}</Typography>)}
           </Stack>
-        </> : <Typography sx={{ fontSize: 13, lineHeight: 1.5 }}>Select a reachable mission to inspect its budget. The sources tab explains the active pack and its assumptions.</Typography>}
+        </> : <Typography sx={{ fontSize: 13, lineHeight: 1.5 }}>Choose an origin and destination with a route between them to inspect the budget. Sources & assumptions explains the active pack.</Typography>}
       </Box> : <Box role="tabpanel" id="estimate-sources-panel" aria-labelledby="estimate-sources-tab">
         <Typography sx={{ fontSize: 13, lineHeight: 1.5, mb: 1.25 }}>{pack.description}</Typography>
-        {customPack && <Typography sx={{ fontSize: 12, lineHeight: 1.5, mb: 1.25, color: 'secondary.main' }}>Custom pack · Its figures and source declarations are supplied by the pack author.</Typography>}
-        <Typography sx={{ fontSize: 12, lineHeight: 1.5, color: 'text.secondary', mb: 1.25 }}>A reference map supplies published planning figures; an analytic model computes schematic estimates. Neither validates a particular vehicle or dated trajectory. The This mission tab identifies the figures actually used in your budget.</Typography>
+        {customPack && <Typography sx={{ fontSize: 12, lineHeight: 1.5, mb: 1.25, color: 'secondary.main' }}>Custom pack · The pack author supplies its Delta-V figures and source information.</Typography>}
+        <Typography sx={{ fontSize: 12, lineHeight: 1.5, color: 'text.secondary', mb: 1.25 }}>Map figures come from published Delta-V maps. Calculated estimates use simplified orbits. Both are planning guides, rather than predictions for a particular craft or launch date. This mission shows which figures your budget uses.</Typography>
         <Stack spacing={1} sx={{ mb: 1.5 }}>{pack.sources.map(source => <Box key={source.id}>
           <Link href={source.url} target="_blank" rel="noreferrer" sx={{ fontSize: 12, lineHeight: 1.5, overflowWrap: 'anywhere' }}>{source.title}</Link>
-          <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>{source.budgetType === 'reference' ? 'Reference map' : source.budgetType === 'model' ? 'Analytic model' : 'Configuration or supporting reference'}</Typography>
+          <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>{source.budgetType === 'reference' ? 'Published Delta-V map' : source.budgetType === 'model' ? 'Calculated estimate' : 'Settings or supporting source'}</Typography>
         </Box>)}</Stack>
         <Typography component="h3" sx={{ fontSize: 13, fontWeight: 600 }}>Pack assumptions</Typography>
         <Box component="ul" sx={{ pl: 2.25, my: .75, '& li': { fontSize: 12, lineHeight: 1.5, mb: .75, overflowWrap: 'anywhere' } }}>{pack.assumptions.map((assumption, index) => <li key={index}>{assumption}</li>)}</Box>

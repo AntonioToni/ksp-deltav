@@ -102,12 +102,12 @@ function surfaceBudget(body: string, deltaV: number) {
   edge(id(body, 'surface'), id(body, 'orbit'), deltaV, 'ascent', `${name} ascent`, [
     atmospheric
       ? 'Typical atmospheric ascent budget from the source map; vehicle design and flight profile change the actual cost.'
-      : 'Idealized vacuum ascent to the source map reference low orbit; add a mission margin.',
+      : 'Estimated airless ascent to the low orbit used by the source map. Add a reserve for your flight.',
   ])
   edge(id(body, 'orbit'), id(body, 'surface'), deltaV, 'descent', `${name} powered descent`, [
     atmospheric
-      ? 'Powered-descent placeholder budget: reuses the map ascent figure for powered descent. This is not a verified landing calculation or upper bound; no parachute, aerobraking, or aerocapture savings are credited.'
-      : 'Reverses the source map vacuum ascent estimate for a powered landing; actual descent losses depend on the vehicle and trajectory.',
+      ? 'Landing placeholder: uses the map launch budget as a temporary powered-landing cost. It is not a verified landing estimate or a guaranteed maximum. Parachutes and atmospheric braking do not reduce this default figure.'
+      : 'Uses the map airless launch budget in reverse for a powered landing. Your craft and descent path can change the actual cost.',
   ])
 }
 
@@ -116,8 +116,8 @@ function localOrbitBudget(body: string, fromKind: 'orbit' | 'elliptical', toKind
   const fromLabel = fromKind === 'orbit' ? 'low orbit' : 'elliptical orbit'
   const toLabel = toKind === 'elliptical' ? 'elliptical orbit' : 'encounter'
   const assumptions = [
-    'Idealized map segment for the documented reference orbit and transfer conditions; encounter energy is not simulated.',
-    'Powered maneuver; no atmospheric assistance or gravity assists.',
+    'This map figure assumes the orbit and arrival conditions listed in the source. The planner does not simulate your actual approach.',
+    'Uses engine burns, without savings from the atmosphere or gravity assists.',
   ]
   edge(id(body, fromKind), id(body, toKind), deltaV, 'escape', `${name}: ${fromLabel} → ${toLabel}`, assumptions)
   edge(id(body, toKind), id(body, fromKind), deltaV, 'capture', `${name}: ${toLabel} → ${fromLabel}`, assumptions)
@@ -126,7 +126,7 @@ function localOrbitBudget(body: string, fromKind: 'orbit' | 'elliptical', toKind
 function moonTransfer(parent: string, parentKind: 'orbit' | 'elliptical', moon: string, deltaV: number) {
   const assumptions = [
     `Map segment between ${bodyName(parent)} ${parentKind === 'orbit' ? 'low' : 'high elliptical'} orbit and ${bodyName(moon)} encounter.`,
-    'Optimal transfer geometry; inclination corrections and timing constraints are excluded.',
+    'Assumes favorable positions. Extra burns for orbital tilt and transfer timing are not included.',
   ]
   edge(id(parent, parentKind), id(moon, 'encounter'), deltaV, 'transfer', `${bodyName(parent)} → ${bodyName(moon)} transfer`, assumptions)
   edge(id(moon, 'encounter'), id(parent, parentKind), deltaV, 'transfer', `${bodyName(moon)} → ${bodyName(parent)} transfer`, assumptions)
@@ -134,9 +134,9 @@ function moonTransfer(parent: string, parentKind: 'orbit' | 'elliptical', moon: 
 
 function interplanetaryTransfer(body: string, deltaV: number) {
   const assumptions = [
-    'Incremental interplanetary map budget beyond the separate Kerbin escape segment; this value alone is not a launch-to-destination total.',
-    'Favorable transfer window; the source map maximum plane-change allowance is excluded.',
-    'Reverse direction reuses the schematic segment estimate; departure and arrival energy are not calculated from orbital elements.',
+    'This is the extra interplanetary cost after the separately listed Kerbin escape burn, not the full launch-to-destination budget.',
+    'Assumes a favorable transfer window. The map allowance for extra orbital-plane changes is not included.',
+    'The return direction reuses this map figure. Departure and arrival speeds are not recalculated for a particular flight.',
   ]
   edge(id('kerbin', 'encounter'), id(body, 'encounter'), deltaV, 'transfer', `Kerbin → ${bodyName(body)} transfer`, assumptions)
   edge(id(body, 'encounter'), id('kerbin', 'encounter'), deltaV, 'transfer', `${bodyName(body)} → Kerbin transfer`, assumptions)
@@ -203,7 +203,7 @@ export const stockPack: PlanetPack = withSiblingTransfers(withDirectTransfers({
   shortName: 'Stock',
   transferHubBodyId: 'stock:kerbin',
   version: '1.7.3-map.4',
-  description: 'Stock reference-map budgets with explicit reference orbits, analytic direct transfers between non-home planets, and inclination-aware reference transfers between sibling moons.',
+  description: 'Stock Delta-V map figures, plus calculated direct transfers between planets other than Kerbin and between moons orbiting the same body. Each route uses the stated orbit heights.',
   sources: [{
     id: sourceId,
     budgetType: 'reference',
@@ -211,11 +211,11 @@ export const stockPack: PlanetPack = withSiblingTransfers(withDirectTransfers({
     url: 'https://github.com/Kowgan/ksp_cheat_sheets/blob/ca2d4910dd98e5fd14277b04ec686e61cd6967ce/delta_v_map_vanilla/DvMap_A4.svg',
   }],
   assumptions: [
-    'All budgets are in m/s and use the source map reference orbits. These are schematic estimates, not a trajectory simulation.',
-    'Favorable launch windows and idealized transfers. Plane-change allowances, launch dates, travel time, gravity assists, and spacecraft performance are excluded; add a mission margin.',
-    'No atmospheric assistance is credited. Atmospheric powered-descent budgets are placeholders equal to the ascent map budget, not verified landing calculations or upper bounds.',
-    'Kerbin-centered encounter branches retain the source map budgets. Non-home planets also have complete analytic direct transfers between their circular and map-calibrated high elliptical reference orbits. Encounter-to-encounter flyby chaining is not modeled.',
-    'Eve, Duna, and Jool moon transfers branch from high elliptical orbit. Low-orbit capture and moon transfer costs must not be conflated.',
+    'All budgets are in m/s and use the orbits stated by the source map. They are planning estimates; the planner does not simulate your flight.',
+    'Assumes favorable launch windows. Extra orbital-plane changes, dates, travel time, gravity assists, and craft performance are not calculated. Add a reserve for your mission.',
+    'No atmospheric assistance is included in the default figures. Atmospheric landing costs temporarily reuse launch budgets; they are not verified landing estimates or guaranteed maximums.',
+    'Routes through Kerbin keep the map figures. Direct transfers between other planets include departure and arrival burns at the stated circular or high elliptical orbits. Chains of flybys without capture are not calculated.',
+    'Transfers to moons of Eve, Duna, and Jool start from high elliptical orbit. Capturing into the parent planet\'s low orbit is a different maneuver with its own cost.',
     'Kerbol has no selectable mission states; Jool has no surface. Surface states are omitted where landing is unsupported.',
   ],
   bodies,

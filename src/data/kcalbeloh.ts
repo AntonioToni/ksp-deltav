@@ -8,8 +8,8 @@ import {
 
 const mapSourceId = 'kcalbeloh-map-1.1.8'
 const configSourceId = 'kcalbeloh-config-1.1.8'
-const mapEstimate = 'Published Kcalbeloh 1.1.8 map estimate; transfers are rough reference budgets in a complex multi-star system, not solved dated trajectories.'
-const reversePolicy = 'The explicitly declared reverse edge reuses this nominal map budget. Flight dates, arrival geometry, inclination optimization, and vehicle losses are not simulated.'
+const mapEstimate = 'Estimate from the published Kcalbeloh 1.1.8 map. Transfer figures are rough budgets for this multi-star system, not flights calculated for specific dates.'
+const reversePolicy = 'The return direction reuses this map budget. Flight dates, arrival alignment, optimized orbital-plane changes, and craft losses are not simulated.'
 
 // Numerical facts only, transcribed from the official map. No source artwork or
 // layout is included. Null means the source has no surface budget, not zero.
@@ -87,14 +87,14 @@ function createKcalbelohPack(base: PlanetPack, opm: boolean, wormholes = true): 
     if (surfaceDeltaV === null) continue
     const id = bodyId(name)
     const atmospheric = bodies.find(body => body.id === id)?.hasAtmosphere ?? false
-    const parkingNote = `Source map parking label: ${altitudeKm} km. These source-bound budgets are not a modern physical recalibration.`
+    const parkingNote = `Source map parking height: ${altitudeKm} km. The budget comes from the published map, not a new orbit calculation.`
     addPair(`${id}:surface`, `${id}:orbit`, surfaceDeltaV, 'ascent', 'descent', `${name} ascent`, [
       mapEstimate,
       parkingNote,
-      'The source gives a typical surface-to-orbit allowance; TWR, flight profile, and aerodynamics change actual costs.',
+      'The source gives a typical launch allowance. Craft thrust-to-weight ratio, flight path, and aerodynamics change the actual cost.',
       atmospheric
-        ? 'Powered descent reuses the source ascent-sized allowance as a placeholder, not a verified landing calculation or upper bound. Optional landing choices may replace it with the user-entered allowance.'
-        : 'Powered vacuum descent reuses the source ascent estimate; vehicle losses, body rotation, and terrain are not modeled.',
+        ? 'Landing temporarily uses the source launch allowance. It is not a verified landing estimate or a guaranteed maximum. You can replace it with your own landing allowance in Atmosphere.'
+        : 'Airless powered landing reuses the source launch estimate. Craft losses, body rotation, and terrain are not calculated.',
       reversePolicy,
     ], `${name} powered descent`)
   }
@@ -104,8 +104,8 @@ function createKcalbelohPack(base: PlanetPack, opm: boolean, wormholes = true): 
     const to = transferNodeId(toName)
     addPair(from, to, departure + arrival, 'transfer', 'transfer', `${displayName(fromName)} → ${displayName(toName)} transfer`, [
       mapEstimate,
-      `Complete pair-specific parking/reference transfer: ${departure} m/s at ${fromName} plus ${arrival} m/s at ${toName}; the sum is charged once.`,
-      'Both ends are explicit parking/reference states. Separate encounter chains are not inferred. Atmospheric capture savings are not isolated in this bundled pair budget.',
+      `Complete transfer between these map orbits or reference points: ${departure} m/s at ${fromName} plus ${arrival} m/s at ${toName}. Their total is added once.`,
+      'Uses the two orbits or reference points named on the map. The planner does not add a chain of free encounters. This combined figure does not separate out a saving from atmospheric capture.',
       reversePolicy,
     ], `${displayName(toName)} → ${displayName(fromName)} transfer`)
   }
@@ -116,21 +116,21 @@ function createKcalbelohPack(base: PlanetPack, opm: boolean, wormholes = true): 
       id: `kcalbeloh:${id}`, label, from, to, forwardKind: kind, reverseKind: kind, sourceId,
       assumptions: [
         note,
-        'No default fuel cost is supplied. Enter the complete one-way allowance separately for each direction; a blank direction remains unavailable. An explicit zero is a user assumption, not a measured free maneuver.',
-        'The entered allowance must cover departure, arrival, and any omitted orientation/trajectory corrections for this whole link. The planner does not add a hidden source component.',
+        'No default cost is supplied. Enter the full one-way Delta-V budget for each direction. Blank leaves that direction unavailable; zero explicitly assumes a free maneuver, rather than confirming one.',
+        'Your budget must include departure, arrival, and any extra alignment or path corrections for the whole link. Known source burns are not automatically added to your entry.',
       ],
     })
   }
-  gap('connect-black-hole', 'Kcalbeloh reference ↔ Rouqea low orbit', referenceId('Kcalbeloh'), parkingId('Rouqea'), 'The official map does not price the link between its central black-hole orbital reference and the local planet parking grid. Their displayed distances are not interchangeable trajectory states.')
-  gap('connect-maelg', 'Maelg reference ↔ Mehtna low orbit', referenceId('Maelg'), parkingId('Mehtna'), 'The official map does not price the link between its 513 Mm Maelg reference and Mehtna parking orbit. Mehtna and Meiuqer both orbit Maelg; neither is treated as a moon of the other.')
-  gap('connect-sunorc', 'Sunorc reference ↔ Suluco low orbit', referenceId('Sunorc'), parkingId('Suluco'), 'The official map does not price the link between its 5.22 Gm Sunorc reference and the Suluco parking orbit. A matching approximate orbital distance does not establish a free capture.')
-  gap('connect-aralc', 'Aralc reference ↔ Anehta low orbit', referenceId('AralcSystem'), parkingId('Anehta'), 'The official map does not price the link between its 69.52 Gm Aralc reference and Anehta parking orbit. Binary-star arrival dynamics are not solved.')
-  gap('connect-sime', 'Simetra–Simeht reference ↔ Noira low orbit', referenceId('SimeSystem'), parkingId('Noira'), 'The official map provides a combined 60 Mm circumbinary reference and a separate satellite grid without a connector allowance. The 60 Mm state is not an individual Simetra or Simeht low orbit.')
-  gap('connect-anehta-moons', 'Anehta low orbit ↔ Efil low orbit', parkingId('Anehta'), parkingId('Efil'), 'The official map supplies the Anehta satellite-to-satellite pairs but not the link from Anehta parking orbit to that satellite grid. Supply the complete parent-to-moon transfer allowance.')
+  gap('connect-black-hole', 'Kcalbeloh reference ↔ Rouqea low orbit', referenceId('Kcalbeloh'), parkingId('Rouqea'), 'The official map gives no cost between its black-hole reference orbit and the planet parking orbits. The displayed distances do not establish a free transfer between them.')
+  gap('connect-maelg', 'Maelg reference ↔ Mehtna low orbit', referenceId('Maelg'), parkingId('Mehtna'), 'The official map gives no cost between its 513 Mm Maelg reference and Mehtna parking orbit. Mehtna and Meiuqer both orbit Maelg; neither is treated as a moon of the other.')
+  gap('connect-sunorc', 'Sunorc reference ↔ Suluco low orbit', referenceId('Sunorc'), parkingId('Suluco'), 'The official map gives no cost between its 5.22 Gm Sunorc reference and Suluco parking orbit. Similar orbital distances do not make arrival into orbit free.')
+  gap('connect-aralc', 'Aralc reference ↔ Anehta low orbit', referenceId('AralcSystem'), parkingId('Anehta'), 'The official map gives no cost between its 69.52 Gm Aralc reference and Anehta parking orbit. Arrival through the binary-star system is not simulated.')
+  gap('connect-sime', 'Simetra–Simeht reference ↔ Noira low orbit', referenceId('SimeSystem'), parkingId('Noira'), 'The official map shows a 60 Mm reference orbit around both Simetra and Simeht, plus separate moon orbits, without a cost joining them. That reference is not a low orbit at either body.')
+  gap('connect-anehta-moons', 'Anehta low orbit ↔ Efil low orbit', parkingId('Anehta'), parkingId('Efil'), 'The official map gives Anehta moon-to-moon transfer costs, but no cost from Anehta parking orbit to those moons. Enter the full planet-to-moon transfer budget.')
   gap('arorua-anneheg', 'Anneheg low orbit ↔ Arorua low orbit', parkingId('Anneheg'), parkingId('Arorua'), 'The source prints 4080 m/s on the Anneheg side and N.A. on the Arorua side because KSP binary dynamics prevent a reliable estimate. Enter the whole pair budget, including the known side, rather than only the missing component.')
   gap('arorua-ahtpan', 'Arorua low orbit ↔ Ahtpan low orbit', parkingId('Arorua'), parkingId('Ahtpan'), 'The source prints N.A. on the Arorua side and 1550 m/s on the Ahtpan side because KSP binary dynamics prevent a reliable estimate. Enter the whole pair budget, including the known side.')
   gap('arorua-anehta', 'Arorua low orbit ↔ Anehta low orbit', parkingId('Arorua'), parkingId('Anehta'), 'The source prints N.A. on the Arorua side and 4070 m/s on the Anehta side because KSP binary dynamics prevent a reliable estimate. Enter the whole pair budget, including the known side.')
-  if (wormholes) gap('wormhole', `${homeParentName} low orbit ↔ Sera low orbit via wormhole`, `${homeParentId}:orbit`, parkingId('Sera'), `Composite wormhole journey: approach WH-3141-A around ${homeParentName}, cross to WH-3141-B around Sera, and establish the endpoint parking orbit. Official configs place entry between 10 m and 30 km altitude; neither the map nor these configs supplies this whole fuel budget. Enter approach, exit matching, and capture costs together. The planner does not assume free exit matching.`, configSourceId, 'wormhole')
+  if (wormholes) gap('wormhole', `${homeParentName} low orbit ↔ Sera low orbit via wormhole`, `${homeParentId}:orbit`, parkingId('Sera'), `Full wormhole trip: approach WH-3141-A around ${homeParentName}, cross to WH-3141-B around Sera, then enter the destination parking orbit. Official configs place entry between 10 m and 30 km altitude, but neither the map nor these configs gives the full Delta-V cost. Enter one budget for approach, crossing, any course and speed adjustments after the exit, and entering parking orbit. The planner does not add those adjustments for you.`, configSourceId, 'wormhole')
 
   const existingBodyIds = new Set(bodies.map(body => body.id))
   const baseId = opm ? 'opm-kcalbeloh' : 'stock-kcalbeloh'
@@ -140,24 +140,24 @@ function createKcalbelohPack(base: PlanetPack, opm: boolean, wormholes = true): 
     id: wormholes ? baseId : `${baseId}-no-wormholes`,
     name: wormholes ? baseName : `${baseName} (wormholes off)`,
     shortName: opm ? 'OPM + Kcal' : 'Stock + Kcal',
-    dataNotice: wormholes ? 'Map + user allowances' : 'Wormholes off',
+    dataNotice: wormholes ? 'Map + your budgets' : 'Wormholes off',
     version: '1.1.8-map.4',
-    description: `${opm ? 'Outer Planets Mod' : 'Stock Kerbol system'} plus the Kcalbeloh 1.1.8 default-size add-on. ${wormholes ? 'Published local and stellar reference-pair budgets are separate from explicitly user-priced wormhole and missing-source connections.' : 'Wormholes are disabled. Local and stellar reference-pair budgets remain available, with explicit allowances for missing-source connections. No interstellar transfer between Kerbol and Kcalbeloh is supplied.'}`,
+    description: `${opm ? 'Outer Planets Mod' : 'Stock Kerbol system'} plus Kcalbeloh 1.1.8 at its default size. ${wormholes ? 'Uses published map transfer figures. Enter your own budgets for wormholes and other links without a published cost.' : 'Wormholes are off. Local map routes remain available, with your own budgets for unpriced links. No route connects Kerbol to Kcalbeloh.'}`,
     transferHubBodyId: base.transferHubBodyId,
     sources: [...base.sources.map(source => ({ ...source })), { ...kcalbelohMapSource }, { ...kcalbelohConfigSource }],
     assumptions: [
       ...base.assumptions.map(note => `${base.shortName ?? base.name} base: ${note}`),
-      `Kcalbeloh source configuration: v1.1.8, stock-sized 1× scale, HomeSwitch disabled, Wormholes ${wormholes ? 'enabled' : 'disabled'}. RSS/KSRSS rescaling, Principia, and alternate homeworld configurations are not included.`,
+      `Kcalbeloh configuration: v1.1.8, stock-sized 1× scale, HomeSwitch disabled (no replacement homeworld), Wormholes ${wormholes ? 'enabled' : 'disabled'}. RSS/KSRSS rescaling, Principia, and other homeworld configurations are not included.`,
       mapEstimate,
-      'Published pair costs connect explicit circular parking or central reference states. Each pair charges both printed burns once; reversed edges share the same nominal allowance. Routes first avoid unrequested planet or moon parking visits, then minimize the budget within that itinerary. Necessary reference gateways remain available; use mission stops to request other layovers.',
-      'Stellar and Simetra–Simeht circumbinary references are separate states, with their source distances in their labels. They are not landable surfaces or asserted low atmospheric orbits. No free links to nearby planet parking orbits are inferred.',
-      `Unpriced connections remain unavailable until their complete directional allowance is entered. ${wormholes ? 'Wormhole, reference-to-planet, and missing binary links' : 'Reference-to-planet and missing binary links'} are not assigned fabricated default fuel costs. Forward and return allowances are independent.`,
+      'Each published transfer connects the two orbits or reference points named on the map and includes both printed burns once. Returning reuses that figure. Routes avoid extra planet or moon parking stops before choosing the lowest Delta-V budget; add mission stops to request other layovers. Necessary reference points remain usable along the way.',
+      'Reference orbits around stars and the Simetra–Simeht pair are separate from local low orbits. Their labels show the source distances. They are not surfaces or low atmospheric orbits, and no free transfer to a nearby planet is assumed.',
+      `Links without a published cost need your full budget for each direction before they can be used. ${wormholes ? 'Wormholes, links from reference orbits to planets, and missing binary-system links' : 'Links from reference orbits to planets and missing binary-system links'} have no invented default cost. Forward and return budgets are independent.`,
       wormholes
-        ? `WH-3141-A orbits ${homeParentName} in this configuration, and WH-3141-B orbits Sera. The composite wormhole allowance includes approach, crossing, exit matching, and parking capture; timing, heat, and maneuver feasibility are not simulated.`
-        : 'The official Wormholes=False setting omits WH-3141-A and WH-3141-B. Their composite crossing connection is absent. No direct interstellar transfer is supplied, so the Kerbol and Kcalbeloh portions of this maneuver graph remain disconnected even after all local link allowances are entered.',
-      'Arorua transfer components marked N.A. in the official map remain user-priced; their values are not zero. Its published surface budget remains available locally.',
-      'Noi, individual Simetra/Simeht low orbits, and Aralc-B stellar parking lack priced source states and remain catalog metadata. The Simetra–Simeht combined reference and its mapped families remain selectable.',
-      'Atmospheric descent uses an explicitly labeled ascent-sized placeholder until replaced by the optional landing allowance. No automatic capture discount is applied to bundled complete-transfer pairs.',
+        ? `WH-3141-A orbits ${homeParentName} in this configuration, and WH-3141-B orbits Sera. Your wormhole budget must include approach, crossing, matching the exit path, and entering parking orbit. Timing, heating, and whether the maneuver is achievable are not simulated.`
+        : 'Wormholes=False removes WH-3141-A, WH-3141-B, and their crossing link. No direct star-to-star transfer is supplied, so entering every local link budget still leaves Kerbol and Kcalbeloh disconnected.',
+      'Arorua transfers marked N.A. on the map need your own budgets; N.A. does not mean zero. Its published surface budget is still usable locally.',
+      'Noi, individual Simetra/Simeht low orbits, and Aralc-B parking orbits have no published costs. They are recorded in the pack without selectable mission states. The combined Simetra–Simeht reference and its mapped routes remain selectable.',
+      'Atmospheric landing temporarily uses the launch budget until you enter a replacement landing allowance. Atmosphere options do not automatically reduce complete transfer figures that combine several burns.',
       'Numerical reference facts are reorganized with attribution; source map artwork, source layout, textures, and mod config code are not bundled.',
     ],
     bodies,

@@ -100,7 +100,7 @@ describe('the reviewed OPM planning pack', () => {
   it('sources all recalculated OPM maneuvers while retaining only the declared atmospheric allowances', () => {
     const analytic = opmPack.maneuvers.filter(edge => edge.sourceId === 'opm-analytic-2.2.12')
     expect(analytic).toHaveLength(94)
-    expect(analytic.every(edge => edge.assumptions.join(' ').includes('Analytic OPM 2.2.12'))).toBe(true)
+    expect(analytic.every(edge => edge.assumptions.join(' ').includes('Calculated from official OPM 2.2.12'))).toBe(true)
     const historical = opmPack.maneuvers.filter(edge => edge.sourceId === 'kowgan-opm-1.8.1')
     expect(historical.map(({ from, to, deltaV }) => ({ from, to, deltaV }))).toEqual([
       { from: 'opm:tekto:surface', to: 'opm:tekto:orbit', deltaV: 2600 },
@@ -109,14 +109,14 @@ describe('the reviewed OPM planning pack', () => {
       { from: 'opm:thatmo:orbit', to: 'opm:thatmo:surface', deltaV: 950 },
     ])
     for (const edge of historical) {
-      expect(edge.assumptions.join(' ')).toContain('not calibrated')
-      expect(edge.assumptions.join(' ')).toContain('nor an upper bound')
+      expect(edge.assumptions.join(' ')).toContain('not been recalculated')
+      expect(edge.assumptions.join(' ')).toContain('not a verified cost or a guaranteed maximum')
     }
-    expect(opmPack.dataNotice).toBe('Analytic estimates')
+    expect(opmPack.dataNotice).toBe('Calculated estimates')
     expect(opmPack.version).toBe('2.2.12-analytic.4')
-    expect(opmPack.description).toContain('historical atmospheric surface allowances')
-    expect(opmPack.assumptions.join(' ')).toContain('Parking-orbit orientation is unconstrained')
-    expect(opmPack.assumptions.join(' ')).toContain('Eccentricity and changing orbital distances are not propagated')
+    expect(opmPack.description).toContain('older atmospheric launch/landing allowances')
+    expect(opmPack.assumptions.join(' ')).toContain('Parking-orbit orientation, gravity assists, and losses during real engine burns are also excluded')
+    expect(opmPack.assumptions.join(' ')).toContain('Changing distances along eccentric orbits are not tracked')
     expect(opmPack.assumptions.join(' ')).toContain('SigmaBinary')
   })
 
@@ -165,7 +165,7 @@ describe('the reviewed OPM planning pack', () => {
       expect(circularizationEdge.deltaV).toBe(Math.ceil(circularization))
       expect(captureEdge.deltaV + circularizationEdge.deltaV).toBeGreaterThanOrEqual(Math.ceil(hyperbolicSpeed - circularSpeed))
       expect(captureEdge.deltaV + circularizationEdge.deltaV).toBeLessThanOrEqual(Math.ceil(hyperbolicSpeed - circularSpeed) + 1)
-      expect(captureEdge.assumptions.join(' ')).toContain('0.5 × nominal SOI')
+      expect(captureEdge.assumptions.join(' ')).toContain('halfway to the nominal sphere-of-influence boundary')
     }
   })
 
@@ -189,7 +189,7 @@ describe('the reviewed OPM planning pack', () => {
     const edge = opmPack.maneuvers.find(edge => edge.from === 'opm:thatmo:encounter' && edge.to === 'opm:thatmo:orbit')!
     expect(edge.deltaV).toBe(641)
     expect(edge.deltaV).toBe(Math.ceil(burn))
-    expect(edge.assumptions.join(' ')).toContain('source inclination 161.1°')
+    expect(edge.assumptions.join(' ')).toContain('source orbital tilt of 161.1°')
   })
 
   it('provides finite outbound and return routes for every supported state', () => {

@@ -31,12 +31,12 @@ interface Endpoint {
 }
 
 const modelAssumptions = [
-  'Complete analytic transfer between low circular orbits of moons sharing one physical parent. Both moon departure and powered capture are included; no parent parking-orbit visit is charged.',
-  'Moon paths are circularized at their pinned semi-major axes. The Hohmann transfer plane is the inner moon\'s orbital plane; the outer encounter occurs at an assumed mutual orbital node, using the planes\' relative inclination.',
-  'Pinned inclinations and ascending-node longitudes determine the mutual plane angle. This is an assumed nodal geometry, not a launch-window, phasing, eccentric-trajectory, plane-change optimization, or B-plane solution.',
-  'Parking-orbit orientation, finite sphere-of-influence matching, third-body effects, gravity assists, and vehicle losses are not solved. Add a mission reserve; this reference estimate is not a verified flight cost.',
-  'Each endpoint burn is rounded upward separately to whole m/s and summed once. Reversing the same nominal inner-plane reference swaps the endpoint burns; it is not a dated return trajectory.',
-  'Atmospheric assistance does not discount this bundled pair. Retrograde moon orbits, co-orbital phasing, binary parents, and unknown orbital planes are outside this model.',
+  'Calculated transfer between low circular orbits at two moons that orbit the same body. Includes departure and arrival engine burns, without a parking stop at that shared body.',
+  'Uses circular moon orbits at the source orbital distances. The transfer follows the inner moon\'s orbital plane and meets the outer moon where the two orbital planes are assumed to cross.',
+  'The angle between the orbital planes comes from the source tilts and crossing directions. The planner does not choose a launch window, track the moons\' timing along their orbits, follow eccentric paths, or optimize plane-change and encounter aiming burns.',
+  'Parking-orbit orientation, exact entry and exit through each sphere of influence, gravity from additional bodies, gravity assists, and craft losses are not calculated. Add a reserve; this is a planning estimate rather than a verified flight cost.',
+  'Departure and arrival burns are each rounded up to a whole m/s and added once. The return direction exchanges those burns; it is not calculated for a particular return date.',
+  'Atmosphere options do not reduce this combined transfer figure. Backward moon orbits, moons sharing one orbit, moons around a binary center, and unknown orbital planes use their existing reference routes instead.',
 ]
 
 const positive = (value: number) => Number.isFinite(value) && value > 0
@@ -134,7 +134,7 @@ export function withSiblingTransfers(
           sourceId: siblingTransferSource.id,
           assumptions: [
             ...modelAssumptions,
-            `Common parent: ${inner.parent.name}; gravitational parameter ${inner.parentMu} m³/s². Circularized moon orbital radii: ${innerA} m at ${inner.body.name} and ${outerA} m at ${outer.body.name}.`,
+            `Both moons orbit ${inner.parent.name}, whose gravitational parameter is ${inner.parentMu} m³/s². Assumed circular orbit radii: ${innerA} m at ${inner.body.name} and ${outerA} m at ${outer.body.name}.`,
             `Reference plane: ${inner.body.name}'s orbit. Mutual inclination ${mutualInclinationDeg.toFixed(9)}° from the pinned inclinations and ascending nodes; source eccentricities ${inner.reference.eccentricity} at ${inner.body.name}, ${outer.reference.eccentricity} at ${outer.body.name} are not propagated.`,
             `${departureRounded} m/s departure at ${departure.body.name} (${departureRaw.toFixed(6)} m/s before rounding, excess speed ${departureExcess.toFixed(6)} m/s) plus ${arrivalRounded} m/s powered capture at ${arrival.body.name} (${arrivalRaw.toFixed(6)} m/s before rounding, excess speed ${arrivalExcess.toFixed(6)} m/s): ${deltaV} m/s total.`,
             `Reference parking altitudes: ${departure.node.altitudeKm} km at ${departure.body.name}, ${arrival.node.altitudeKm} km at ${arrival.body.name}.`,
@@ -150,7 +150,7 @@ export function withSiblingTransfers(
     for (const source of [...physicalSources, siblingTransferSource]) {
       if (!result.sources.some(prior => prior.id === source.id)) result.sources.push({ ...source })
     }
-    const note = 'Supported sibling moons have complete analytic low-orbit transfers around their common parent, with an assumed mutual-node encounter and circularized moon orbits. These do not require a parent parking-orbit visit. Co-orbital phasing, retrograde pairs, binary parents, and unknown orbital planes retain their supplied reference routes.'
+    const note = 'Supported moons orbiting the same body have direct low-orbit transfers, without a parking stop at that shared body. These estimates use circular moon orbits and assume an encounter where their orbital planes cross. Moons sharing one orbit, backward-orbiting pairs, moons around a binary center, and unknown orbital planes keep their supplied reference routes.'
     if (!result.assumptions.includes(note)) result.assumptions.push(note)
   }
   return result

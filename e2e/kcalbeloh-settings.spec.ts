@@ -248,7 +248,7 @@ test('exports the portal-free topology and imports it only after choosing a cust
   await button(page, 'Reset mission').click()
   await plan(page, 'stock:kerbin:surface', 'kcalbeloh:sera:surface')
   await expect(total(page)).toHaveCount(0)
-  await expect(status(page)).toContainText('No route is available')
+  await expect(status(page)).toContainText('The selected planet pack cannot calculate a route between these map points.')
   await expect(status(page)).not.toContainText('Wormholes are disabled')
   await expect(button(page, 'Link allowances')).toHaveCount(0)
 })

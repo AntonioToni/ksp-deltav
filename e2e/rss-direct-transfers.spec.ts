@@ -103,7 +103,7 @@ async function direction(page: Page, from: string, to: string, via: string[] = [
 
 async function noEarthVisit(page: Page) {
   await expect(page.locator('[data-route-edge="true"][data-edge-id*="rss:earth:"]')).toHaveCount(0)
-  await expect(page.getByTestId('route-status')).not.toContainText('Earth parking-orbit layover')
+  await expect(page.getByTestId('route-status')).not.toContainText('Includes an intermediate transfer via Earth')
 }
 
 async function pageFits(page: Page) {
@@ -121,7 +121,7 @@ test('adds only the selected RSS direct band and identifies its modeled cost and
   await expect(selected(page)).toHaveCount(1)
   await expect(direct(page)).toHaveAttribute('data-edge-id', 'direct:rss:mars:orbit->rss:venus:orbit')
   await expect(page.locator('[data-connection-id]')).toHaveCount(originalConnections + 1)
-  await expect(page.getByTestId('route-status')).toContainText(/analytic direct transfer/)
+  await expect(page.getByTestId('route-status')).toContainText(/calculated direct transfer/)
   await noEarthVisit(page)
   await direction(page, 'rss:mars:orbit', 'rss:venus:orbit')
   const trail = flow(page).locator('[data-flow-run]').first().locator('path.route-flow-trail').last()
@@ -132,7 +132,7 @@ test('adds only the selected RSS direct band and identifies its modeled cost and
   await expect(model).toContainText('7,850 m/s')
   await expect(model).toContainText('1 maneuver')
   await expect(info(page).locator('[data-budget-summary-kind]')).toHaveCount(1)
-  await expect(info(page)).toContainText('Each complete pair includes departure and powered arrival')
+  await expect(info(page)).toContainText('Calculated direct transfers include both departure and powered arrival burns')
   await info(page).getByRole('tab', { name: 'Sources & assumptions', exact: true }).click()
   await expect(info(page).getByRole('link', { name: 'Coplanar direct planetary transfers · analytic reference model', exact: true })).toHaveAttribute('href', /docs\/DATA.md#direct-interplanetary-transfers$/)
   await expect(info(page).locator('a[href$="docs/DATA.md#rss-outer-system-reference-model"]')).toBeVisible()
@@ -232,7 +232,7 @@ test('keeps bundled prices intact while ideal capture opens the new Venus high r
   await expect(circularization).toHaveAttribute('data-assisted', 'true')
   const marker = page.locator('[data-aerobraking-edge="direct:rss:mars:orbit->rss:venus:elliptical"]')
   await expect(marker).toHaveAttribute('data-selected', 'true')
-  await expect(marker.locator('title')).toContainText('Atmospheric options keep this bundled budget unchanged')
+  await expect(marker.locator('title')).toContainText('Atmospheric options leave this complete budget unchanged')
   await page.getByLabel('Show breakdown', { exact: true }).check()
   await expect(rows(page)).toHaveCount(2)
   await expect(rows(page).first()).toHaveAttribute('data-budget-basis', 'model')

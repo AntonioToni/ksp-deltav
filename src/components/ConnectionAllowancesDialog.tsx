@@ -66,12 +66,12 @@ function AllowancesContent({ pack, plan, onApply, onClose, headingId, descriptio
     </DialogTitle>
     <Box id={descriptionId} sx={{ px: 1.5, pb: 1, flexShrink: 0 }}>
       <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>
-        These links have no complete published budget. Forward and Reverse follow the endpoints below independently of the mission mode. Enter your whole maneuver allowance; blank is unavailable, and zero is your assumption.
+        These links lack a complete Delta-V figure. Enter your full budget for each arrow. Forward and Reverse keep their shown directions when mission mode changes. Blank leaves a direction unavailable; 0 assumes no Delta-V is needed.
       </Typography>
     </Box>
     <DialogContent sx={{ px: 1.5, pt: .5, pb: 1, minWidth: 0, minHeight: 0, overflowY: 'auto' }}>
       {connections.length === 0 && <Typography sx={{ p: 1.25, border: '1px dashed', borderColor: 'divider', borderRadius: 1, fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>
-        This pack has no unpriced links.
+        This pack has no links that need a user-entered Delta-V budget.
       </Typography>}
       <Box component="ul" aria-label="Unpriced link allowances" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>
         {connections.map((connection, index) => {
@@ -90,7 +90,7 @@ function AllowancesContent({ pack, plan, onApply, onClose, headingId, descriptio
                 const journey = direction === 'forward' ? `${from} → ${to}` : `${to} → ${from}`
                 return <Box key={direction} sx={{ minWidth: 0 }}>
                   <TextField fullWidth size="small" type="number" label={label} value={text} error={invalid}
-                    onChange={event => update(connection.id, direction, event.target.value)} placeholder="Unpriced"
+                    onChange={event => update(connection.id, direction, event.target.value)} placeholder="Not set"
                     slotProps={{
                       htmlInput: { 'aria-label': `${label} allowance for ${connection.label}`, min: 0, max: 1_000_000, step: 'any' },
                       input: { endAdornment: <InputAdornment position="end"><Typography sx={{ fontSize: 10 }}>m/s</Typography></InputAdornment> },
@@ -107,7 +107,7 @@ function AllowancesContent({ pack, plan, onApply, onClose, headingId, descriptio
     </DialogContent>
     <Box sx={{ px: 1.5, py: .75, minWidth: 0, flexShrink: 0, borderTop: '1px solid', borderColor: 'divider', bgcolor: '#080f2135' }}>
       <Typography role="status" sx={{ fontSize: 11, lineHeight: 1.4, color: valid ? 'text.secondary' : 'secondary.main' }}>
-        {valid ? <><Box component="span" data-testid="link-allowance-count">{enteredCount}</Box> of {connections.length * 2} directions entered. Blank directions remain unavailable.</> : 'Fix invalid allowances before applying.'}
+        {valid ? <><Box component="span" data-testid="link-allowance-count">{enteredCount}</Box> of {connections.length * 2} directions entered. Blank directions remain unavailable.</> : 'Correct the highlighted values before choosing Apply.'}
       </Typography>
     </Box>
     <DialogActions sx={{ px: 1.5, py: .75, gap: .5, flexShrink: 0 }}>

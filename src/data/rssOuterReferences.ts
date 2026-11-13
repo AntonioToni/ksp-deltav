@@ -26,11 +26,11 @@ export const rssOuterOrbitReferences: readonly RssOrbitReference[] = rssPhysical
   }))
 
 const assumptions = [
-  'Analytic RSS outer-system reference estimate from pinned official physical and orbital constants. Each local maneuver is rounded upward to a whole m/s.',
-  'Modern parking altitudes are explicit planner choices above the configured atmosphere, not altitudes or budgets from the historical community map. Rings, terrain, non-spherical gravity, third-body and binary motion, launch windows, eccentric trajectories, finite-thrust losses, and vehicle performance are not modeled.',
-  'Each outer high ellipse has periapsis at the selected low-orbit radius and apoapsis radius 0.5 × the nominal sphere of influence. The original map high-orbit increments are not reused to infer these states.',
-  'Moon transfers use a nominal prograde zero-inclination parent-centered RSS orbital reference plane, not the parent equator. The configured moon inclination determines relative arrival speed at an assumed orbital node, including retrograde Triton. Moon orbits are circularized at their configured semi-major axes.',
-  'Parking-plane orientation, the alignment between successive legs, and encounter dates are unconstrained. These chained reference budgets are not a propagated trajectory or a gravity-assist solution. Reverse edges reuse the same nominal costs.',
+  'Calculated outer-system estimates from official RSS body and orbit data at the linked revision. Each local maneuver is rounded up to a whole m/s.',
+  'The planner chooses parking heights above the configured atmospheres, rather than reusing the older map heights and costs. Rings, terrain, uneven gravity, gravity and motion from additional or binary bodies, launch windows, eccentric paths, real engine burns, and craft performance are not simulated.',
+  'Each high ellipse comes down to the selected low orbit and reaches half the nominal sphere-of-influence radius from the body\'s center. Its shape is chosen directly, instead of inferred from old map burn figures.',
+  'Moon transfers use the RSS reference plane around the parent body, not its equator. Approach speed includes each moon\'s configured tilt where the orbital planes are assumed to cross, including Triton\'s backward orbit. Moon paths are treated as circles at their source orbital distances.',
+  'The planner does not choose parking-orbit orientation, align successive legs, or choose encounter dates. Adding these reference budgets does not simulate a flight or solve a gravity assist. Return directions reuse the same reference costs.',
 ]
 
 /** Replace incompatible historical outer-system orbital references coherently. */
@@ -42,14 +42,14 @@ export function withRssOuterReferences(pack: PlanetPack): PlanetPack {
 
   // Atmospheric launch/landing cannot be recalculated from two-body constants.
   // Retain these explicitly uncalibrated allowances, with their map provenance.
-  const surfaceNote = 'Historical atmospheric surface allowance retained at the new 150 km planner parking reference; it is not recalibrated for this altitude or a vehicle, is not a verified launch/landing budget, and is not an upper bound.'
+  const surfaceNote = 'Uses an older atmospheric launch/landing allowance with the new 150 km parking orbit. It has not been recalculated for that height or your craft, and is not a verified cost or a guaranteed maximum.'
   for (const edge of result.maneuvers) {
     if (['rss:pluto:surface', 'rss:triton:surface'].includes(edge.from)
       || ['rss:pluto:surface', 'rss:triton:surface'].includes(edge.to)) {
       if (!edge.assumptions.includes(surfaceNote)) edge.assumptions.push(surfaceNote)
     }
   }
-  const note = 'RSS outer-system orbital branches use explicit modern parking references: Saturn 2500 km, Uranus 2000 km, Neptune 1500 km, Pluto 150 km, and Triton 150 km. Their affected Earth-transfer, capture, high-orbit, and moon-transfer budgets are recalculated from pinned physical constants, replacing the historical orbital costs. Other map figures retain their source provenance; Pluto and Triton surface allowances remain uncalibrated historical placeholders.'
+  const note = 'Outer-system parking heights are Saturn 2500 km, Uranus 2000 km, Neptune 1500 km, Pluto 150 km, and Triton 150 km. Related Earth transfers, orbit-entry burns, high orbits, and moon transfers are recalculated from the linked physical data. Other figures still come from the map; Pluto and Triton surface allowances remain older, unverified placeholders.'
   if (!result.assumptions.includes(note)) result.assumptions.push(note)
   return result
 }

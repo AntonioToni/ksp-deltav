@@ -25,16 +25,16 @@ export const rssInnerOrbitReferences: readonly RssOrbitReference[] = rssPhysical
   }))
 
 const assumptions = [
-  'Analytic RSS inner-system high-orbit reference estimate from pinned official physical and orbital constants. Each local maneuver is rounded upward to a whole m/s.',
-  'The compatible map low-orbit altitudes are retained: Mercury 100 km, Venus 400 km, Mars 200 km, and Ceres 20 km. Each new high ellipse has periapsis at that low radius and apoapsis radius 0.5 × the nominal sphere of influence. Historical low-to-high increments are replaced, not clamped into bound orbits.',
-  'Affected Earth-transfer, local capture/circularization, and Mars-moon transfer/capture budgets are recalculated together. Surface allowances retain their map provenance; launch vehicles and atmospheric entry are not simulated.',
-  'Mars-moon transfers use a nominal prograde zero-inclination parent-centered RSS orbital reference plane, not the Martian equator. The configured moon inclination determines relative arrival speed at an assumed orbital node; moon orbits are circularized at their configured semi-major axes.',
-  'Parking-plane orientation, the alignment between successive legs, and encounter dates are unconstrained. Eccentric trajectories, optimized plane changes, finite sphere-of-influence matching, third-body effects, finite thrust, and vehicle losses are not solved. Reverse edges reuse the same nominal costs.',
+  'Calculated inner-system high-orbit estimates from official RSS body and orbit data at the linked revision. Each local maneuver is rounded up to a whole m/s.',
+  'Keeps compatible map low-orbit heights: Mercury 100 km, Venus 400 km, Mars 200 km, and Ceres 20 km. Each high ellipse comes down to that low orbit and reaches half the nominal sphere-of-influence radius from the body\'s center. These new ellipses replace the old low-to-high figures.',
+  'Related Earth transfers, orbit-entry and circularization burns, and Mars-moon transfers are recalculated together. Surface allowances still come from the map; launch performance and atmospheric entry are not simulated.',
+  'Mars-moon transfers use the RSS reference plane around Mars, not the Martian equator. Approach speed includes each moon\'s configured tilt where the orbital planes are assumed to cross. The moon paths are treated as circles at their source orbital distances.',
+  'The planner does not choose parking-orbit orientation, align successive legs, or choose encounter dates. Eccentric paths, optimized plane changes, exact entry and exit through spheres of influence, gravity from additional bodies, real engine burns, and craft losses are not calculated. Return directions reuse the same reference costs.',
 ]
 
 export function withRssInnerReferences(pack: PlanetPack): PlanetPack {
   const result = applyRssOrbitReferences(pack, rssInnerOrbitReferences, rssInnerSource, assumptions)
-  const note = 'Mercury, Venus, Mars, and Ceres use explicit bound high-orbit references with apoapsis radius 0.5 × SOI and periapsis at their retained low-orbit radius. Their Earth-transfer and local orbital budgets are recalculated, including Phobos and Deimos transfer/capture. Direct transfers can now depart from or arrive at every supported non-Earth planet’s low and high orbit. Surface allowances and low-orbit altitudes retain their original provenance.'
+  const note = 'Mercury, Venus, Mars, and Ceres use chosen high ellipses. The closest point is at their existing low-orbit height; the farthest point is at half the sphere-of-influence radius from the body\'s center. Their Earth-transfer and local orbit budgets are recalculated, including Phobos and Deimos transfers and orbit entry. Direct transfers support low and high orbits at every supported planet other than Earth. Surface allowances and low-orbit heights still come from their original sources.'
   if (!result.assumptions.includes(note)) result.assumptions.push(note)
   return result
 }

@@ -62,7 +62,7 @@ export function applyRssOrbitReferences(
       throw new Error(`Invalid RSS modeled high reference: ${bodyId}.`)
     }
     const notes = [
-      `${nameOf(bodyId)} reference: circular parking altitude ${reference.parkingAltitudeM / 1000} km; high periapsis radius ${radius} m and apoapsis radius ${apoapsis} m from the center.`,
+      `${nameOf(bodyId)} reference: circular parking height ${reference.parkingAltitudeM / 1000} km. The high ellipse's closest and farthest points are ${radius} m and ${apoapsis} m from the body center.`,
       `Physical/orbital source: ${rssConfigBase}/${reference.configPath}`,
     ]
     const transfer = hohmannTransfer(rssCentralMu, earth.semiMajorAxisM, reference.semiMajorAxisM)
@@ -71,12 +71,12 @@ export function applyRssOrbitReferences(
     if (increment < 0) throw new Error(`RSS Earth reference exceeds modeled departure: ${bodyId}.`)
     replacePair('rss:earth:encounter', nodeId(bodyId, 'encounter'), increment, [
       ...notes,
-      `Coplanar circularized Earth-to-${nameOf(bodyId)} stellar Hohmann reference. The ${increment} m/s rail increment plus the separately charged ${earthEscape} m/s Earth escape equals the rounded complete Earth parking-orbit burn ${Math.ceil(earthBurn)} m/s.`,
+      `Earth-to-${nameOf(bodyId)} Hohmann transfer using circular orbits in one plane around the Sun. The extra ${increment} m/s plus the separately listed ${earthEscape} m/s Earth escape adds up to ${Math.ceil(earthBurn)} m/s from Earth parking orbit, rounded up.`,
     ])
     const split = splitCapture(mu, radius, apoapsis, transfer.arrivalDeltaV)
     replacePair(nodeId(bodyId, 'orbit'), nodeId(bodyId, 'elliptical'), split.circularization, notes)
     replacePair(nodeId(bodyId, 'elliptical'), nodeId(bodyId, 'encounter'), split.captureToEllipse, [
-      ...notes, `Earth-reference hyperbolic arrival speed: ${transfer.arrivalDeltaV.toFixed(6)} m/s.`,
+      ...notes, `Assumed excess approach speed for the Earth transfer: ${transfer.arrivalDeltaV.toFixed(6)} m/s.`,
     ])
 
     const highPeriapsisSpeed = Math.sqrt(mu / radius) * Math.sqrt(2 / (1 + radius / apoapsis))
@@ -91,12 +91,12 @@ export function applyRssOrbitReferences(
       const arrivalSpeed = hohmannArrivalSpeed(mu, radius, moon.semiMajorAxisM, moon.inclinationDeg!)
       const moonNotes = [
         ...notes,
-        `${nameOf(moon.bodyId)} circularized orbital radius ${moon.semiMajorAxisM} m; nominal inclination ${moon.inclinationDeg}° to the parent-centered reference plane. Relative encounter speed: ${arrivalSpeed.toFixed(6)} m/s.`,
+        `${nameOf(moon.bodyId)} uses a circular orbit of radius ${moon.semiMajorAxisM} m, tilted ${moon.inclinationDeg}° to the reference plane around its parent. Assumed relative approach speed: ${arrivalSpeed.toFixed(6)} m/s.`,
         `Moon parking altitude: ${nodeById.get(nodeId(moon.bodyId, 'orbit'))!.altitudeKm} km. Physical/orbital source: ${rssConfigBase}/${moon.configPath}`,
       ]
       replacePair(nodeId(bodyId, 'elliptical'), nodeId(moon.bodyId, 'encounter'), departure, [
         ...moonNotes,
-        `Periapsis impulse between the stated high ellipse and the moon-transfer ellipse: |${highPeriapsisSpeed.toFixed(6)} − ${transferPeriapsisSpeed.toFixed(6)}| m/s. Local moon capture is charged separately.`,
+        `Burn at the orbit's closest point to switch from the stated high ellipse to the moon-transfer ellipse: |${highPeriapsisSpeed.toFixed(6)} − ${transferPeriapsisSpeed.toFixed(6)}| m/s. Entering orbit at the moon is listed separately.`,
       ])
       replacePair(nodeId(moon.bodyId, 'encounter'), nodeId(moon.bodyId, 'orbit'),
         parkingOrbitBurn(moon.gravitationalParameter, moonRadius, arrivalSpeed), moonNotes)
@@ -106,7 +106,7 @@ export function applyRssOrbitReferences(
   for (const dataSource of [rssPhysicsSource, source]) {
     if (!result.sources.some(existing => existing.id === dataSource.id)) result.sources.push({ ...dataSource })
   }
-  const units = 'All budgets are in m/s. Retained community-map figures are converted from its km/s labels; modeled orbital budgets are calculated separately and identify their model source. The mirrored diagram has no visible version/date or authorship credit; its repository revision is pinned without claiming official RSS calibration.'
+  const units = 'All budgets are in m/s. Community-map figures are converted from km/s; recalculated orbit budgets list their separate calculation source. The copied map has no visible version, date, or author credit. Its exact repository revision is linked so the figures can be checked, without claiming they are official RSS calculations.'
   if (!result.assumptions.includes(units)) result.assumptions.unshift(units)
   return result
 }

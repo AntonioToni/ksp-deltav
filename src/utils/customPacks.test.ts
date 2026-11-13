@@ -289,7 +289,7 @@ describe('custom planet pack JSON', () => {
     custom.transferHubBodyId = 'stock:dres'
     custom.nodes = custom.nodes.filter(node => node.id !== 'stock:dres:orbit')
     custom.maneuvers = custom.maneuvers.filter(edge => edge.from !== 'stock:dres:orbit' && edge.to !== 'stock:dres:orbit')
-    expect(errors(custom).join(' ')).toContain('low-orbit routing state')
+    expect(errors(custom).join(' ')).toContain('low-orbit map point')
     delete custom.transferHubBodyId
     expect(parse(custom).status).toBe('success')
   })

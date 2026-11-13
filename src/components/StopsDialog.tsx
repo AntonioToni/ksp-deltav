@@ -51,7 +51,7 @@ function StopsContent({ pack, waypointIds, startId, endId, onChange, onSelectOnM
 
   return <DialogContent sx={{ px: 1.5, pt: .5, pb: 1, overflowY: 'auto' }}>
     <Typography id="mission-stops-description" sx={{ fontSize: 12, lineHeight: 1.35, color: 'text.secondary', mb: .75 }}>
-      Stops are visited in outbound order. Return journeys visit them in reverse.
+      Visit stops in the listed order. Return journeys visit them in reverse.
     </Typography>
     <Typography title={`${nodes.get(startId ?? '')?.label ?? 'Select origin'} → ${nodes.get(endId ?? '')?.label ?? 'Select destination'}`} sx={{ fontSize: 11, lineHeight: 1.4, mb: 1, color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
       <Box component="span" sx={{ color: 'primary.main' }}>{nodes.get(startId ?? '')?.label ?? 'Select origin'}</Box>
@@ -61,11 +61,11 @@ function StopsContent({ pack, waypointIds, startId, endId, onChange, onSelectOnM
     <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1, [landscape]: { gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: 1.5, alignItems: 'start' } }}>
       <Box sx={{ minWidth: 0 }}>
         {waypointIds.length === 0 && <Typography sx={{ px: 1, py: 1.5, fontSize: 12, color: 'text.secondary', border: '1px dashed', borderColor: 'divider', borderRadius: 1 }}>
-          Add up to four intermediate states.
+          Add up to four stops between origin and destination.
         </Typography>}
         <Box component="ol" aria-label="Mission stops" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: .5 }}>
           {waypointIds.map((id, index) => {
-            const label = nodes.get(id)?.label ?? 'Unavailable state'
+            const label = nodes.get(id)?.label ?? 'Unavailable stop'
             return <Box component="li" key={index} ref={element => { rowRefs.current[index] = element instanceof HTMLLIElement ? element : null }} tabIndex={-1} aria-label={`Stop ${index + 1}: ${label}`} sx={{ minHeight: 40, display: 'grid', gridTemplateColumns: '22px minmax(0, 1fr) auto', alignItems: 'center', columnGap: .75, px: .5, py: .25, border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: '#ffffff03', '&:focus-visible': { outline: '2px solid #b3e3ff', outlineOffset: 1 } }}>
               <Box component="span" sx={{ width: 22, height: 22, display: 'grid', placeItems: 'center', borderRadius: '50%', bgcolor: '#92d5c61a', color: '#a5e4d5', fontSize: 12, fontWeight: 700 }}>{index + 1}</Box>
               <Typography title={label} sx={{ fontSize: 12, lineHeight: 1.2, overflowWrap: 'anywhere' }}>{label}</Typography>

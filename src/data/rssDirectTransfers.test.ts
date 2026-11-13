@@ -51,7 +51,7 @@ describe('RSS direct planetary transfer references', () => {
       expect(edge).toMatchObject({ kind: 'transfer', directTransfer: true })
       expect(from.bodyId).not.toBe(to.bodyId)
       expect([from.bodyId, to.bodyId]).not.toContain('rss:earth')
-      expect(edge.assumptions.join(' ')).toContain('powered departure and capture')
+      expect(edge.assumptions.join(' ')).toContain('Departure and orbit-entry burns')
       for (const node of [from, to]) {
         const reference = endpoint(node)
         expect(reference.radius).toBeGreaterThan(reference.physics.radiusM + reference.physics.atmosphereHeightM)

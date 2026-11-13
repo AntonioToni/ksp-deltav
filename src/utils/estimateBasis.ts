@@ -33,7 +33,7 @@ export function describeManeuverBasis(edge: ManeuverEdge, pack: PlanetPack, opti
   })
 
   if (options.allowanceEdgeIds?.has(edge.id)) {
-    return basis('user', 'Your allowance', 'Your complete directional link allowance. The linked reference describes the connection, not a verified fuel cost.')
+    return basis('user', 'Your allowance', 'The full Delta-V budget you entered for this connection in this direction. The source describes the connection but does not supply its cost.')
   }
 
   const from = pack.nodes.find(node => node.id === edge.from)
@@ -43,25 +43,25 @@ export function describeManeuverBasis(edge: ManeuverEdge, pack: PlanetPack, opti
   const choice = options.atmosphericPlan?.find(choice => choice.bodyId === to?.bodyId)
   const eligible = standalone && choice && getAerobrakingEdges(pack).some(candidate => candidate.id === edge.id)
   if (eligible && edge.kind === 'descent' && choice.landing) {
-    return basis('user', 'Your allowance', 'Your powered landing allowance for this descent, including an explicit zero or a value equal to the reference. Entry feasibility is not calculated.')
+    return basis('user', 'Your allowance', 'The engine-burn budget you entered for this landing. Safe atmospheric entry and your vehicle’s landing performance are not calculated.')
   }
   if (eligible && edge.kind === 'capture' && choice.capture) {
-    return basis('ideal', 'Ideal capture', 'An assumed 0 m/s powered capture and circularization lower bound. Entry feasibility and cleanup burns are not calculated.')
+    return basis('ideal', 'Ideal capture', 'Assumes the atmosphere replaces this capture burn with 0 m/s of engine burns. Safe entry and later correction burns are not calculated.')
   }
 
   if (options.customPack) {
-    return basis('imported', 'Imported budget', 'A cost supplied by the imported pack author. Declared source and model metadata are not independent verification.')
+    return basis('imported', 'Imported budget', 'A Delta-V figure supplied by the imported pack’s author. The planner has not independently checked their figures or sources.')
   }
   if (standalone && edge.kind === 'descent' && destination?.hasAtmosphere) {
-    return basis('placeholder', 'Landing placeholder', 'The supplied ascent-sized powered-descent allowance. This is not a verified landing calculation or upper bound.')
+    return basis('placeholder', 'Landing placeholder', 'This landing budget reuses the source’s launch-sized figure. Your craft may need more or less; it is not a guaranteed maximum.')
   }
   if (source?.budgetType === 'model') {
-    return basis('model', 'Analytic model', 'A schematic analytical estimate using the declared model and reference conditions. It is not a dated trajectory or vehicle simulation.')
+    return basis('model', 'Calculated estimate', 'Calculated from the stated model and starting conditions. Flight dates and your craft’s performance are not simulated.')
   }
   if (source?.budgetType === 'reference') {
-    return basis('reference', 'Reference map', 'A published map planning figure at its stated reference conditions. It is not a verified trajectory for a particular flight.')
+    return basis('reference', 'Reference map', 'A figure from the linked Delta-V map, using its stated orbits and assumptions. Actual burns depend on your flight and vehicle.')
   }
-  return basis('imported', 'Pack budget', 'A cost supplied by this pack without a declared reference-map or analytical-model basis.')
+  return basis('imported', 'Pack budget', 'A Delta-V figure supplied by this pack without identifying it as a map figure or calculated estimate.')
 }
 
 /** Group the actual flown legs; repeated visits and explicit zero costs count. */

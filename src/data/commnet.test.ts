@@ -113,7 +113,7 @@ describe('CommNet reference catalog', () => {
     expect(calculateRelayPlan(input).status).toBe('success')
     const boundary = calculateRelayPlan({ ...input, altitudeM: effectiveSoiM - preset.radiusM })
     expect(boundary.status).toBe('invalid')
-    if (boundary.status === 'invalid') expect(boundary.errors).toContain('The circular orbit must remain inside the body’s sphere of influence.')
+    if (boundary.status === 'invalid') expect(boundary.errors).toContain('Lower the relay orbit so it stays inside the body’s sphere of influence.')
   })
 
   it('never substitutes a familiar name or a changed hierarchy for missing custom physical data', () => {

@@ -67,7 +67,7 @@ test('defaults base RSS to scaled stock parts while keeping the conditional DSN 
   await expect(metric(page, 'relay-relay-power')).toHaveText('100 Mm')
   await expect(metric(page, 'relay-client-power')).toHaveText('10 Mm')
   await expect(metric(page, 'relay-dsn-power')).toHaveText('250 Gm')
-  await expect(planner(page).getByText(/RealAntennas and RemoteTech are not modeled/)).toBeVisible()
+  await expect(planner(page).getByText(/RealAntennas and RemoteTech use different radio systems/)).toBeVisible()
   // sqrt(100,000,000 × 250,000,000,000), with no additional range multiplier.
   await expect(metric(page, 'relay-dsn-range')).toHaveText('5 Gm')
   if (testInfo.project.name === 'desktop') await page.screenshot({ path: '/tmp/rss-radio-desktop.png', animations: 'disabled' })
@@ -91,7 +91,7 @@ test('defaults base RSS to scaled stock parts while keeping the conditional DSN 
   await planner(page).getByRole('tab', { name: 'Body data', exact: true }).click()
   await expect(field(page, 'Range multiplier')).toHaveValue('1')
   await choose(page, 'Occlusion', 'RSS default (1.0)')
-  await expect(planner(page).getByText(/Occlusion uses 1\.00 × the body radius \(RSS default\)/)).toBeVisible()
+  await expect(planner(page).getByText(/Signal blocking uses 1\.00 × the body radius \(RSS default\)/)).toBeVisible()
 })
 
 test('recalculates a saved array once per profile and preserves it when changing body', async ({ page }) => {
@@ -136,7 +136,7 @@ test('treats all custom powers as final effective values across radio profiles',
   await field(page, 'Relay power').fill('100000000')
   await field(page, 'Surface power').fill('10000000')
   await field(page, 'DSN power').fill('250000000000')
-  await expect(planner(page).getByText(/Custom values are final effective powers/)).toBeVisible()
+  await expect(planner(page).getByText(/The radio setup does not multiply custom values again/)).toBeVisible()
   for (const profile of ['Stock CommNet', 'RSS + CustomBarnKit', rssRadio]) {
     await choose(page, 'Radio setup', profile)
     await expect(field(page, 'Relay power')).toHaveValue('100000000')

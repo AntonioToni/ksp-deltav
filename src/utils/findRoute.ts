@@ -36,7 +36,7 @@ const stateKey = ({ nodeId, pendingParkingBodyId, nextStopIndex }: SearchState) 
  */
 export function findLowestCostPath(graph: PlannerGraph, start: string, goal: string, options: RouteSearchOptions = {}): RouteResult {
   if (!graph.nodes.has(start) || !graph.nodes.has(goal)) {
-    return { status: 'invalid', message: 'Choose a start and destination from the active planet pack.' }
+    return { status: 'invalid', message: 'Choose an origin and destination from the selected planet pack.' }
   }
   const result = searchOrderedPath(graph, [start, goal], options, true)
   // Keep this public API's existing result shape and overflow behavior.
@@ -55,23 +55,23 @@ function searchOrderedPath(graph: PlannerGraph, itinerary: readonly string[], op
     status: 'invalid', message, reachedIndex: 0, partialRoute: null, stageLegIndices: [],
   })
   if (!Array.isArray(itinerary) || itinerary.length === 0 || itinerary.some(id => !graph.nodes.has(id))) {
-    return invalid('Choose every mission state from the active planet pack.')
+    return invalid('Choose every mission point from the selected planet pack.')
   }
   const start = itinerary[0]!
   // Defend callers constructing a graph directly, rather than using buildGraph.
   for (const [nodeId, node] of graph.nodes) {
     if (!node || node.id !== nodeId || !nodeKinds.has(node.kind) || typeof node.bodyId !== 'string' || node.bodyId.trim().length === 0 || !graph.adjacency.has(nodeId)) {
-      return invalid('The routing graph contains invalid node metadata.')
+      return invalid('The selected planet pack contains invalid map-point data.')
     }
   }
   for (const [nodeId, edges] of graph.adjacency) {
     if (!graph.nodes.has(nodeId) || !Array.isArray(edges) || edges.some(edge => !edge || edge.from !== nodeId || !graph.nodes.has(edge.to) || !Number.isFinite(edge.deltaV) || edge.deltaV < 0)) {
-      return invalid('The routing graph contains invalid endpoints or maneuver costs.')
+      return invalid('The selected planet pack contains invalid connections or Delta-V values.')
     }
   }
   const pendingParkingBodyId = options.pendingParkingBodyId ?? null
   if (pendingParkingBodyId !== null && (typeof pendingParkingBodyId !== 'string' || ![...graph.nodes.values()].some(node => node.bodyId === pendingParkingBodyId))) {
-    return invalid('The arrival context references an unknown body.')
+    return invalid('The route refers to a body missing from this planet pack.')
   }
   // A cheap scalar orbit budget does not establish the timing/orientation of
   // an extra planetary or moon layover. Prefer the requested stage's bodies
@@ -238,11 +238,11 @@ function searchOrderedPath(graph: PlannerGraph, itinerary: readonly string[], op
   const totalDeltaV = goalKey === undefined ? undefined : distances.get(goalKey)
   if (goalKey === undefined || totalDeltaV === undefined) {
     return overflow
-      ? fail('invalid', 'The route cost exceeds the supported numeric range.')
-      : fail('unreachable', 'No route is available between these states in the active dataset.')
+      ? fail('invalid', 'The total Delta-V is too large for the planner to calculate.')
+      : fail('unreachable', 'The selected planet pack cannot calculate a route between these map points.')
   }
   const route = reconstruct(goalKey)
   return route
     ? { ...route, stageLegIndices: boundaries(route) }
-    : fail('unreachable', 'No complete route is available in the active dataset.')
+    : fail('unreachable', 'The selected planet pack cannot calculate a complete route through the selected points.')
 }

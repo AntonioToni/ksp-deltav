@@ -149,10 +149,10 @@ test('retains inherited moon transfers in both Kcalbeloh all-systems views', asy
 
 test('identifies remaining reference parking stops and keeps co-orbital exclusions explicit', async ({ page }) => {
   await plan(page, 'stock:mun:orbit', 'stock:ike:orbit')
-  await expect(page.getByTestId('route-status')).toContainText('Reference route via Kerbin low orbit')
+  await expect(page.getByTestId('route-status')).toContainText('Map route via Kerbin low orbit')
   await button(page, 'Budget assumptions').click()
   const info = page.getByRole('dialog', { name: 'About these estimates', exact: true })
-  await expect(info).toContainText('not a physical requirement for every possible flight')
+  await expect(info).toContainText('other flight plans may avoid it')
   await info.getByRole('button', { name: 'Close', exact: true }).click()
   await button(page, 'Reset mission').click()
   await button(page, 'OPM').click()

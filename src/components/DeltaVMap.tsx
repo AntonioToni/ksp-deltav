@@ -106,7 +106,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
     return region ? [region] : []
   }).filter((region, index, all) => region.id !== all[index - 1]?.id) : []
   const regionSummary = routeRegions.length ? `Route: ${routeRegions.map(region => region.label).join(' → ')}`
-    : regionId === 'all' ? 'Complete mission map · Choose a regional view for a closer look.' : 'Views show one part of the complete mission map.'
+    : regionId === 'all' ? 'All systems · Choose a system for a closer look.' : 'Routes use the whole map, whichever view you choose.'
   const inspected = inspectedId ? visiblePack.nodes.find(node => node.id === inspectedId) : undefined
   const inspectedStops = inspected ? waypointIndexes.get(inspected.id) : undefined
 
@@ -132,8 +132,8 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   }
 
   function adjustmentDescription(adjustment: AtmosphericAdjustment) {
-    const assumption = adjustment.kind === 'capture' ? 'ideal atmospheric capture' : 'user-supplied landing allowance'
-    return `${adjustment.deltaV.toLocaleString()} m/s · ${assumption} (reference ${adjustment.originalDeltaV.toLocaleString()} m/s)`
+    const assumption = adjustment.kind === 'capture' ? 'capture fully handled by the atmosphere' : 'your powered-landing allowance'
+    return `${adjustment.deltaV.toLocaleString()} m/s · ${assumption} (before this choice: ${adjustment.originalDeltaV.toLocaleString()} m/s)`
   }
 
   function edgeTitle(edge: ManeuverEdge) {
@@ -179,6 +179,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           },
         }}
       >
+        <desc>Select a surface, orbit or flyby point for your origin or destination. Lines show maneuvers between those points. Bright lines mark your route; triangular markers show where an atmosphere may help.</desc>
         <defs>
           <linearGradient id={`${prefix}-node-fill`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#303748" />
@@ -197,7 +198,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           const from = nodeById.get(connection.from)
           const to = nodeById.get(connection.to)
           return from && to ? <path key={`unpriced-${connection.id}`} d={pathFromPoints(connectionPoints(from, to, layout, visiblePack))} fill="none" stroke="#ddbf91" strokeWidth={layout.presentation === 'overview' ? 5 : mode === 'portrait' ? 6 : 10} strokeOpacity={layout.presentation === 'overview' ? .45 : .6} strokeDasharray="14 12" strokeLinejoin="round" strokeLinecap="round" data-unpriced-id={connection.id}>
-            <title>{`Unpriced: ${connection.label}. Set link allowances to include this connection in a mission.`}</title>
+            <title>{`Delta-V not supplied: ${connection.label}. Open Link allowances to add your estimate.`}</title>
           </path> : null
         })}
 
@@ -260,9 +261,9 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           const selected = routeEdges.has(edge.id)
           const adjustment = adjustments.get(edge.id)
           const description = adjustment ? adjustmentDescription(adjustment) : undefined
-          const tooltip = description ? `${label}. ${description}; this is a planning assumption, not a trajectory calculation.`
-            : edge.directTransfer ? `${label}. This complete direct-transfer estimate includes departure and arrival burns. Atmospheric options keep this bundled budget unchanged.`
-            : adjustments.size > 0 && edge.kind === 'transfer' ? `${label}. This combined transfer keeps its reference cost; atmospheric savings are not separated from its other maneuvers.`
+          const tooltip = description ? `${label}. ${description}; entry safety and the flight path are not calculated.`
+            : edge.directTransfer ? `${label}. This direct-transfer estimate includes departure and arrival burns. Atmospheric options leave this complete budget unchanged.`
+            : adjustments.size > 0 && edge.kind === 'transfer' ? `${label}. This combined transfer keeps its original cost; its atmospheric savings cannot be changed separately.`
               : `${label}. ${edge.kind === 'descent' ? 'Atmospheric entry or landing assistance' : 'Aerocapture or aerobraking'}; savings are not included in the budget.`
           return <g key={`aero-${edge.id}`} role="img" aria-label={label}
             aria-description={description} data-assisted={adjustment ? 'true' : undefined}

@@ -140,8 +140,8 @@ export default function App() {
     edge.kind === 'transfer' && nodesById.get(edge.from)?.kind === 'encounter' && nodesById.get(edge.to)?.kind === 'encounter',
   ).length > 1)
   const layoverNotice = referenceStops.length > 0
-    ? `Reference route via ${referenceStops.map(node => node.label).join(', ')}; other transfers may use less Δv.`
-    : isCustomPack || pack.mapRegions ? 'Includes intermediate parking orbits.' : `Includes a ${hubName} parking-orbit layover.`
+    ? `Map route via ${referenceStops.map(node => node.label).join(', ')}; other transfers may use less Δv.`
+    : isCustomPack || pack.mapRegions ? 'Includes intermediate transfers.' : `Includes an intermediate transfer via ${hubName}.`
   const hasUnpricedLinks = (pack.unpricedConnections?.length ?? 0) > 0
   const needsLinkAllowances = useMemo(() => hasUnpricedLinks && route?.status === 'unreachable'
     && startId !== null && endId !== null
@@ -154,7 +154,7 @@ export default function App() {
   const unavailableInterstellarNotice = activeConfiguration?.settings?.wormholes === false
     && route?.status === 'unreachable' && itineraryRegions.includes('kerbol')
     && itineraryRegions.some(region => region !== undefined && region !== 'kerbol')
-    ? 'Wormholes are disabled. No interstellar route is supplied between Kerbol and Kcalbeloh.' : null
+    ? 'Wormholes are disabled. This pack has no route between Kerbol and Kcalbeloh without them.' : null
   const allowanceEdgeIds = useMemo(() => new Set(allowanceEdges.map(edge => edge.id)), [allowanceEdges])
   const usesLinkAllowances = route?.status === 'success' && route.legs.some(({ edge }) => allowanceEdgeIds.has(edge.id))
   const basisOptions = useMemo(() => ({ customPack: isCustomPack, allowanceEdgeIds, atmosphericPlan }), [isCustomPack, allowanceEdgeIds, atmosphericPlan])
@@ -163,13 +163,13 @@ export default function App() {
   const estimateNotices = [
     ...(unavailableInterstellarNotice ? [unavailableInterstellarNotice] : []),
     ...(hasLayover ? [layoverNotice] : []),
-    ...(referenceStops.length > 0 ? ['These parent parking stops belong to the supplied reference itinerary. Direct moon escapes across different parent systems, co-orbital rendezvous, and retrograde sibling transfers may require a different model. A parking stop here is not a physical requirement for every possible flight.'] : []),
+    ...(referenceStops.length > 0 ? ['The route uses the orbit stops available in this pack. Direct transfers between moons of different planets, meetings on the same orbital path, or transfers between moons orbiting in opposite directions can need a different calculation. An orbit stop shown here is part of this estimate; other flight plans may avoid it.'] : []),
     ...(directTransferCount > 0 ? [
       isCustomPack
-        ? 'Direct transfers use complete pair budgets supplied by the pack author. Atmospheric options keep these bundled transfer budgets unchanged.'
-        : 'Direct transfers are analytic reference estimates. Each complete pair includes departure and powered arrival. The listed model source explains its orbital and plane assumptions; atmospheric options keep these bundled transfer budgets unchanged.',
+        ? 'The pack author supplies the full departure-and-arrival cost for each direct transfer. Atmospheric options leave these complete transfer budgets unchanged.'
+        : 'Calculated direct transfers include both departure and powered arrival burns. Sources & assumptions describes the orbits used. Atmospheric options leave these complete transfer budgets unchanged.',
     ] : []),
-    'Stops retain arrival conditions. Return only starts at the destination; the reserve applies once to the complete selected mission.',
+    'Each stop includes reaching the selected map point, such as a surface or orbit. Return only starts at the destination; the reserve is added once to the full mission.',
   ]
 
   function openInfo(section: EstimateSection) {
@@ -304,18 +304,18 @@ export default function App() {
   }
 
   const personalLanding = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && !allowanceEdgeIds.has(edge.id) && basisByEdge.get(edge.id)?.kind === 'user')
-  const landingNotice = basisGroups.some(group => group.kind === 'placeholder') ? 'Atmospheric landing uses a default Delta-V allowance. Open budget info for details.'
-    : personalLanding ? 'Atmospheric landing includes your powered allowance.' : "Atmospheric landing follows the pack's supplied budget."
+  const landingNotice = basisGroups.some(group => group.kind === 'placeholder') ? 'Atmospheric landing uses a default Delta-V allowance. Set your own in Atmosphere.'
+    : personalLanding ? 'Atmospheric landing uses your powered-landing Delta-V.' : "Atmospheric landing uses the pack's supplied Delta-V."
   const routeFeatures = [
-    ...(directTransferCount > 0 ? [`${directTransferCount} ${isCustomPack ? 'supplied' : 'analytic'} direct transfer${directTransferCount === 1 ? '' : 's'}.`] : []),
-    ...(usesLinkAllowances ? ['Includes user link allowances.'] : []),
+    ...(directTransferCount > 0 ? [`${directTransferCount} ${isCustomPack ? 'pack-supplied' : 'calculated'} direct transfer${directTransferCount === 1 ? '' : 's'}.`] : []),
+    ...(usesLinkAllowances ? ['Includes your link allowances.'] : []),
   ].join(' ')
-  const routeStatus = unavailableInterstellarNotice ?? (needsLinkAllowances ? 'Some route links are unpriced. Open Link allowances to enter your estimates.'
+  const routeStatus = unavailableInterstellarNotice ?? (needsLinkAllowances ? 'Some connections have no Delta-V budget. Open Link allowances to enter your estimates.'
     : route?.status === 'invalid' || route?.status === 'unreachable' ? route.message
     : route?.status === 'success' && route.legs.length === 0 ? 'No maneuvers required.'
       : hasAtmosphericLanding ? `${landingNotice}${routeFeatures ? ` ${routeFeatures}` : ''}${hasLayover ? ` ${layoverNotice}` : ''}`
         : hasLayover ? `${layoverNotice}${routeFeatures ? ` ${routeFeatures}` : ''}`
-          : route?.status === 'success' ? `${route.legs.length} maneuver${route.legs.length === 1 ? '' : 's'} · ${routeFeatures || `Select a state to update your ${selection === 'start' ? 'origin' : 'destination'}.`}`
+          : route?.status === 'success' ? `${route.legs.length} maneuver${route.legs.length === 1 ? '' : 's'} · ${routeFeatures || `Select a map point to update your ${selection === 'start' ? 'origin' : 'destination'}.`}`
             : `Select ${selection === 'start' ? 'an origin' : 'a destination'} on the map.`)
   const status = selection === 'stop' ? `Select stop ${waypointIds.length + 1} on the map. Escape cancels.`
     : returnOnly && route?.status === 'success'
@@ -330,7 +330,7 @@ export default function App() {
           <Typography component="h1" sx={{ minWidth: 0, fontWeight: 700, fontSize: { xs: 14, sm: 16 }, letterSpacing: '-.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>KSP DeltaV Planner</Typography>
         </Stack>
         <Stack direction="row" spacing={{ xs: .5, sm: 1 }} sx={{ alignItems: 'center', minWidth: 0, flexShrink: 0 }}>
-          <Tooltip title="Configure ideal atmospheric capture and landing allowances. Map arrows show potential assistance; bundled transfers keep their reference cost.">
+          <Tooltip title="Set atmospheric capture assumptions and your powered-landing Delta-V. Arrows mark where an atmosphere may help; complete transfer budgets keep their original cost.">
             <Box role="note" aria-label="Aerobraking legend">
             <Button aria-label="Atmospheric assistance" aria-haspopup="dialog" aria-expanded={showAtmosphere} aria-pressed={hasAtmosphericOptions} onClick={() => {
               if (selection === 'stop') setSelection(previousSelection.current)
@@ -348,7 +348,7 @@ export default function App() {
             </Button>
             </Box>
           </Tooltip>
-          <Tooltip title="CommNet relay coverage, deployment, and interplanetary signals">
+          <Tooltip title="Plan relays around a body's equator, deployment burns, and interplanetary antenna links">
             <Button aria-label="CommNet relay planner" aria-haspopup="dialog" aria-expanded={showRelays} onClick={() => {
               if (selection === 'stop') setSelection(previousSelection.current)
               setShowStops(false)
@@ -431,7 +431,7 @@ export default function App() {
                 </Button>
               </Box>
             })}
-            <Tooltip title={!startId || !endId ? 'Choose both endpoints to swap them.' : 'Reverse the endpoints and stop order'}><span style={{ gridColumn: 2, gridRow: 1 }}><IconButton aria-label="Swap origin and destination" disabled={!startId || !endId} onClick={() => { setStartId(endId); setEndId(startId); setWaypointIds(ids => [...ids].reverse()); resetDetails() }} size="small" sx={{ color: startId && endId ? 'primary.main' : 'text.disabled', '&.Mui-disabled': { color: 'text.disabled' } }}><SwapHorizRounded sx={{ fontSize: 20 }} /></IconButton></span></Tooltip>
+            <Tooltip title={!startId || !endId ? 'Choose an origin and destination before swapping.' : 'Swap origin and destination, and reverse the stop order'}><span style={{ gridColumn: 2, gridRow: 1 }}><IconButton aria-label="Swap origin and destination" disabled={!startId || !endId} onClick={() => { setStartId(endId); setEndId(startId); setWaypointIds(ids => [...ids].reverse()); resetDetails() }} size="small" sx={{ color: startId && endId ? 'primary.main' : 'text.disabled', '&.Mui-disabled': { color: 'text.disabled' } }}><SwapHorizRounded sx={{ fontSize: 20 }} /></IconButton></span></Tooltip>
           </Box>
 
           <Box sx={{ gridArea: 'reserve', minWidth: 0, px: .5 }}>
@@ -440,7 +440,7 @@ export default function App() {
                 <Typography component="label" htmlFor="redundancy-slider" sx={{ fontSize: 11, color: 'text.secondary' }}>Redundancy</Typography>
                 <ClickAwayListener onClickAway={() => setShowReserveHelp(false)}>
                   <Box component="span" sx={{ display: 'inline-flex' }}>
-                    <Tooltip describeChild open={showReserveHelp} onOpen={() => setShowReserveHelp(true)} onClose={() => setShowReserveHelp(false)} enterTouchDelay={0} leaveTouchDelay={3000} title="Adds a percentage to the complete Delta-V budget. This is a planning margin, not a fuel-mass percentage.">
+                    <Tooltip describeChild open={showReserveHelp} onOpen={() => setShowReserveHelp(true)} onClose={() => setShowReserveHelp(false)} enterTouchDelay={0} leaveTouchDelay={3000} title="Adds extra Delta-V to the full mission budget. For example, 20% adds 20% more m/s; it does not mean 20% more fuel mass.">
                       <IconButton aria-label="About redundancy" aria-expanded={showReserveHelp} onClick={() => setShowReserveHelp(true)} size="small" sx={{ width: 20, height: 20, p: 0 }}><InfoOutlined sx={{ fontSize: 13 }} /></IconButton>
                     </Tooltip>
                   </Box>
@@ -458,7 +458,7 @@ export default function App() {
             {budget ? <Typography component="output" data-testid="route-total" sx={{ display: 'block', fontSize: `min(32px, ${100 / budgetTextWidth}cqi)`, lineHeight: 1.1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 700, letterSpacing: '-.025em', '@container (max-width: 170px)': { fontSize: `min(25px, ${100 / budgetTextWidth}cqi)` } }}>
               {budgetText} <Box component="span" sx={{ fontSize: '.55em', color: 'text.secondary' }}>m/s</Box>
             </Typography> : <Typography sx={{ fontSize: 25, lineHeight: 1.1, color: 'text.secondary' }}>— <Box component="span" sx={{ fontSize: 13 }}>m/s</Box></Typography>}
-            <Typography title={budget ? `${format.format(budget.baseDeltaV)} m/s maneuvers +${format.format(budget.extraDeltaV)} m/s reserve and final rounding. Open Budget assumptions for the cost basis.` : undefined} sx={{ fontSize: 10, color: 'text.secondary', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <Typography title={budget ? `${format.format(budget.baseDeltaV)} m/s maneuvers +${format.format(budget.extraDeltaV)} m/s reserve and final rounding. Open Budget assumptions to see where these figures come from.` : undefined} sx={{ fontSize: 10, color: 'text.secondary', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {budget ? <><Box component="span" data-testid="route-base">{format.format(budget.baseDeltaV)} m/s</Box> plan <Box component="span" sx={{ color: 'primary.main' }} data-testid="route-margin">+{format.format(budget.extraDeltaV)} m/s</Box></> : 'Select two states to calculate'}
             </Typography>
           </Box>
@@ -490,7 +490,7 @@ export default function App() {
           </Box>
           {needsLinkAllowances ? <Button size="small" color="secondary" onClick={() => setShowAllowances(true)} sx={{ minHeight: 20, minWidth: 0, px: .25, py: 0, fontSize: 11, whiteSpace: 'nowrap' }}>Link allowances</Button>
             : pack.dataNotice && <Button size="small" color="secondary" onClick={() => openInfo('sources')} title={pack.dataNotice} sx={{ minHeight: 18, minWidth: 0, maxWidth: isCustomPack ? '40%' : pack.mapRegions ? '45%' : undefined, flexShrink: 0, p: 0, fontSize: 10, lineHeight: 1.5 }}><Box component="span" sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.dataNotice}</Box></Button>}
-          <Typography sx={{ display: { xs: 'none', md: 'block' }, fontSize: 10, color: 'text.secondary', whiteSpace: 'nowrap' }}>Estimates in m/s · {redundancy}% reserve · Schematic, not to scale</Typography>
+          <Typography sx={{ display: { xs: 'none', md: 'block' }, fontSize: 10, color: 'text.secondary', whiteSpace: 'nowrap' }}>Estimates in m/s · {redundancy}% reserve · Map not to scale</Typography>
         </Box>
       </Box>
 
