@@ -612,3 +612,48 @@ production build with desktop browser tests before deploying `dist`. It uses
 GitHub's temporary workflow token; no additional deployment secret is required.
 
 The project URL is <https://antoniotoni.github.io/ksp-deltav/>.
+
+## Discoverability and social previews
+
+`index.html` contains the page title and description, the canonical Pages URL,
+Open Graph and Twitter card metadata, and Schema.org `WebApplication` JSON-LD.
+Keep those descriptions aligned with the supported planning estimates. The
+initial HTML also contains a visible introduction and guide links, served to
+visitors and crawlers alike. React replaces that content with the interactive
+planner when it mounts; the calculator remains client-rendered. Without
+JavaScript, the introduction and links remain available.
+
+The Vite plugin in `vite.config.ts` publishes
+`docs/assets/planner-preview.png` as `dist/social-preview.png`, so the README and
+site use one source image. The public card URL is
+<https://antoniotoni.github.io/ksp-deltav/social-preview.png>. Development serves
+`GET` and `HEAD /social-preview.png`; production and preview use the Pages project
+path. Metadata references the image without fetching it as part of the initial
+planner UI.
+
+To change the card artwork, replace the source PNG, keep it **1280 × 640** and
+under **1 MB**, then build and deploy. Changes to page metadata or crawl files
+also need deployment. The README's image cache query is separate from the site's
+stable card URL. Social platforms may cache that URL; their preview/debugger
+tools can request a refresh after the new image is published.
+
+`public/sitemap.xml` lists the single canonical homepage at
+<https://antoniotoni.github.io/ksp-deltav/>. Planet packs, mission selections, and
+relay tabs are application state rather than separate indexable routes. Update
+the sitemap when actual public pages are added.
+
+Crawler rules belong at the origin's `/robots.txt`, such as
+<https://antoniotoni.github.io/robots.txt>. A file under
+`/ksp-deltav/robots.txt` cannot define the origin's crawl policy, so this project
+does not publish one. The page's robots metadata does not override an
+origin-level blocking rule.
+
+The repository owner can optionally add
+`https://antoniotoni.github.io/ksp-deltav/` as a **URL-prefix property** in Google
+Search Console. Verify it using the service's actual HTML meta tag in
+`index.html`, or its verification HTML file in `public/`, and deploy that
+change. Then submit
+<https://antoniotoni.github.io/ksp-deltav/sitemap.xml>. These public verification
+values come from Search Console; no placeholder token is included in the app.
+Sitemap submission requests discovery and does not guarantee indexing or a
+particular search ranking.

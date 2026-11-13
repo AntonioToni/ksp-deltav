@@ -5,11 +5,89 @@
     <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b1120" />
-    <meta name="description" content="Plan routes across the stock Kerbol system with an interactive Delta-V map and a complete maneuver breakdown." />
-    <title>KSP DeltaV Planner</title>
+    <title>KSP Delta-V Map &amp; Calculator | CommNet Relay Planner</title>
+    <meta name="description" content="Calculate KSP Delta-V budgets and check CommNet relay coverage, antenna ranges and signal strength. Supports Stock, OPM, RSS and Stock/OPM + Kcalbeloh." />
+    <link rel="canonical" href="https://antoniotoni.github.io/ksp-deltav/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="KSP Delta-V Planner" />
+    <meta property="og:title" content="KSP Delta-V Map &amp; Calculator | CommNet Relay Planner" />
+    <meta property="og:description" content="Calculate KSP Delta-V budgets and check CommNet relay coverage, antenna ranges and signal strength. Supports Stock, OPM, RSS and Stock/OPM + Kcalbeloh." />
+    <meta property="og:url" content="https://antoniotoni.github.io/ksp-deltav/" />
+    <meta property="og:image" content="https://antoniotoni.github.io/ksp-deltav/social-preview.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="640" />
+    <meta property="og:image:alt" content="KSP Delta-V Planner — Mission budgets and CommNet planning, with KSP-style planets and orbital paths." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="KSP Delta-V Map &amp; Calculator | CommNet Relay Planner" />
+    <meta name="twitter:description" content="Calculate KSP Delta-V budgets and check CommNet relay coverage, antenna ranges and signal strength. Supports Stock, OPM, RSS and Stock/OPM + Kcalbeloh." />
+    <meta name="twitter:image" content="https://antoniotoni.github.io/ksp-deltav/social-preview.png" />
+    <meta name="twitter:image:alt" content="KSP Delta-V Planner — Mission budgets and CommNet planning, with KSP-style planets and orbital paths." />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "@id": "https://antoniotoni.github.io/ksp-deltav/#application",
+        "name": "KSP Delta-V Planner",
+        "alternateName": "KSP DeltaV Planner",
+        "url": "https://antoniotoni.github.io/ksp-deltav/",
+        "description": "Calculate KSP Delta-V budgets and check CommNet relay coverage, antenna ranges and signal strength. Supports Stock, OPM, RSS and Stock/OPM + Kcalbeloh.",
+        "image": "https://antoniotoni.github.io/ksp-deltav/social-preview.png",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript and a modern web browser.",
+        "inLanguage": "en",
+        "isAccessibleForFree": true,
+        "license": "https://github.com/AntonioToni/ksp-deltav/blob/main/LICENSE",
+        "sameAs": "https://github.com/AntonioToni/ksp-deltav",
+        "author": { "@type": "Person", "name": "AntonioToni", "url": "https://github.com/AntonioToni" },
+        "about": { "@type": "VideoGame", "name": "Kerbal Space Program" },
+        "featureList": [
+          "Interactive Delta-V maps for Stock, OPM, RSS, and Stock/OPM with Kcalbeloh",
+          "One-way, round-trip, return-only, and ordered multi-stop mission budgets",
+          "Mission reserves and optional maneuver breakdowns",
+          "Equatorial relay coverage, antenna arrays, and resonant deployment estimates",
+          "Single interplanetary signal links using circular reference geometry",
+          "Raw CommNet strength and Kerbalism signal damping"
+        ]
+      }
+    </script>
+    <style>
+      html { background: #080f21; color-scheme: dark; }
+      body { margin: 0; }
+      .planner-intro { box-sizing: border-box; max-width: 54rem; min-height: 100svh; margin: 0 auto; padding: 2rem 1.5rem; color: #e9ecf4; font: 1rem/1.6 system-ui, sans-serif; }
+      .planner-intro h1 { margin: 0 0 .5rem; font-size: clamp(1.75rem, 5vw, 2.5rem); line-height: 1.2; }
+      .planner-intro h2 { margin: 1.5rem 0 .5rem; font-size: 1.2rem; }
+      .planner-intro p { margin: .75rem 0; }
+      .planner-intro a { color: #73c8fa; text-underline-offset: .2em; }
+      .planner-intro a:focus-visible { outline: 2px solid #e7bd7b; outline-offset: 3px; }
+      .planner-intro nav { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin-top: 1.5rem; }
+      .planner-intro .notice { padding: .75rem 1rem; border: 1px solid #456080; border-radius: .5rem; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="planner-intro" aria-label="KSP DeltaV Planner introduction">
+        <h1>KSP DeltaV Planner</h1>
+        <p>An interactive Delta-V map and CommNet relay calculator for Kerbal Space Program.</p>
+        <p>Built-in maps cover Stock, Outer Planets Mod (OPM), Real Solar System (RSS), and Kcalbeloh with Stock or OPM.</p>
+        <h2>Delta-V mission planning</h2>
+        <p>Choose an origin and destination, add intermediate stops, and compare one-way, round-trip, or return-only missions. Add a reserve and inspect maneuver estimates. A Stock Kerbin surface to Mun surface journey has a reference budget of 5,120 m/s before reserves.</p>
+        <h2>Relays and signal strength</h2>
+        <p>Compare antenna arrays, local equatorial relay coverage, and deployment orbits. Check a single interplanetary link using circular reference geometry, with raw CommNet strength, Kerbalism damping, and central-body obstruction.</p>
+        <p>Results are planning estimates, rather than dated trajectories or complete communication paths to the DSN.</p>
+        <noscript><p class="notice">Enable JavaScript to use the interactive planner. The guides and source code below remain available without it.</p></noscript>
+        <nav aria-label="Planner guides">
+          <a href="https://github.com/AntonioToni/ksp-deltav/blob/main/docs/DATA.md">Data and assumptions</a>
+          <a href="https://github.com/AntonioToni/ksp-deltav/blob/main/docs/RELAYS.md">Relay guide</a>
+          <a href="https://github.com/AntonioToni/ksp-deltav/blob/main/docs/VALIDATION.md">Validation record</a>
+          <a href="https://github.com/AntonioToni/ksp-deltav">Source code on GitHub</a>
+        </nav>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
