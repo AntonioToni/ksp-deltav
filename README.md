@@ -1,11 +1,17 @@
+[![KSP DeltaV Planner — mission budgets and CommNet planning](docs/assets/social-preview.png)](https://antoniotoni.github.io/ksp-deltav/)
+
 # KSP DeltaV Planner
 
-Plan **Kerbal Space Program** missions on an interactive Delta-V map. Explore
-the stock Kerbol system, **Outer Planets Mod**, **Real Solar System**, or
-**Kcalbeloh alongside Stock or OPM**. Calculate one-way, round-trip, and
-return-only budgets, and add a reserve for your mission.
+**Plan the burns. Check the signal.**
 
-**[Open the planner](https://antoniotoni.github.io/ksp-deltav/)** ·
+An interactive **Kerbal Space Program** planner for Delta-V budgets, mission
+routes, and CommNet links. Explore **Stock**, **Outer Planets Mod**, **Real Solar
+System**, or **Kcalbeloh alongside Stock or OPM**. Plan one-way, round-trip, and
+multi-stop journeys, add a mission reserve, and check antennas and local relay
+coverage.
+
+### [Open the planner →](https://antoniotoni.github.io/ksp-deltav/)
+
 [Data and assumptions](docs/DATA.md) · [Relay guide](docs/RELAYS.md) ·
 [Validation record](docs/VALIDATION.md) · [Developer guide](docs/DEVELOPMENT.md)
 
