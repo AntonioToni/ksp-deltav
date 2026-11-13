@@ -1,9 +1,10 @@
-[![KSP DeltaV Planner — stock map showing a Kerbin-to-Duna route](docs/assets/planner-preview.png)](https://antoniotoni.github.io/ksp-deltav/)
+[![KSP DeltaV Planner — Delta-V map, relay coverage diagram, and signal-strength chart](docs/assets/planner-preview.png?v=2)](https://antoniotoni.github.io/ksp-deltav/)
 
 # KSP DeltaV Planner
 
 A browser-based Delta-V and CommNet planner for Kerbal Space Program.
-Calculate mission budgets, compare antennas, and plan local relay coverage.
+Calculate mission budgets, plan local relay coverage, and compare antenna
+ranges and signal strength between craft and relays.
 
 Supports Stock, Outer Planets Mod (OPM), Real Solar System (RSS), and Kcalbeloh
 with Stock or OPM.
