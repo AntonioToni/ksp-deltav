@@ -92,8 +92,8 @@ test('separates circular range-only strength from central-body blocking and expo
   await expect(metric(page, 'signal-best')).toHaveText('98.55%')
   await expect(metric(page, 'signal-worst')).toHaveText('72.74%')
   await expect(metric(page, 'signal-link-status')).toHaveText('Link available')
-  await expect(signal(page).getByText(/Circular-reference envelope.*range only.*before occlusion/)).toBeVisible()
-  await expect(signal(page).getByText(/circular reference model, not a date/)).toBeVisible()
+  await expect(signal(page).getByText(/Closest and farthest positions.*before blockage/)).toBeVisible()
+  await expect(signal(page).getByText(/Relative phase is their angle apart/)).toBeVisible()
   const orbit = metric(page, 'signals-orbit-diagram')
   const chart = metric(page, 'signals-strength-chart')
   await expect(orbit).toHaveAttribute('role', 'img')
@@ -320,7 +320,7 @@ test('requires user-supplied signal geometry for an unfamiliar imported system',
   await expect(metric(page, 'signal-strength')).toHaveText('87.24%')
   await signal(page).getByText('Signal assumptions and sources', { exact: true }).click()
   await expect(planner(page).getByRole('link', { name: /Kerbol physical radius/ })).toHaveCount(0)
-  await expect(signal(page).getByText(/Manual geometry is user supplied/)).toBeVisible()
+  await expect(signal(page).getByText(/Enter both orbit radii from the same center/)).toBeVisible()
 })
 
 test('preserves mission and local relay inputs across Signals tabs and reopening', async ({ page }) => {
