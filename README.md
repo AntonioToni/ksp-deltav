@@ -1,4 +1,4 @@
-[![KSP DeltaV Planner — Delta-V map, relay coverage diagram, and signal-strength chart](docs/assets/planner-preview.png?v=2)](https://antoniotoni.github.io/ksp-deltav/)
+[![KSP DeltaV Planner — Delta-V map, relay coverage diagram, and signal-strength chart](docs/assets/planner-preview.png?v=3)](https://antoniotoni.github.io/ksp-deltav/)
 
 # KSP DeltaV Planner
 
