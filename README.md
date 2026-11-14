@@ -100,14 +100,14 @@ only starts at the selected destination point without including an outbound
 flight or its arrival conditions. The reserve applies once to the full budget.
 
 **Landing & Capture** distinguishes default assumptions from custom settings.
-The atmospheric explanation in the mission result opens the relevant body's
-settings. **Apply** saves a draft; **Cancel** or Escape discards it.
-**Enable all atmospheric landings** selects the 0 m/s landing assumption for
-every supported body in the active pack. It leaves capture choices unchanged
-and takes effect when you choose **Apply**.
-**Use reference budgets** turns off all landing overrides and ideal capture
-choices, while **Restore defaults** brings back the active pack's starting
-settings, including Kerbin's reentry assumption where supported.
+Mission notices describe only supported landing or capture burns whose costs
+changed on the selected route. **Edit** opens that body's settings.
+**Apply** saves a draft; **Cancel** or Escape discards it.
+**Use map budgets for all** turns off every landing override and capture choice.
+**Restore recommended defaults** instead brings back the active pack's starting
+settings, including Kerbin's reentry assumption in supported built-in packs.
+Neither action takes effect until you choose **Apply**. Other bodies can still
+be configured individually, including a custom landing budget of zero.
 
 The planner first avoids unrequested planet or moon parking visits, then finds
 the lowest Delta-V budget for that itinerary. Necessary parent-system passages

@@ -107,10 +107,7 @@ export default function App() {
     () => startId !== null && endId !== null ? findMissionRoute(graph, startId, endId, missionMode, waypointIds) : null,
     [graph, startId, endId, missionMode, waypointIds],
   )
-  const compareAtmosphere = hasAtmosphericOptions && route?.status === 'success' && (
-    atmosphericPlan.some(option => option.capture || option.landing && !option.landingPreset)
-    || route.legs.some(({ edge }) => adjustments.has(edge.id))
-  )
+  const compareAtmosphere = route?.status === 'success' && route.legs.some(({ edge }) => adjustments.has(edge.id))
   const referenceRoute = useMemo(
     () => compareAtmosphere && startId !== null && endId !== null ? findMissionRoute(allowanceGraph, startId, endId, missionMode, waypointIds) : null,
     [allowanceGraph, compareAtmosphere, startId, endId, missionMode, waypointIds],
@@ -173,12 +170,9 @@ export default function App() {
   const defaultReentry = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && basisByEdge.get(edge.id)?.kind === 'ideal' && nodesById.get(edge.to)?.bodyId === 'stock:kerbin' && kerbinReentryEnabled)
   const atmosphericLanding = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && basisByEdge.get(edge.id)?.kind === 'ideal' && !(nodesById.get(edge.to)?.bodyId === 'stock:kerbin' && kerbinReentryEnabled))
   const idealCapture = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'capture' && basisByEdge.get(edge.id)?.kind === 'ideal')
-  const atmosphericContexts = useMemo(() => route?.status === 'success' ? atmosphericRouteContexts(pack, route.legs, atmosphericPlan) : [], [pack, route, atmosphericPlan])
-  const appliedAtmosphericContexts = atmosphericContexts.filter(context => atmosphericPlan.some(choice => choice.bodyId === context.body.id
-    && (context.landingCount > 0 && choice.landing || context.captureCount > 0 && choice.capture)))
-  const contextChoices = appliedAtmosphericContexts.length ? appliedAtmosphericContexts : atmosphericContexts
-  const primaryAtmosphericContext = contextChoices.find(context => context.body.id === nodesById.get(endId ?? '')?.bodyId)
-    ?? contextChoices.find(context => context.landingCount > 0) ?? contextChoices[0]
+  const atmosphericContexts = useMemo(() => route?.status === 'success' ? atmosphericRouteContexts(pack, route.legs, atmosphericPlan, adjustments) : [], [pack, route, atmosphericPlan, adjustments])
+  const primaryAtmosphericContext = atmosphericContexts.find(context => context.body.id === nodesById.get(endId ?? '')?.bodyId)
+    ?? atmosphericContexts.find(context => context.landingCount > 0) ?? atmosphericContexts[0]
   const estimateNotices = [
     ...(unavailableInterstellarNotice ? [unavailableInterstellarNotice] : []),
     ...(hasLayover ? [layoverNotice] : []),
@@ -504,7 +498,7 @@ export default function App() {
           <Box role={selection !== 'stop' && (hasAtmosphericLanding || route?.status === 'invalid') ? 'alert' : 'status'} title={atmosphericComparison && selection !== 'stop' ? `${status} ${atmosphericComparison}` : status} sx={{ flex: '1 1 100%', minWidth: 0, color: selection === 'stop' ? '#92d5c6' : hasAtmosphericOptions ? '#92d5c6' : hasAtmosphericLanding ? 'secondary.main' : 'text.secondary', '@media (min-width: 700px)': { flex: '1 1 0' } }}>
             {primaryAtmosphericContext && selection !== 'stop' ? <Button aria-label={`Edit landing and capture at ${primaryAtmosphericContext.body.name}`} onClick={() => openAtmosphere(primaryAtmosphericContext.body.id)} title={atmosphericContexts.map(context => context.label).join('; ')} sx={{ minWidth: 0, maxWidth: '100%', minHeight: 32, px: 0, py: .25, gap: .75, textAlign: 'left', justifyContent: 'flex-start', color: 'inherit', '&:hover': { bgcolor: '#73c8fa0a' }, '@media (max-height: 500px)': { minHeight: 28 } }}>
               <Typography component="span" data-testid="route-status" sx={{ fontSize: 11, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', '@media (max-height: 500px)': { fontSize: 10, lineHeight: 1.2 } }}>{status}</Typography>
-              <Box component="span" sx={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: .25, color: 'primary.main', fontSize: 10 }}>Change<EditOutlined sx={{ fontSize: 13 }} /></Box>
+              <Box component="span" sx={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: .25, color: 'primary.main', fontSize: 10 }}>Edit<EditOutlined sx={{ fontSize: 13 }} /></Box>
             </Button> : <Typography data-testid="route-status" sx={{ fontSize: 11, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', '@media (max-height: 500px)': { fontSize: 10, lineHeight: 1.2 } }}>{status}</Typography>}
             {atmosphericDifference !== null && referenceRoute?.status === 'success' && selection !== 'stop' && <Typography sx={{ fontSize: 10, lineHeight: 1.3, color: '#92d5c6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               <Box component="output" data-testid="atmospheric-change">{atmosphericDifference > 0 ? '+' : ''}{format.format(atmosphericDifference)} m/s</Box> vs reference · <Box component="output" data-testid="atmospheric-reference">{format.format(referenceRoute.totalDeltaV)} m/s</Box> reference budget

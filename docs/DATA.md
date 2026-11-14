@@ -257,16 +257,12 @@ budget for Kerbin restores the source-only **10,240 m/s** round trip.
 
 The dialog stages edits: **Apply** saves them and recalculates the mission;
 **Cancel** or Escape discards them. Switching bodies or landing methods keeps
-the draft, including a custom value you entered. **Use reference budgets** turns
-off all landing overrides and ideal capture choices. **Enable all atmospheric
-landings** instead stages the 0 m/s landing method for every body with supported
-landing overrides. It preserves capture choices and custom values in the draft;
-it does not add support for other maneuvers or change the starting defaults of
-RSS or imported packs. Choose **Apply** to use the bulk selection.
-**Restore defaults** instead
-restores the active pack's starting assumptions, including the Kerbin preset
-where supported; it does not enable atmospheric landings in RSS or imported
-packs. These actions edit the draft until you choose Apply.
+the draft, including a custom value you entered. **Use map budgets for all**
+turns off all landing overrides and capture choices, restoring original costs.
+**Restore recommended defaults** instead restores the active pack's starting
+assumptions, including the Kerbin preset where supported. It does not enable
+atmospheric landings in RSS or imported packs. Both actions edit the draft until
+you choose **Apply**; individual bodies remain configurable separately.
 Swapping endpoints and changing mission mode retain body choices. Changing packs
 retains compatible eligible choices, including an explicit opt-out or a personal
 landing allowance. Choices for unavailable bodies are discarded. **Clear**
@@ -274,10 +270,13 @@ restores the active pack's atmospheric defaults. These are session settings;
 source data and exported packs keep their original budgets.
 
 The button distinguishes default assumptions from user-modified settings.
-When the selected mission uses a supported atmospheric maneuver, its result
-shows the active assumption and its budget effect, with a way to reopen that
-body's settings. Budget assumptions and the maneuver breakdown retain the
-distinction between original costs, atmospheric assumptions, and personal inputs.
+Contextual mission notices include only changed, supported maneuvers actually
+flown on the selected route. Each notice describes its landing or capture
+assumption and cost; **Edit** opens the corresponding body's settings. Choices
+for bodies outside the route and unchanged bundled transfers do not produce
+these notices. Budget assumptions and the maneuver breakdown retain the
+distinction between original costs, atmospheric assumptions, and personal inputs,
+including manually entered zero landing budgets.
 
 - **Orbital capture → Use atmospheric capture (0 m/s)** sets separate same-body inward `capture`
   segments to zero,

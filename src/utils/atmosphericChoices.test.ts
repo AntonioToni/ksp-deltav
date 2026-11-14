@@ -133,6 +133,25 @@ describe('landing-method UI adapter', () => {
     }
   })
 
+  it('can disable, save, reopen and re-enable Kerbin while restoring only the authorized preset marker', () => {
+    let plan: AtmosphericPlan = toAtmosphericPlan(stockPack, update(draft(), kerbin, { landingMethod: 'reference' }), true)
+    expect(plan.find(option => option.bodyId === kerbin)).toEqual({ bodyId: kerbin, capture: false, landing: false, landingDeltaV: 0 })
+    for (const pack of [opmPack, stockKcalbelohPack, stockPack]) {
+      plan = reconcileAtmosphericPlan(pack, plan, true)
+      const reopened = createAtmosphericChoices(pack, plan)
+      expect(choice(reopened, kerbin).landingMethod).toBe('reference')
+      plan = toAtmosphericPlan(pack, reopened, true)
+      expect(plan.find(option => option.bodyId === kerbin)?.landingPreset).toBeUndefined()
+    }
+    const enabled = toAtmosphericPlan(stockPack, update(createAtmosphericChoices(stockPack, plan), kerbin, { landingMethod: 'atmospheric' }), true)
+    expect(enabled.find(option => option.bodyId === kerbin)).toMatchObject({ landing: true, landingDeltaV: 0, landingPreset: 'kerbin-reentry', landingMethod: 'atmospheric' })
+    expect(choice(createAtmosphericChoices(stockPack, enabled), kerbin).landingMethod).toBe('atmospheric')
+    expect(totals(enabled)).toMatchObject({ status: 'success', totalDeltaV: 6840 })
+    const manualZero = toAtmosphericPlan(stockPack, update(createAtmosphericChoices(stockPack, enabled), kerbin, { landingMethod: 'custom', customLandingText: '0' }), true)
+    expect(manualZero.find(option => option.bodyId === kerbin)?.landingPreset).toBeUndefined()
+    expect(choice(createAtmosphericChoices(stockPack, manualZero), kerbin)).toMatchObject({ landingMethod: 'custom', customLandingText: '0' })
+  })
+
   it('never invents the Kerbin preset for RSS or imported packs sharing Stock IDs', () => {
     expect(createAtmosphericChoices(rssPack, getDefaultAtmosphericPlan(rssPack, true)).every(option => option.landingMethod === 'reference' && !option.capture)).toBe(true)
     const custom = toAtmosphericPlan(stockPack, update(createAtmosphericChoices(stockPack, []), kerbin, { landingMethod: 'atmospheric' }), false)

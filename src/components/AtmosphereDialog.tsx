@@ -40,7 +40,6 @@ function customValueValid(text: string): boolean {
 
 function AtmosphereContent({ pack, plan, isBuiltIn, initialBodyId, onApply, onClose }: Omit<AtmosphereDialogProps, 'open'>) {
   const capabilities = useMemo(() => getAtmosphericCapabilities(pack), [pack])
-  const landingBodies = useMemo(() => new Set(capabilities.filter(option => option.landing).map(option => option.body.id)), [capabilities])
   const defaults = useMemo(() => getDefaultAtmosphericPlan(pack, isBuiltIn), [pack, isBuiltIn])
   const defaultBodies = useMemo(() => new Set(defaults.map(option => option.bodyId)), [defaults])
   const [draft, setDraft] = useState<AtmosphericChoice[]>(() => createAtmosphericChoices(pack, plan))
@@ -59,7 +58,10 @@ function AtmosphereContent({ pack, plan, isBuiltIn, initialBodyId, onApply, onCl
   const invalidElsewhere = invalidChoices.find(choice => choice.bodyId !== bodyId)
   const invalidBodyName = capabilities.find(option => option.body.id === invalidElsewhere?.bodyId)?.body.name
   const selectedInvalid = selected?.landingMethod === 'custom' && !customValueValid(selected.customLandingText)
-  const allLandingsEnabled = landingBodies.size > 0 && draft.every(choice => !landingBodies.has(choice.bodyId) || choice.landingMethod === 'atmospheric')
+  const referenceActionDescription = "Stage every body's original landing and capture budgets. Apply saves these changes."
+  const defaultsActionDescription = defaults.length
+    ? 'Stage recommended settings for all bodies, including atmospheric Kerbin landing. Apply saves these changes.'
+    : 'Stage original landing budgets and capture off for all bodies. Apply saves these changes.'
 
   function update(changes: Partial<Omit<AtmosphericChoice, 'bodyId'>>) {
     setDraft(choices => choices.map(choice => choice.bodyId === bodyId ? { ...choice, ...changes } : choice))
@@ -73,7 +75,7 @@ function AtmosphereContent({ pack, plan, isBuiltIn, initialBodyId, onApply, onCl
 
   function summary(choice: AtmosphericChoice | undefined): string {
     if (!choice) return 'Map budget'
-    const landing = choice.landingMethod === 'atmospheric' ? defaultBodies.has(choice.bodyId) ? 'Default · 0 m/s' : 'Atmospheric · 0 m/s'
+    const landing = choice.landingMethod === 'atmospheric' ? defaultBodies.has(choice.bodyId) && !choice.capture ? 'Default · 0 m/s' : 'Atmospheric · 0 m/s'
       : choice.landingMethod === 'custom' ? customValueValid(choice.customLandingText) ? `Custom · ${format.format(Number(choice.customLandingText))} m/s` : 'Check value'
         : 'Map budget'
     const supportsLanding = capabilities.find(option => option.body.id === choice.bodyId)?.landing
@@ -114,16 +116,6 @@ function AtmosphereContent({ pack, plan, isBuiltIn, initialBodyId, onApply, onCl
             <Typography component="span" sx={{ color: 'text.secondary', fontSize: 11, maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis' }}>{summary(draft.find(choice => choice.bodyId === option.body.id))}</Typography>
           </MenuItem>)}
         </TextField>
-        {landingBodies.size > 0 && <Box sx={{ mb: 1.5 }}>
-          <Tooltip describeChild title="Select atmospheric landing (0 m/s) for every supported body. Orbital capture settings and entered custom values are kept.">
-            <Button size="small" variant="outlined" startIcon={<ParaglidingRounded sx={{ fontSize: 17 }} />}
-              onClick={() => setDraft(choices => choices.map(choice => landingBodies.has(choice.bodyId) ? { ...choice, landingMethod: 'atmospheric' } : choice))}
-              sx={{ minHeight: 40, width: { xs: '100%', sm: 'auto' }, px: 1.25, fontSize: 11.5, textTransform: 'none' }}>
-              Enable all atmospheric landings
-            </Button>
-          </Tooltip>
-          {allLandingsEnabled && <Typography role="status" sx={{ mt: .5, fontSize: 11, lineHeight: 1.4, color: '#92d5c6' }}>All supported landings use 0 m/s.</Typography>}
-        </Box>}
         {capability && selected && <Stack spacing={1.25}>
           {capability.landing && <Box component="section" aria-labelledby="atmospheric-landing-heading">
             <Typography id="atmospheric-landing-heading" component="h3" sx={{ mb: .75, fontSize: 14, fontWeight: 600 }}>Atmospheric landing</Typography>
@@ -175,10 +167,18 @@ function AtmosphereContent({ pack, plan, isBuiltIn, initialBodyId, onApply, onCl
         <Typography sx={{ flex: 1, minWidth: 0, fontSize: 11, lineHeight: 1.4, color: 'secondary.main', overflowWrap: 'anywhere' }}>Check landing Delta-V for {invalidBodyName}.</Typography>
         <Button size="small" onClick={() => setBodyId(invalidElsewhere.bodyId)} sx={{ minHeight: 32, fontSize: 11 }}>Review</Button>
       </Box>}
-      <Stack direction="row" spacing={.5} sx={{ flex: { xs: '1 1 100%', sm: '0 1 auto' }, justifyContent: { xs: 'space-between', sm: 'flex-start' } }}>
-        <Button size="small" disabled={!capabilities.length} onClick={() => setDraft(choices => choices.map(choice => ({ ...choice, capture: false, landingMethod: 'reference' })))} sx={{ minHeight: 36, minWidth: 0, px: .5, fontSize: 11, textTransform: 'none' }}>Use reference budgets</Button>
-        <Button size="small" disabled={!capabilities.length} onClick={restoreDefaults} sx={{ minHeight: 36, minWidth: 0, px: .5, fontSize: 11, textTransform: 'none' }}>Restore defaults</Button>
-      </Stack>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'max-content max-content' }, gap: .5, minWidth: 0, flex: { xs: '1 1 100%', sm: '0 1 auto' } }}>
+        <Tooltip describeChild title={referenceActionDescription}>
+          <Box component="span" sx={{ display: 'flex', minWidth: 0 }}>
+            <Button size="small" disabled={!capabilities.length} aria-description={referenceActionDescription} onClick={() => setDraft(choices => choices.map(choice => ({ ...choice, capture: false, landingMethod: 'reference' })))} sx={{ minHeight: 40, minWidth: 0, width: '100%', px: .75, fontSize: 11, lineHeight: 1.3, whiteSpace: 'normal', textTransform: 'none' }}>Use map budgets for all</Button>
+          </Box>
+        </Tooltip>
+        <Tooltip describeChild title={defaultsActionDescription}>
+          <Box component="span" sx={{ display: 'flex', minWidth: 0 }}>
+            <Button size="small" disabled={!capabilities.length} aria-description={defaultsActionDescription} onClick={restoreDefaults} sx={{ minHeight: 40, minWidth: 0, width: '100%', px: .75, fontSize: 11, lineHeight: 1.3, whiteSpace: 'normal', textTransform: 'none' }}>Restore recommended defaults</Button>
+          </Box>
+        </Tooltip>
+      </Box>
       <Stack direction="row" spacing={.5} sx={{ flex: { xs: '1 1 100%', sm: '0 1 auto' }, justifyContent: 'flex-end' }}>
         <Button size="small" onClick={onClose} sx={{ minHeight: 40, px: 1.25, fontSize: 12 }}>Cancel</Button>
         <Button size="small" variant="contained" disabled={!valid} onClick={() => { if (valid) onApply(toAtmosphericPlan(pack, draft, isBuiltIn)) }} sx={{ minHeight: 40, minWidth: 72, px: 2, fontSize: 12 }}>Apply</Button>

@@ -268,7 +268,7 @@ for (const viewport of [
     await planDuna(page)
     await openEditor(page, 'Duna')
     await onScreen(editor(page), page)
-    for (const name of ['Apply', 'Cancel', 'Use reference budgets', 'Restore defaults']) await onScreen(editor(page).getByRole('button', { name, exact: true }), page)
+    for (const name of ['Apply', 'Cancel', 'Use map budgets for all', 'Restore recommended defaults']) await onScreen(editor(page).getByRole('button', { name, exact: true }), page)
     await setIdealCapture(page, 'Duna')
     await chooseLandingMethod(page, 'Duna', 'custom')
     await allowance(page, 'Duna').fill('100')

@@ -135,10 +135,12 @@ edit the imported pack or its exported JSON, and require no additional JSON
 fields. Imported packs start with their reference budgets and capture off;
 they receive no automatic Kerbin landing preset, even if they reuse Stock IDs.
 **Apply** saves the draft; **Cancel** or Escape discards it.
-**Use reference budgets** stages all overrides off. **Restore defaults** or
-the main **Clear** action restores the active pack's starting settings, which
-for imported packs means no atmospheric overrides. Settings are not saved with
-the pack.
+**Use map budgets for all** stages every landing override and capture choice off.
+**Restore recommended defaults** stages the active pack's starting settings,
+which for imported packs means no atmospheric overrides. Both require **Apply**;
+the main **Clear** action also restores that starting configuration. Individual
+bodies can still use atmospheric landing or a custom budget, including zero.
+Settings are not saved with the pack.
 Entry heating, guidance, parachutes, and capture cleanup burns are not simulated;
 choose appropriate powered allowances and mission reserves. See the
 [data guide](DATA.md#optional-atmospheric-assistance) for the calculation model.

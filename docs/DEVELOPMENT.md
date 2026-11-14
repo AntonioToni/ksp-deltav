@@ -171,11 +171,11 @@ translates these methods into the existing landing/capture flags and Delta-V
 values. The custom method accepts a finite amount from 0 to 1,000,000 m/s;
 its text survives method switches while editing.
 
-Apply commits the draft; Cancel or Escape discards it. **Use reference budgets**
-stages all landing overrides and capture flags off. **Restore defaults** stages
-the active pack's defaults, including the marked Kerbin reentry assumption only
-for eligible built-in configurations. Both require Apply. The main Clear action
-also restores the active pack's defaults.
+Apply commits the draft; Cancel or Escape discards it. **Use map budgets for all**
+stages all landing overrides and capture flags off.
+**Restore recommended defaults** stages the active pack's defaults, including the
+marked Kerbin reentry assumption only for eligible built-in configurations. Both require Apply.
+The main Clear action also restores the active pack's defaults.
 
 The optional `landingMethod` UI metadata distinguishes an atmospheric zero from
 a custom-entered zero after reopening. It changes presentation, not the burn
@@ -183,6 +183,12 @@ calculation, and is not part of planet-pack JSON. The existing
 `landingPreset: 'kerbin-reentry'` marker retains built-in default provenance.
 Pack changes preserve compatible explicit choices, including inactive opt-outs;
 RSS and imported packs receive no automatic Kerbin preset.
+
+Contextual mission notices use only adjusted eligible edges in the actual flown
+legs. Configuring a body outside that route does not generate a notice, nor does
+an unchanged bundled transfer. Each notice's Edit action opens the corresponding
+body in the dialog; source classifications and manual-zero provenance remain
+available in the budget breakdown.
 
 `getAtmosphericCapabilities` identifies bodies with standalone inward capture or
 descent edges supported by the atmospheric markers. `applyAtmosphericAssistance`
