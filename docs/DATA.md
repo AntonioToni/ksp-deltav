@@ -131,8 +131,10 @@ not make that mixed-reference itinerary an independently simulated flight.
   trajectories.
 - Vacuum surface descent reverses the map ascent estimate. Atmospheric powered
   descent deliberately uses a **placeholder budget equal to the
-  ascent budget** in the source dataset and default planner configuration.
-  This is not a verified landing calculation or an upper bound. Optional
+  ascent budget** in the source dataset. The app replaces Kerbin's standalone
+  landing cost with a zero-engine-burn assumption by default in built-in Kerbin
+  maps; this does not rewrite the source figures. A launch-sized placeholder is
+  not a verified landing calculation or an upper bound. Editable
   atmospheric choices can replace eligible costs as described below;
   vehicle-dependent descent modeling is outside the supplied model.
 - The published interplanetary branches connect to/from Kerbin. Additional
@@ -230,12 +232,33 @@ maneuvers, rather than treating every arrow as a free transfer.
 
 Open **Atmosphere** (**Aero** on phones) in the header to edit **Atmospheric
 assistance**. Choices apply by body ID to every eligible visit, including
-endpoints, ordered stops, and intermediate layovers. All choices start disabled.
+endpoints, ordered stops, and intermediate layovers. Built-in Stock, OPM, and
+their Kcalbeloh configurations start with **Kerbin landing at 0 m/s**;
+capture and other bodies' landing choices start disabled. RSS and imported
+custom packs receive no automatic landing assumption, even if a custom pack
+reuses Stock body IDs.
+
+The default Kerbin landing assumes atmospheric braking and parachutes replace
+the landing engine burn. It does not prove that a craft can survive entry, and
+it does not calculate deorbit or correction burns. Kerbin ascent remains
+**3,400 m/s**, separate encounter-to-orbit capture remains **950 m/s**, and
+combined moon-return transfer figures stay unchanged. Open Atmosphere to edit
+the landing allowance or uncheck **Landing** to restore the source's **3,400 m/s**
+descent placeholder. The default is labeled **Atmospheric reentry** in Budget
+assumptions; an amount entered by the user is labeled **Your allowance**.
+
+For example, Kerbin surface → Mun surface remains **5,120 m/s** outward.
+The return is **1,720 m/s** with the default Kerbin landing assumption, giving
+**6,840 m/s** for the round trip before reserve. Turning that assumption off
+restores the source-only **10,240 m/s** round trip.
+
 The dialog stages edits:
 **Apply** uses them, **Cancel** discards them, and **Disable all** clears the draft.
 Swapping endpoints and changing mission mode retain body choices. Changing packs
-retains compatible eligible choices, while **Clear** resets them. The choices
-are session settings and do not modify or export with source data.
+retains compatible eligible choices, including an explicit opt-out or a personal
+landing allowance. Choices for unavailable bodies are discarded. **Clear**
+restores the active pack's atmospheric defaults. These are session settings;
+source data and exported packs keep their original budgets.
 
 - **Ideal capture** sets separate same-body inward `capture` segments to zero,
   including encounter → high ellipse/low orbit and high ellipse → low orbit.
@@ -243,10 +266,10 @@ are session settings and do not modify or export with source data.
   trajectory. Capture cleanup burns are excluded and must be planned separately.
   A percentage reserve does not calculate them and adds nothing to a zero budget.
 - **Atmospheric landing** replaces an eligible same-body low-orbit → surface
-  `descent` with the powered allowance entered for that body. An enabled landing
-  requires an explicit finite value from **0 to 1,000,000 m/s**; there is no
-  invented default landing estimate. Zero explicitly assumes no powered landing
-  burn. A higher allowance can increase the original budget.
+  `descent` with that body's landing allowance. Apart from the default Kerbin
+  assumption above, the user must enter a finite value from **0 to 1,000,000 m/s**.
+  Zero assumes no powered landing burn; it is not a vehicle-specific calculation.
+  A higher allowance can increase the original budget.
 - Atmospheric assistance requires `hasAtmosphere: true` and a supported inward
   maneuver. `supportsAtmosphericBraking: false` excludes a body, including RSS
   Pluto and Triton. Gas giants can have capture options but no landing option.
@@ -283,8 +306,10 @@ For example, Stock **Kerbin surface → Duna surface** has the following budgets
 The **100 m/s** landing value is a user-selected example, not a default or a
 validated Duna descent estimate. A 20% reserve on that adjusted one-way budget
 gives **5,496 m/s**. With only these Duna choices enabled, the round trip is
-**11,120 m/s** before reserve: 4,580 outward plus the unchanged 6,540 return,
-whose Duna ascent still costs 1,450 m/s.
+**11,120 m/s** before reserve if Kerbin's default landing assumption is turned
+off: 4,580 outward plus the 6,540 powered return. Keeping the default Kerbin
+landing instead gives **7,720 m/s**: 4,580 outward plus 3,140 return.
+Duna ascent still costs 1,450 m/s in either case.
 
 These controls do not simulate atmospheric entry heating, guidance, parachute
 performance, lift, or vehicle-specific feasibility. They do not validate the
@@ -301,7 +326,7 @@ take precedence over the original source label; the source remains available
 as context. Atmospheric descent placeholders are identified separately.
 
 `src/data/stock.test.ts` checks coverage, references, topology, and landmark totals.
-Useful default landmarks from Kerbin surface, with atmospheric assistance off
+Useful source-map landmarks from Kerbin surface, with atmospheric assistance off
 and excluding reserves and plane changes:
 
 | Destination surface | Budget (m/s) |
@@ -1043,9 +1068,10 @@ page their maneuver breakdown instead of adding page scrolling.
 
 ### Atmospheric scope and numerical landmarks
 
-Atmospheric surface descent reuses the map's ascent allowance as a clearly
-labeled placeholder. An optional landing choice can replace the standalone
-descent cost with the user's powered allowance. Bundled complete-transfer pairs
+Atmospheric surface descent in the source data reuses the map's ascent allowance
+as a clearly labeled placeholder. The app's default Kerbin reentry assumption
+also applies in these built-in configurations. Other standalone landing costs
+can be replaced with the user's powered allowance. Bundled complete-transfer pairs
 retain both printed burns: the source does not isolate an atmospheric capture
 saving, so an ideal-capture option does not zero the whole pair.
 

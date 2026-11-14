@@ -19,10 +19,12 @@ interface Props {
   groups: readonly BudgetBasisSummary[]
   budget: DeltaVBudget | null
   notices: readonly string[]
+  defaultReentry: boolean
+  idealCapture: boolean
   onClose: () => void
 }
 
-function Content({ initialSection, pack, customPack, groups, budget, notices }: Omit<Props, 'open' | 'onClose'>) {
+function Content({ initialSection, pack, customPack, groups, budget, notices, defaultReentry, idealCapture }: Omit<Props, 'open' | 'onClose'>) {
   const [section, setSection] = useState(initialSection)
   const reserve = budget ? budget.baseDeltaV * budget.redundancyPercent / 100 : 0
   const rounding = budget ? Math.max(0, budget.extraDeltaV - reserve) : 0
@@ -56,7 +58,8 @@ function Content({ initialSection, pack, customPack, groups, budget, notices }: 
             {groups.some(group => group.kind === 'model') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>Calculated estimates use simplified orbits. They do not predict an exact flight date or account for losses from your vehicle and how you fly it.</Typography>}
             {groups.some(group => group.kind === 'user') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: basisColors.user }}>These are Delta-V amounts you entered, including any zeros. Source links explain the route but do not verify your numbers.</Typography>}
             {groups.some(group => group.kind === 'placeholder') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: basisColors.placeholder }}>Until you enter a landing allowance, this pack reuses the launch Delta-V as a default for atmospheric landings. It is not a verified landing cost or guaranteed maximum. Open Atmosphere to set your powered-landing Delta-V.</Typography>}
-            {groups.some(group => group.kind === 'ideal') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: basisColors.ideal }}>Selected capture burns count as 0 m/s, assuming the atmosphere removes all the required speed. Entry safety and correction burns are not calculated; adding a percentage reserve to zero still gives zero.</Typography>}
+            {defaultReentry && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: basisColors.ideal }}>Kerbin landing defaults to 0 m/s of engine burns, assuming atmospheric braking and parachutes. Safe entry, deorbit and correction burns are not calculated. Ascent and orbital capture keep their own costs. Open Atmosphere to enter a landing budget or turn this assumption off.</Typography>}
+            {idealCapture && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: basisColors.ideal }}>Selected capture burns count as 0 m/s, assuming the atmosphere removes all the required speed. Entry safety and correction burns are not calculated; adding a percentage reserve to zero still gives zero.</Typography>}
             {groups.some(group => group.kind === 'imported') && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>These figures come from the pack author, including any costs without a map or calculation source. This planner has not independently checked their declared sources or calculation method.</Typography>}
             {notices.map(notice => <Typography key={notice} sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>{notice}</Typography>)}
           </Stack>

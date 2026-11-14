@@ -19,7 +19,7 @@ test('preserves mouse and touch selection while the compact mission budget chang
 
     await activate('surface')
     await expect(page.getByRole('button', { name: 'Choose destination', exact: true })).toContainText('Kerbin surface')
-    await expect(page.getByTestId('route-total')).toHaveText('3,400 m/s')
+    await expect(page.getByTestId('route-total')).toHaveText('0 m/s')
 
     if (mission === 0) await page.getByRole('button', { name: 'Reset mission', exact: true }).click()
   }

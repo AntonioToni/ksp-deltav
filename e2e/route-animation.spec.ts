@@ -126,7 +126,7 @@ test('reverses travel for return-only and swapped endpoints', async ({ page }) =
   await missionModeButton(page, 'one-way').click()
   await page.getByRole('button', { name: 'Swap origin and destination', exact: true }).click()
   await expectDirection(page, 'stock:duna:surface', 'stock:kerbin:surface')
-  await expect(total(page)).toHaveText('6,540 m/s')
+  await expect(total(page)).toHaveText('3,140 m/s')
 })
 
 test('follows and reorders multiple stops, retaining outward and inward passes over shared lines', async ({ page }) => {

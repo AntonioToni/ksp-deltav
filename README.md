@@ -46,8 +46,9 @@ with Stock or OPM.
   have page controls; details stay hidden until you enable them.
 - **Atmospheric-braking markers** showing where atmospheric assistance may be
   possible in the indicated direction.
-- **Optional atmospheric assistance**, with per-body ideal capture choices and
-  powered landing allowances you enter yourself. Routes recalculate before the
+- **Atmospheric assistance**, with a default Kerbin landing assumption of
+  **0 m/s** using atmospheric braking and parachutes. Choose ideal capture or
+  enter other landing budgets in Atmosphere. Routes recalculate before the
   mission reserve is added.
 - **CommNet relay planning** for equally spaced satellites in a circular orbit
   above the equator. Check coverage, antenna ranges, signal strengths, and burns
@@ -64,7 +65,7 @@ with Stock or OPM.
   links. See how antenna choices and Kerbalism's signal adjustment affect science
   transmission, with editable antenna speed and minimum science rate.
 - **A responsive map** with keyboard and touch selection, a deep-blue starfield,
-  and no page or map scrolling.
+  comfortable sizing on large screens, and no page or map scrolling.
 
 ## How to use it
 
@@ -82,12 +83,15 @@ with Stock or OPM.
    Numbered teal badges identify the stops on the map.
 5. Open **Atmosphere** (**Aero** on phones) in the header to choose ideal capture
    or enter a powered landing allowance for supported bodies, then choose
-   **Apply**. These options start disabled.
+   **Apply**. Built-in Kerbin maps start with a **0 m/s** atmospheric landing
+   assumption. Capture and other bodies' landing options start disabled.
 6. Adjust **Redundancy** for your reserve and enable **Breakdown** to inspect
    individual maneuvers. Use the stage arrows to browse a multi-stop journey.
 
 All budgets are shown in **m/s**. For example, the stock Kerbin surface → Mun
-surface route is **5,120 m/s**, or **10,240 m/s** for a round trip before reserves.
+surface route is **5,120 m/s**, or **6,840 m/s** for a round trip before reserves
+with the default Kerbin landing assumption. Turning that assumption off restores
+the map's **10,240 m/s** powered round-trip budget.
 With stops, One way follows origin → stops → destination. Return only reverses
 that itinerary, and Round trip follows it outward and then in reverse. Return
 only starts at the selected destination point without including an outbound
@@ -119,10 +123,12 @@ Kcalbeloh moon pairs retain their published complete-pair budgets.
 
 **Swap** reverses both the endpoints and the stop order. Changing systems keeps
 map points available in the new pack and removes unsupported stops. **Clear** removes
-the endpoints, stops, atmospheric choices, and link allowances, resets the reserve
-to 0%, returns to **One way**, and hides the breakdown. Atmospheric choices follow
-body IDs, so swapping or changing mission modes keeps them, and changing systems
-retains compatible choices.
+the endpoints, stops, and link allowances, restores the active pack's atmospheric
+defaults, resets the reserve to 0%, returns to **One way**, and hides the breakdown.
+Atmospheric choices follow body IDs, so swapping or changing mission modes keeps
+them. Changing systems retains compatible choices, including turning Kerbin's
+landing assumption off. RSS and imported custom packs have no automatic Kerbin
+landing assumption.
 
 The **Custom planet packs** manager accepts up to five JSON packs and keeps them
 in this browser; files are not uploaded. If browser storage is unavailable, packs
@@ -256,14 +262,21 @@ instead of receiving an ordinary Hohmann estimate.
 
 **Atmospheric choices do not simulate entry.** Ideal capture assumes the
 atmosphere replaces separately listed arrival and circularization burns with
-0 m/s of engine burns; later correction burns are excluded. Landing uses the
-engine-burn budget you enter, including an explicit zero if appropriate for your plan. Entry
-heating, guidance, and parachute performance are not modeled. Bundled transfer
-costs remain intact even when their arrow indicates possible atmospheric
-assistance. With options disabled, atmospheric landings retain their original
-launch-sized default budget. That default is not a verified landing cost or a
-guaranteed maximum. See the [data guide](docs/DATA.md) for a worked
-example and the exact scope of the adjustments.
+0 m/s of engine burns; later correction burns are excluded. Built-in Stock,
+OPM, and their Kcalbeloh configurations assume **0 m/s** for Kerbin's landing
+step, using atmospheric braking and parachutes. This leaves ascent, orbital
+capture, and combined transfer costs unchanged. Safe entry and any deorbit or
+correction burns are not calculated. Edit the landing allowance or uncheck
+**Landing** in Atmosphere to change this assumption.
+
+Other landing options use the engine-burn budget you enter, including an explicit
+zero if appropriate for your plan. Entry heating, guidance, and parachute
+performance are not modeled. Turning a landing option off restores the source's
+original landing budget. Built-in atmospheric landing placeholders reuse launch
+budgets; they are not verified landing costs or guaranteed maximums.
+The source data and exported packs retain their original figures.
+See the [data guide](docs/DATA.md) for worked examples and the exact scope of
+the adjustments.
 
 **OPM uses calculated estimates.** Orbital and airless-body budgets use
 pinned official 2.2.12 constants and parking orbits above current atmospheres.

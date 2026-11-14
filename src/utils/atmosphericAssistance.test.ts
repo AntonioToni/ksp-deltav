@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { opmPack } from '../data/opm'
 import { rssPack } from '../data/rss'
 import { stockPack } from '../data/stock'
+import { opmKcalbelohPack, opmKcalbelohNoWormholesPack, stockKcalbelohPack, stockKcalbelohNoWormholesPack } from '../data/kcalbeloh'
 import type { CelestialBody, ManeuverEdge, PlanetPack, PlannerGraph, RouteNode } from '../types/planner'
 import { buildGraph } from './buildGraph'
 import { calculateBudget } from './budget'
 import { findMissionRoute } from './mission'
-import { applyAtmosphericAssistance, getAtmosphericCapabilities, type AtmosphericPlan } from './atmosphericAssistance'
+import { applyAtmosphericAssistance, getAtmosphericCapabilities, getDefaultAtmosphericPlan, reconcileAtmosphericPlan, type AtmosphericPlan } from './atmosphericAssistance'
 
 const start = 'stock:kerbin:surface'
 const end = 'stock:duna:surface'
@@ -51,6 +52,71 @@ describe('atmospheric capabilities', () => {
     const pack = structuredClone(stockPack)
     pack.maneuvers = pack.maneuvers.filter(candidate => !candidate.id.startsWith('stock:kerbin:') || candidate.kind === 'escape' || candidate.kind === 'ascent')
     expect(getAtmosphericCapabilities(pack).some(({ body }) => body.id === 'stock:kerbin')).toBe(false)
+  })
+})
+
+describe('default Kerbin landing assumption', () => {
+  it.each([stockPack, opmPack, stockKcalbelohPack, opmKcalbelohPack, stockKcalbelohNoWormholesPack, opmKcalbelohNoWormholesPack])('uses only a Kerbin landing preset in built-in $id', pack => {
+    expect(getDefaultAtmosphericPlan(pack, true)).toEqual([
+      { bodyId: 'stock:kerbin', capture: false, landing: true, landingDeltaV: 0, landingPreset: 'kerbin-reentry' },
+    ])
+  })
+
+  it('does not assume a free landing for RSS, imported maps or unsupported Kerbin data', () => {
+    expect(getDefaultAtmosphericPlan(rssPack, true)).toEqual([])
+    expect(getDefaultAtmosphericPlan(stockPack, false)).toEqual([])
+    const unsupported = structuredClone(stockPack)
+    unsupported.bodies.find(body => body.id === 'stock:kerbin')!.supportsAtmosphericBraking = false
+    expect(getDefaultAtmosphericPlan(unsupported, true)).toEqual([])
+  })
+
+  it('keeps explicit opt-outs, manual zero and powered allowances across compatible built-ins', () => {
+    for (const option of [
+      { bodyId: 'stock:kerbin', capture: false, landing: false, landingDeltaV: 0 },
+      { bodyId: 'stock:kerbin', capture: false, landing: true, landingDeltaV: 0 },
+      { bodyId: 'stock:kerbin', capture: true, landing: true, landingDeltaV: 50 },
+    ]) {
+      const before = structuredClone(option)
+      const next = reconcileAtmosphericPlan(opmPack, [option], true)
+      expect(next).toEqual([option])
+      expect(reconcileAtmosphericPlan(stockKcalbelohPack, next, true)).toEqual([option])
+      expect(option).toEqual(before)
+    }
+  })
+
+  it('adds defaults only for missing compatible bodies and discards unavailable choices', () => {
+    const previous: AtmosphericPlan = [duna(), { bodyId: 'opm:tekto', capture: true, landing: true, landingDeltaV: 200 }]
+    expect(reconcileAtmosphericPlan(stockPack, previous, true)).toEqual([duna(), ...getDefaultAtmosphericPlan(stockPack, true)])
+    const rss = reconcileAtmosphericPlan(rssPack, getDefaultAtmosphericPlan(stockPack, true), true)
+    expect(rss).toEqual([])
+    expect(reconcileAtmosphericPlan(stockPack, rss, true)).toEqual(getDefaultAtmosphericPlan(stockPack, true))
+  })
+
+  it('does not apply the built-in preset to an imported map that reuses Kerbin IDs', () => {
+    const result = reconcileAtmosphericPlan(stockPack, getDefaultAtmosphericPlan(stockPack, true), false)
+    expect(result.some(option => option.landing)).toBe(false)
+    expect(result.every(option => option.landingPreset === undefined)).toBe(true)
+    expect(reconcileAtmosphericPlan(stockPack, result, true)).toEqual(getDefaultAtmosphericPlan(stockPack, true))
+    const manual: AtmosphericPlan = [{ bodyId: 'stock:kerbin', capture: false, landing: true, landingDeltaV: 20 }]
+    expect(reconcileAtmosphericPlan(stockPack, manual, false)).toEqual(manual)
+  })
+
+  it('removes only the Kerbin descent cost and leaves capture, takeoff and source data intact', () => {
+    const original = structuredClone(stockPack)
+    const reference = buildGraph(stockPack)
+    const result = applyAtmosphericAssistance(reference, stockPack, getDefaultAtmosphericPlan(stockPack, true))
+    expect([...result.adjustments]).toEqual([
+      [edgeId('kerbin', 'orbit', 'surface'), { kind: 'landing', originalDeltaV: 3400, deltaV: 0 }],
+    ])
+    expect(edge(result.graph, edgeId('kerbin', 'surface', 'orbit'))?.deltaV).toBe(3400)
+    expect(edge(result.graph, edgeId('kerbin', 'encounter', 'orbit'))?.deltaV).toBe(950)
+    expect(edge(result.graph, 'stock:mun:encounter->stock:kerbin:orbit')?.deltaV).toBe(860)
+    expect(edge(result.graph, edgeId('kerbin', 'orbit', 'surface'))?.assumptions.at(-1)).toContain('Default Kerbin reentry')
+    expect(findMissionRoute(result.graph, 'stock:kerbin:surface', 'stock:mun:surface', 'one-way')).toMatchObject({ status: 'success', totalDeltaV: 5120 })
+    expect(findMissionRoute(result.graph, 'stock:kerbin:surface', 'stock:mun:surface', 'return-only')).toMatchObject({ status: 'success', totalDeltaV: 1720 })
+    expect(findMissionRoute(result.graph, 'stock:kerbin:surface', 'stock:mun:surface', 'round-trip')).toMatchObject({ status: 'success', totalDeltaV: 6840 })
+    expect(findMissionRoute(reference, 'stock:kerbin:surface', 'stock:mun:surface', 'round-trip')).toMatchObject({ status: 'success', totalDeltaV: 10240 })
+    expect(stockPack).toEqual(original)
   })
 })
 
@@ -208,6 +274,15 @@ describe('atmospheric option validation', () => {
 
   it.each([-1, 1_000_001, Infinity, NaN, '100', null])('rejects invalid landing allowance %s', landingDeltaV => {
     expect(() => applyAtmosphericAssistance(graph, stockPack, [{ ...duna(), landingDeltaV }] as unknown as AtmosphericPlan)).toThrow('Powered landing allowance')
+  })
+
+  it.each([
+    { bodyId: 'stock:duna', landingDeltaV: 0, landingPreset: 'kerbin-reentry' },
+    { bodyId: 'stock:kerbin', landingDeltaV: 50, landingPreset: 'kerbin-reentry' },
+    { bodyId: 'stock:kerbin', landingDeltaV: 0, landingPreset: 'unknown' },
+  ])('rejects misleading preset provenance %j', values => {
+    const plan = [{ capture: false, landing: true, ...values }] as unknown as AtmosphericPlan
+    expect(() => applyAtmosphericAssistance(graph, stockPack, plan)).toThrow('Kerbin reentry preset')
   })
 
   it('rejects unknown, duplicate, airless and unsupported body choices', () => {

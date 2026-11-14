@@ -43,6 +43,9 @@ export function describeManeuverBasis(edge: ManeuverEdge, pack: PlanetPack, opti
   const choice = options.atmosphericPlan?.find(choice => choice.bodyId === to?.bodyId)
   const eligible = standalone && choice && getAerobrakingEdges(pack).some(candidate => candidate.id === edge.id)
   if (eligible && edge.kind === 'descent' && choice.landing) {
+    if (!options.customPack && choice.landingPreset === 'kerbin-reentry' && choice.bodyId === 'stock:kerbin' && choice.landingDeltaV === 0 && edge.deltaV === 0) {
+      return basis('ideal', 'Atmospheric reentry', 'The default Kerbin landing assumes atmospheric braking and parachutes replace the landing engine burn (0 m/s). Safe entry, deorbit and correction burns are not calculated. You can set a different landing budget in Atmosphere.')
+    }
     return basis('user', 'Your allowance', 'The engine-burn budget you entered for this landing. Safe atmospheric entry and your vehicle’s landing performance are not calculated.')
   }
   if (eligible && edge.kind === 'capture' && choice.capture) {
@@ -70,6 +73,7 @@ export function summarizeBudgetBasis(legs: readonly RouteLeg[], pack: PlanetPack
   for (const { edge } of legs) {
     const { kind, label } = describeManeuverBasis(edge, pack, options)
     const row = rows.get(kind) ?? { kind, label, deltaV: 0, maneuvers: 0 }
+    if (kind === 'ideal' && row.label !== label) row.label = 'Atmospheric assumptions'
     row.deltaV += edge.deltaV
     row.maneuvers++
     rows.set(kind, row)

@@ -162,9 +162,9 @@ test('leaves missing source links unavailable until each directional wormhole al
   await openAllowances(page)
   await allowance(page, wormhole, 'Reverse').fill('2000')
   await apply(page)
-  await expect(total(page)).toHaveText('13,900 m/s')
+  await expect(total(page)).toHaveText('10,500 m/s')
   await missionModeButton(page, 'round-trip').click()
-  await expect(total(page)).toHaveText('26,800 m/s')
+  await expect(total(page)).toHaveText('23,400 m/s')
 })
 
 test('stages invalid, blank and explicit zero allowances without inventing a free connection', async ({ page }) => {

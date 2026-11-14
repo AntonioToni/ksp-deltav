@@ -5,8 +5,10 @@ export interface AtmosphericBodyPlan {
   bodyId: string
   capture: boolean
   landing: boolean
-  /** User-supplied powered landing allowance, in m/s; never inferred from ascent. */
+  /** Landing engine-burn budget, in m/s; entered or explicitly preset, never inferred from ascent. */
   landingDeltaV: number
+  /** App-selected assumption; omitted for an amount entered by the user. */
+  landingPreset?: 'kerbin-reentry'
 }
 
 export type AtmosphericPlan = readonly AtmosphericBodyPlan[]
@@ -51,8 +53,36 @@ export function getAtmosphericCapabilities(pack: PlanetPack): { body: CelestialB
   })
 }
 
+/** Built-in Kerbin maps start with a parachute-assisted landing assumption. */
+export function getDefaultAtmosphericPlan(pack: PlanetPack, isBuiltIn: boolean): AtmosphericBodyPlan[] {
+  if (!isBuiltIn || !getAtmosphericCapabilities(pack).some(({ body, landing }) => body.id === 'stock:kerbin' && body.hasSurface && landing)) return []
+  return [{ bodyId: 'stock:kerbin', capture: false, landing: true, landingDeltaV: 0, landingPreset: 'kerbin-reentry' }]
+}
+
+/** Keep compatible choices, including an explicit opt-out, when switching maps. */
+export function reconcileAtmosphericPlan(pack: PlanetPack, previous: AtmosphericPlan, isBuiltIn: boolean): AtmosphericBodyPlan[] {
+  const capabilities = new Map(getAtmosphericCapabilities(pack).map(capability => [capability.body.id, capability]))
+  const next = previous.flatMap(option => {
+    const capability = capabilities.get(option.bodyId)
+    if (!capability) return []
+    const { landingPreset, ...entered } = option
+    // A built-in assumption must not silently become an imported pack's default.
+    const keepPreset = landingPreset === 'kerbin-reentry' && isBuiltIn
+    const capture = option.capture && capability.capture
+    if (landingPreset !== undefined && !isBuiltIn && !capture) return []
+    return [{
+      ...entered,
+      capture,
+      landing: option.landing && capability.landing && (landingPreset === undefined || keepPreset),
+      ...(keepPreset ? { landingPreset } : {}),
+    }]
+  })
+  const chosen = new Set(next.map(option => option.bodyId))
+  return [...next, ...getDefaultAtmosphericPlan(pack, isBuiltIn).filter(option => !chosen.has(option.bodyId))]
+}
+
 /**
- * Compile explicitly chosen ideal assistance before ordered route optimization.
+ * Compile selected atmospheric assumptions before ordered route optimization.
  * The supplied graph must be the unmodified buildGraph(pack) reference graph.
  * Original pack data, edge identity, and arrival-context transitions are kept.
  */
@@ -77,6 +107,9 @@ export function applyAtmosphericAssistance(graph: PlannerGraph, pack: PlanetPack
     if (typeof row.landingDeltaV !== 'number' || !Number.isFinite(row.landingDeltaV) || row.landingDeltaV < 0 || row.landingDeltaV > 1_000_000) {
       throw new RangeError('Powered landing allowance must be between 0 and 1,000,000 m/s.')
     }
+    if (row.landingPreset !== undefined && (row.landingPreset !== 'kerbin-reentry' || row.bodyId !== 'stock:kerbin' || row.landingDeltaV !== 0)) {
+      throw new RangeError('The Kerbin reentry preset requires Kerbin and a 0 m/s landing budget.')
+    }
     const capability = capabilities.get(row.bodyId)
     if (row.capture && !capability?.capture) throw new RangeError('This body has no supported standalone atmospheric capture maneuver.')
     if (row.landing && !capability?.landing) throw new RangeError('This body has no supported atmospheric landing maneuver.')
@@ -98,7 +131,9 @@ export function applyAtmosphericAssistance(graph: PlannerGraph, pack: PlanetPack
       adjustments.set(edge.id, { kind: maneuver.kind, originalDeltaV: edge.deltaV, deltaV })
       const assumption = maneuver.kind === 'capture'
         ? 'Assumes the atmosphere replaces this capture burn with 0 m/s of engine burns. Safe entry and later correction burns are not calculated.'
-        : `Uses your ${deltaV} m/s engine-burn budget for landing instead of the source’s ${edge.deltaV} m/s descent figure.`
+        : settings.landingPreset === 'kerbin-reentry'
+          ? 'Default Kerbin reentry assumes atmospheric braking and parachutes replace the landing engine burn (0 m/s). Safe entry, deorbit and correction burns are not calculated.'
+          : `Uses your ${deltaV} m/s engine-burn budget for landing instead of the source’s ${edge.deltaV} m/s descent figure.`
       return { ...edge, deltaV, assumptions: [...edge.assumptions, assumption] }
     })
     if (changed) adjacency.set(nodeId, updated)

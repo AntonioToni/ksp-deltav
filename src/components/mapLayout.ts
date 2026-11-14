@@ -83,6 +83,23 @@ const wideStates: Record<string, BodyStates> = {
   eeloo: { surface: p(1320, 565), orbit: p(1190, 520), encounter: p(1060, 475) },
 }
 
+// Short screens need a full node-and-hover gap between the Jool moon rows.
+// Keep the parent band and Eeloo below those rows rather than compressing all
+// three moon states into nearly touching circles.
+const stockShortStates: Record<string, BodyStates> = {
+  laythe: { surface: p(850, 64), orbit: p(850, 128), encounter: p(850, 192) },
+  vall: { surface: p(970, 64), orbit: p(970, 128), encounter: p(970, 192) },
+  tylo: { surface: p(1090, 64), orbit: p(1090, 128), encounter: p(1090, 192) },
+  bop: { surface: p(1210, 64), orbit: p(1210, 128), encounter: p(1210, 192) },
+  pol: { surface: p(1330, 64), orbit: p(1330, 128), encounter: p(1330, 192) },
+  jool: { encounter: p(850, 260), elliptical: p(960, 260), orbit: p(1080, 285) },
+  eeloo: { encounter: p(1140, 345), orbit: p(1230, 375), surface: p(1320, 405) },
+  kerbin: { surface: p(620, 411), orbit: p(620, 347), encounter: p(620, 282.6) },
+  mun: { surface: p(140, 391.8), orbit: p(260, 391.8), encounter: p(390, 385) },
+  gilly: { surface: p(140, 194.6), orbit: p(260, 194.6), encounter: p(380, 194.6) },
+  eve: { surface: p(140, 258.6), orbit: p(260, 258.6), elliptical: p(380, 258.6), encounter: p(480, 258.6) },
+}
+
 const portraitColumns = [
   ['moho', 'eve', 'gilly', 'kerbin', 'mun', 'minmus', 'duna', 'ike'],
   ['dres', 'jool', 'laythe', 'vall', 'tylo', 'bop', 'pol', 'eeloo'],
@@ -326,7 +343,7 @@ function createStockLayout(pack: PlanetPack, mode: MapMode): MapLayout {
     const positions = wideStates[id]
     for (const node of nodes) {
       const point = positions?.[node.kind]
-      if (point) nodePositions.set(node.id, mode === 'short' ? p(point.x, 25 + point.y * 0.56) : point)
+      if (point) nodePositions.set(node.id, mode === 'short' ? stockShortStates[id]?.[node.kind] ?? p(point.x, 25 + point.y * 0.56) : point)
     }
     const surface = positions?.surface
     const label = id === 'jool' ? p(1145, 394)
@@ -338,9 +355,10 @@ function createStockLayout(pack: PlanetPack, mode: MapMode): MapLayout {
     if (label) labels.push({
       body, x: label.x,
       y: mode === 'short'
-        ? surface && ['kerbin', 'minmus', 'mun', 'eeloo'].includes(id)
-          ? 25 + surface.y * 0.56 + 40
-          : 25 + label.y * 0.56
+        ? id === 'jool' ? 289 : id === 'eeloo' ? 449 : ['laythe', 'vall', 'tylo', 'bop', 'pol'].includes(id) ? 30
+          : surface && ['kerbin', 'minmus', 'mun'].includes(id)
+            ? (stockShortStates[id]?.surface?.y ?? 25 + surface.y * 0.56) + 40
+            : surface ? (stockShortStates[id]?.surface?.y ?? 25 + surface.y * 0.56) - 26 : 25 + label.y * 0.56
         : label.y,
       anchor: id === 'jool' ? 'start' : 'middle',
     })

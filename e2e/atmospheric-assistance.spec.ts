@@ -77,10 +77,10 @@ async function pageFits(page: Page) {
   })
 }
 
-test('keeps the reference budget by default and applies only the selected ideal capture burns', async ({ page }) => {
+test('keeps other-body reference budgets and applies only the selected ideal capture burns', async ({ page }) => {
   await planDuna(page)
   await expect(page.getByLabel('Show breakdown', { exact: true })).not.toBeChecked()
-  await expect(page.locator('[data-aerobraking-edge][data-assisted="true"]')).toHaveCount(0)
+  await expect(page.locator('[data-aerobraking-edge][data-assisted="true"]')).toHaveCount(1)
   await openEditor(page)
   await expect(capture(page, 'Duna')).not.toBeChecked()
   await expect(landing(page, 'Duna')).not.toBeChecked()
@@ -121,13 +121,13 @@ test('preserves the Duna ascent cost for return-only and round-trip missions', a
   await planDuna(page)
   await dunaAssistance(page)
   await missionModeButton(page, 'round-trip').click()
-  await expect(total(page)).toHaveText('11,120 m/s')
+  await expect(total(page)).toHaveText('7,720 m/s')
   await page.getByLabel('Show breakdown', { exact: true }).check()
   await page.getByRole('tab', { name: 'Return', exact: true }).click()
-  await expect(page.getByTestId('leg-total')).toHaveText('6,540 m/s')
+  await expect(page.getByTestId('leg-total')).toHaveText('3,140 m/s')
   await expect(panel(page).getByRole('listitem').first()).toContainText('1,450 m/s')
   await missionModeButton(page, 'return-only').click()
-  await expect(total(page)).toHaveText('6,540 m/s')
+  await expect(total(page)).toHaveText('3,140 m/s')
   await button(page, 'Swap origin and destination').click()
   await expect(total(page)).toHaveText('4,580 m/s')
 })
@@ -171,11 +171,11 @@ test('discards staged changes on Cancel and Escape and restores keyboard focus',
 test('retains bundled moon-return transfer costs while replacing only the entered Kerbin landing allowance', async ({ page }) => {
   await state(page, 'stock:mun:surface').click()
   await state(page, 'stock:kerbin:surface').click()
-  await expect(total(page)).toHaveText('5,120 m/s')
+  await expect(total(page)).toHaveText('1,720 m/s')
   await openEditor(page)
   await capture(page, 'Kerbin').check()
   await apply(page).click()
-  await expect(total(page)).toHaveText('5,120 m/s')
+  await expect(total(page)).toHaveText('1,720 m/s')
   await openEditor(page)
   await landing(page, 'Kerbin').check()
   await allowance(page, 'Kerbin').fill('100')

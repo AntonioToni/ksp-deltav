@@ -32,7 +32,7 @@ import { buildGraph } from './utils/buildGraph'
 import { findMissionRoute, type MissionMode } from './utils/mission'
 import { calculateBudget } from './utils/budget'
 import { readCustomPacks, saveCustomPacks, validateCustomPackAddition } from './utils/customPacks'
-import { applyAtmosphericAssistance, getAtmosphericCapabilities, type AtmosphericPlan } from './utils/atmosphericAssistance'
+import { applyAtmosphericAssistance, getDefaultAtmosphericPlan, reconcileAtmosphericPlan, type AtmosphericPlan } from './utils/atmosphericAssistance'
 import { applyConnectionAllowances, type ConnectionPlan } from './utils/connectionAllowances'
 import { hasPotentialConnectionRoute } from './utils/connectionAvailability'
 import { describeManeuverBasis, summarizeBudgetBasis } from './utils/estimateBasis'
@@ -70,8 +70,9 @@ export default function App() {
   const [showAllowances, setShowAllowances] = useState(false)
   const [connectionPlan, setConnectionPlan] = useState<ConnectionPlan>([])
   const [mapFocusNodeId, setMapFocusNodeId] = useState<string | null>(null)
-  const [atmosphericPlan, setAtmosphericPlan] = useState<AtmosphericPlan>([])
+  const [atmosphericPlan, setAtmosphericPlan] = useState<AtmosphericPlan>(() => getDefaultAtmosphericPlan(stockPack, true))
   const hasAtmosphericOptions = atmosphericPlan.some(option => option.capture || option.landing)
+  const kerbinReentryEnabled = atmosphericPlan.some(option => option.landing && option.landingPreset === 'kerbin-reentry')
   const referenceGraph = useMemo(() => buildGraph(pack), [pack])
   const { graph: allowanceGraph, edges: allowanceEdges } = useMemo(() => applyConnectionAllowances(referenceGraph, pack, connectionPlan), [referenceGraph, pack, connectionPlan])
   const displayPack = useMemo(() => allowanceEdges.length ? { ...pack, maneuvers: [...pack.maneuvers, ...allowanceEdges] } : pack, [pack, allowanceEdges])
@@ -101,9 +102,13 @@ export default function App() {
     () => startId !== null && endId !== null ? findMissionRoute(graph, startId, endId, missionMode, waypointIds) : null,
     [graph, startId, endId, missionMode, waypointIds],
   )
+  const compareAtmosphere = hasAtmosphericOptions && route?.status === 'success' && (
+    atmosphericPlan.some(option => option.capture || option.landing && !option.landingPreset)
+    || route.legs.some(({ edge }) => adjustments.has(edge.id))
+  )
   const referenceRoute = useMemo(
-    () => hasAtmosphericOptions && startId !== null && endId !== null ? findMissionRoute(allowanceGraph, startId, endId, missionMode, waypointIds) : null,
-    [allowanceGraph, hasAtmosphericOptions, startId, endId, missionMode, waypointIds],
+    () => compareAtmosphere && startId !== null && endId !== null ? findMissionRoute(allowanceGraph, startId, endId, missionMode, waypointIds) : null,
+    [allowanceGraph, compareAtmosphere, startId, endId, missionMode, waypointIds],
   )
   const atmosphericDifference = route?.status === 'success' && referenceRoute?.status === 'success'
     ? route.totalDeltaV - referenceRoute.totalDeltaV : null
@@ -160,6 +165,8 @@ export default function App() {
   const basisOptions = useMemo(() => ({ customPack: isCustomPack, allowanceEdgeIds, atmosphericPlan }), [isCustomPack, allowanceEdgeIds, atmosphericPlan])
   const basisGroups = useMemo(() => route?.status === 'success' ? summarizeBudgetBasis(route.legs, pack, basisOptions) : [], [route, pack, basisOptions])
   const basisByEdge = useMemo(() => new Map(route?.status === 'success' ? route.legs.map(({ edge }) => [edge.id, describeManeuverBasis(edge, pack, basisOptions)]) : []), [route, pack, basisOptions])
+  const defaultReentry = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && basisByEdge.get(edge.id)?.kind === 'ideal')
+  const idealCapture = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'capture' && basisByEdge.get(edge.id)?.kind === 'ideal')
   const estimateNotices = [
     ...(unavailableInterstellarNotice ? [unavailableInterstellarNotice] : []),
     ...(hasLayover ? [layoverNotice] : []),
@@ -248,14 +255,7 @@ export default function App() {
         && previous.forwardKind === connection.forwardKind && previous.reverseKind === connection.reverseKind
     }).map(connection => connection.id))
     setConnectionPlan(options => options.filter(option => compatibleConnections.has(option.connectionId)))
-    const capabilities = new Map(getAtmosphericCapabilities(nextPack).map(capability => [capability.body.id, capability]))
-    setAtmosphericPlan(options => options.flatMap(option => {
-      const capability = capabilities.get(option.bodyId)
-      if (!capability) return []
-      const capture = option.capture && capability.capture
-      const landing = option.landing && capability.landing
-      return capture || landing ? [{ ...option, capture, landing }] : []
-    }))
+    setAtmosphericPlan(options => reconcileAtmosphericPlan(nextPack, options, !customPacks.some(candidate => candidate.id === nextPack.id)))
     setSelection(nextStart === null ? 'start' : nextEnd === null || selection === 'stop' ? 'end' : selection)
     setShowStops(false)
     setShowBreakdown(false)
@@ -293,7 +293,7 @@ export default function App() {
     setShowStops(false)
     setRedundancy(0)
     setShowReserveHelp(false)
-    setAtmosphericPlan([])
+    setAtmosphericPlan(getDefaultAtmosphericPlan(pack, !isCustomPack))
     setConnectionPlan([])
     setShowAllowances(false)
     setShowAtmosphere(false)
@@ -304,8 +304,9 @@ export default function App() {
   }
 
   const personalLanding = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && !allowanceEdgeIds.has(edge.id) && basisByEdge.get(edge.id)?.kind === 'user')
-  const landingNotice = basisGroups.some(group => group.kind === 'placeholder') ? 'Atmospheric landing uses a default Delta-V allowance. Set your own in Atmosphere.'
-    : personalLanding ? 'Atmospheric landing uses your powered-landing Delta-V.' : "Atmospheric landing uses the pack's supplied Delta-V."
+  const reentryNotice = 'Kerbin landing: 0 m/s (atmosphere + parachutes).'
+  const landingNotice = basisGroups.some(group => group.kind === 'placeholder') ? `Atmospheric landing uses a default Delta-V allowance. Set your own in Atmosphere.${defaultReentry ? ` ${reentryNotice}` : ''}`
+    : defaultReentry ? reentryNotice : personalLanding ? 'Atmospheric landing uses your powered-landing Delta-V.' : "Atmospheric landing uses the pack's supplied Delta-V."
   const routeFeatures = [
     ...(directTransferCount > 0 ? [`${directTransferCount} ${isCustomPack ? 'pack-supplied' : 'calculated'} direct transfer${directTransferCount === 1 ? '' : 's'}.`] : []),
     ...(usesLinkAllowances ? ['Includes your link allowances.'] : []),
@@ -330,7 +331,7 @@ export default function App() {
           <Typography component="h1" sx={{ minWidth: 0, fontWeight: 700, fontSize: { xs: 14, sm: 16 }, letterSpacing: '-.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>KSP DeltaV Planner</Typography>
         </Stack>
         <Stack direction="row" spacing={{ xs: .5, sm: 1 }} sx={{ alignItems: 'center', minWidth: 0, flexShrink: 0 }}>
-          <Tooltip title="Set atmospheric capture assumptions and your powered-landing Delta-V. Arrows mark where an atmosphere may help; complete transfer budgets keep their original cost.">
+          <Tooltip title={`${kerbinReentryEnabled ? 'Kerbin landing uses an atmospheric-braking and parachute assumption (0 m/s of engine burns). Open Atmosphere to change it or set other landing and capture assumptions.' : 'Set atmospheric capture assumptions and your powered-landing Delta-V.'} Arrows mark where an atmosphere may help; complete transfer budgets keep their original cost.`}>
             <Box role="note" aria-label="Aerobraking legend">
             <Button aria-label="Atmospheric assistance" aria-haspopup="dialog" aria-expanded={showAtmosphere} aria-pressed={hasAtmosphericOptions} onClick={() => {
               if (selection === 'stop') setSelection(previousSelection.current)
@@ -552,7 +553,7 @@ export default function App() {
 
       <RelayPlannerDialog key={pack.id} open={showRelays} pack={pack} initialBodyId={nodesById.get(endId ?? '')?.bodyId ?? pack.transferHubBodyId ?? null} onClose={() => setShowRelays(false)} />
 
-      <EstimateInfoDialog open={showInfo} initialSection={infoSection} pack={pack} customPack={isCustomPack} groups={basisGroups} budget={budget} notices={estimateNotices} onClose={() => setShowInfo(false)} />
+      <EstimateInfoDialog open={showInfo} initialSection={infoSection} pack={pack} customPack={isCustomPack} groups={basisGroups} budget={budget} notices={estimateNotices} defaultReentry={defaultReentry} idealCapture={idealCapture} onClose={() => setShowInfo(false)} />
     </Box>
   )
 }

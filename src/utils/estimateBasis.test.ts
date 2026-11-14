@@ -4,7 +4,7 @@ import { opmPack } from '../data/opm'
 import { rssPack } from '../data/rss'
 import { stockPack } from '../data/stock'
 import type { ManeuverEdge, PlanetPack, RouteLeg } from '../types/planner'
-import { applyAtmosphericAssistance, type AtmosphericPlan } from './atmosphericAssistance'
+import { applyAtmosphericAssistance, getDefaultAtmosphericPlan, type AtmosphericPlan } from './atmosphericAssistance'
 import { buildGraph } from './buildGraph'
 import { applyConnectionAllowances } from './connectionAllowances'
 import { describeManeuverBasis, summarizeBudgetBasis } from './estimateBasis'
@@ -61,6 +61,34 @@ describe('effective maneuver budget basis', () => {
     expect(result.adjustments.size).toBe(0)
     expect(result.graph).toBe(graph)
     expect(describeManeuverBasis(dunaLanding, stockPack, { atmosphericPlan: plan })).toMatchObject({ kind: 'user', label: 'Your allowance' })
+  })
+
+  it('distinguishes the built-in Kerbin landing preset from a manually entered zero', () => {
+    const plan = getDefaultAtmosphericPlan(stockPack, true)
+    const adjusted = applyAtmosphericAssistance(buildGraph(stockPack), stockPack, plan)
+    const landing = adjusted.graph.adjacency.get('stock:kerbin:orbit')!.find(candidate => candidate.to === 'stock:kerbin:surface')!
+    expect(landing.deltaV).toBe(0)
+    expect(describeManeuverBasis(landing, stockPack, { atmosphericPlan: plan })).toMatchObject({ kind: 'ideal', label: 'Atmospheric reentry' })
+    const manual: AtmosphericPlan = [{ bodyId: 'stock:kerbin', capture: false, landing: true, landingDeltaV: 0 }]
+    expect(describeManeuverBasis(landing, stockPack, { atmosphericPlan: manual })).toMatchObject({ kind: 'user', label: 'Your allowance' })
+    expect(describeManeuverBasis(landing, stockPack, { atmosphericPlan: plan, customPack: true }).kind).toBe('user')
+    const untouched = edge(stockPack, 'stock:kerbin:orbit', 'stock:kerbin:surface')
+    expect(describeManeuverBasis(untouched, stockPack, { atmosphericPlan: plan }).kind).not.toBe('ideal')
+  })
+
+  it('uses a shared summary label when reentry and ideal capture occur together', () => {
+    const plan: AtmosphericPlan = [...getDefaultAtmosphericPlan(stockPack, true), { bodyId: 'stock:duna', capture: true, landing: false, landingDeltaV: 0 }]
+    const adjusted = applyAtmosphericAssistance(buildGraph(stockPack), stockPack, plan)
+    const landing = adjusted.graph.adjacency.get('stock:kerbin:orbit')!.find(candidate => candidate.to === 'stock:kerbin:surface')!
+    const capture = adjusted.graph.adjacency.get(dunaCapture.from)!.find(candidate => candidate.id === dunaCapture.id)!
+    for (const edges of [[landing, capture], [capture, landing]]) {
+      expect(summarizeBudgetBasis(asLegs(edges), stockPack, { atmosphericPlan: plan })).toEqual([
+        { kind: 'ideal', label: 'Atmospheric assumptions', deltaV: 0, maneuvers: 2 },
+      ])
+    }
+    expect(summarizeBudgetBasis(asLegs([landing]), stockPack, { atmosphericPlan: plan })).toEqual([
+      { kind: 'ideal', label: 'Atmospheric reentry', deltaV: 0, maneuvers: 1 },
+    ])
   })
 
   it('describes ideal standalone capture separately while retaining a bundled moon-return budget', () => {

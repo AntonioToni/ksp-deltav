@@ -82,7 +82,7 @@ test('uses the retrograde Thatmo capture while retaining its explicitly separate
   await expect(breakdown(page).filter({ hasText: 'Thatmo low orbit' })).toContainText('641 m/s')
   await expect(breakdown(page).filter({ hasText: 'Thatmo surface' })).toContainText('950 m/s')
   await missionModeButton(page, 'return-only').click()
-  await expect(total(page)).toHaveText('9,677 m/s')
+  await expect(total(page)).toHaveText('6,277 m/s')
 })
 
 test('applies optional atmospheric choices to modern captures without discounting the return ascent', async ({ page }) => {
@@ -94,9 +94,9 @@ test('applies optional atmospheric choices to modern captures without discountin
   await expect(page.getByTestId('atmospheric-reference')).toContainText('11,927')
   await expect(page.getByTestId('atmospheric-change')).toContainText('4,779')
   await missionModeButton(page, 'round-trip').click()
-  await expect(total(page)).toHaveText('19,075 m/s')
+  await expect(total(page)).toHaveText('15,675 m/s')
   await missionModeButton(page, 'return-only').click()
-  await expect(total(page)).toHaveText('11,927 m/s')
+  await expect(total(page)).toHaveText('8,527 m/s')
   await page.getByLabel('Show breakdown', { exact: true }).check()
   await expect(breakdown(page).first()).toContainText('2,600 m/s')
 })

@@ -5,6 +5,7 @@ import type { CSSProperties, KeyboardEvent } from 'react'
 import type { ManeuverEdge, NodeKind, PlanetPack, RouteResult } from '../types/planner'
 import { arrowPosition, connectionPoints, createMapLayout, maneuverPoints, packForMapRegion, pathFromPoints } from './mapLayout'
 import type { MapMode } from './mapLayout'
+import { mapModeForViewport, maximumMapSize } from './mapViewport'
 import { getAerobrakingEdges } from '../utils/aerobraking'
 import type { AtmosphericAdjustment } from '../utils/atmosphericAssistance'
 import { createRouteFlow } from './routeFlow'
@@ -40,18 +41,6 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   const [regionChoice, setRegionChoice] = useState(() => ({ packId: pack.id, focusNodeId, regionId: pack.mapRegions?.[0]?.id ?? 'all' }))
   if (regionChoice.packId !== pack.id) setRegionChoice({ packId: pack.id, focusNodeId, regionId: pack.mapRegions?.[0]?.id ?? 'all' })
   const prefix = useId().replace(/:/g, '')
-  useLayoutEffect(() => {
-    const element = container.current
-    if (!element) return
-    const observer = new ResizeObserver(entries => {
-      const bounds = entries[0]?.contentRect
-      if (!bounds || !bounds.width || !bounds.height) return
-      const ratio = bounds.width / bounds.height
-      setMode(ratio > 2.8 ? 'short' : bounds.width < 600 || ratio < 1.15 ? 'portrait' : 'wide')
-    })
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [])
   const nodeById = useMemo(() => new Map(pack.nodes.map(node => [node.id, node])), [pack])
   const regions = pack.mapRegions ?? []
   const focusedBodyId = focusNodeId ? nodeById.get(focusNodeId)?.bodyId : undefined
@@ -62,7 +51,20 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
     : regionChoice.focusNodeId !== focusNodeId ? focusedRegion?.id ?? regionChoice.regionId
       : regionChoice.regionId
   const visiblePack = useMemo(() => packForMapRegion(pack, regionId), [pack, regionId])
-  const layout = useMemo(() => createMapLayout(visiblePack, mode), [visiblePack, mode])
+  const wideLayout = useMemo(() => createMapLayout(visiblePack, 'wide'), [visiblePack])
+  const layout = useMemo(() => mode === 'wide' ? wideLayout : createMapLayout(visiblePack, mode), [visiblePack, mode, wideLayout])
+  const maximumSize = maximumMapSize(layout)
+  useLayoutEffect(() => {
+    const element = container.current
+    if (!element) return
+    const observer = new ResizeObserver(entries => {
+      const bounds = entries[0]?.contentRect
+      if (!bounds || !bounds.width || !bounds.height) return
+      setMode(mapModeForViewport(bounds.width, bounds.height, wideLayout))
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [wideLayout])
   const bodyById = useMemo(() => new Map(pack.bodies.map(body => [body.id, body])), [pack])
   const waypointIndexes = useMemo(() => {
     const indexes = new Map<string, number[]>()
@@ -132,7 +134,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   }
 
   function adjustmentDescription(adjustment: AtmosphericAdjustment) {
-    const assumption = adjustment.kind === 'capture' ? 'capture fully handled by the atmosphere' : 'your powered-landing allowance'
+    const assumption = adjustment.kind === 'capture' ? 'capture fully handled by the atmosphere' : 'atmospheric landing budget'
     return `${adjustment.deltaV.toLocaleString()} m/s · ${assumption} (before this choice: ${adjustment.originalDeltaV.toLocaleString()} m/s)`
   }
 
@@ -142,7 +144,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   }
 
   return (
-    <Box ref={container} data-map-region={regions.length ? regionId : undefined} sx={{ position: 'relative', display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minWidth: 0, minHeight: 0, overflow: 'hidden' }} onMouseLeave={() => setInspectedId(null)}>
+    <Box data-map-region={regions.length ? regionId : undefined} sx={{ position: 'relative', display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minWidth: 0, minHeight: 0, overflow: 'hidden' }} onMouseLeave={() => setInspectedId(null)}>
       {regions.length > 0 && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, pt: .75, pb: .25, minWidth: 0, flexShrink: 0 }}>
         <TextField select size="small" label="Map view" value={regionId} onChange={event => {
           setRegionChoice({ packId: pack.id, focusNodeId, regionId: event.target.value })
@@ -153,6 +155,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
         </TextField>
         <Typography role="status" title={regionSummary} sx={{ fontSize: 10, lineHeight: 1.35, color: 'text.secondary', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{regionSummary}</Typography>
       </Box>}
+      <Box ref={container} data-map-viewport="true" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
       <Box
         component="svg"
         role="group"
@@ -161,7 +164,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
         viewBox={`0 0 ${layout.width} ${layout.height}`}
         preserveAspectRatio="xMidYMid meet"
         sx={{
-          display: 'block', width: '100%', height: '100%', minHeight: 0, flex: 1, overflow: 'hidden',
+          display: 'block', width: '100%', height: '100%', maxWidth: maximumSize.width, maxHeight: maximumSize.height, minHeight: 0, flex: '0 1 auto', overflow: 'hidden',
           '& .map-node': { cursor: 'pointer', outline: 'none' },
           '& .map-node .state-circle': { transition: 'stroke-width 120ms ease, stroke-opacity 120ms ease' },
           '& .map-node .focus-ring': { opacity: 0 },
@@ -331,6 +334,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
             </g>}
           </g>
         })}
+      </Box>
       </Box>
       {inspected && mode === 'wide' && <Box sx={{ position: 'absolute', left: 10, bottom: 5, pointerEvents: 'none', px: 1, py: 0.5, bgcolor: 'rgba(25,26,36,.92)', borderRadius: 1, maxWidth: 'calc(100% - 20px)' }}>
         <Typography variant="caption" sx={{ color: '#d7dbe6', fontSize: { xs: 10, sm: 11 }, display: 'block' }}>{inspected.label}{inspected.altitudeKm === undefined ? '' : ` · ${inspected.altitudeKm} km`}{inspectedStops ? ` · ${inspectedStops.length === 1 ? 'Stop' : 'Stops'} ${inspectedStops.join(', ')}` : ''}</Typography>

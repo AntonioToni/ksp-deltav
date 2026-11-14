@@ -175,8 +175,8 @@ test('shows the complete modeled direct transfer in compact route details', asyn
 test('keeps the atmospheric landing assumption available as a compact note', async ({ page }) => {
   await state(page, 'kerbin', 'orbit').click()
   await state(page, 'kerbin', 'surface').click()
-  await expect(page.getByTestId('route-total')).toHaveText('3,400 m/s')
-  await expect(page.getByRole('alert')).toContainText('Atmospheric landing uses a default Delta-V allowance. Set your own in Atmosphere.')
+  await expect(page.getByTestId('route-total')).toHaveText('0 m/s')
+  await expect(page.getByTestId('route-status')).toContainText(/Kerbin.*0 m\/s/i)
 })
 
 test('shows atmospheric braking opportunities independently of the selected route without changing its budget', async ({ page }) => {
@@ -226,7 +226,7 @@ test('shows atmospheric braking opportunities independently of the selected rout
 
   // The return transfer folds Kerbin capture into its arrival at low orbit.
   await page.getByRole('button', { name: 'Swap origin and destination', exact: true }).click()
-  await expect(page.getByTestId('route-total')).toHaveText('5,120 m/s')
+  await expect(page.getByTestId('route-total')).toHaveText('1,720 m/s')
   await expect(selectedMarkers).toHaveCount(2)
   expect(await selectedMarkers.evaluateAll(elements => elements.map(element => element.getAttribute('data-aerobraking-edge')).sort()))
     .toEqual(['stock:kerbin:orbit->stock:kerbin:surface', 'stock:mun:encounter->stock:kerbin:orbit'])
@@ -234,7 +234,7 @@ test('shows atmospheric braking opportunities independently of the selected rout
   // Starting at the encounter includes both atmospheric capture and descent.
   await page.getByRole('button', { name: 'Choose origin', exact: true }).click()
   await state(page, 'kerbin', 'encounter').click()
-  await expect(page.getByTestId('route-total')).toHaveText('4,350 m/s')
+  await expect(page.getByTestId('route-total')).toHaveText('950 m/s')
   await expect(markers).toHaveCount(14)
   await expect(selectedMarkers).toHaveCount(2)
   expect(await selectedMarkers.evaluateAll(elements => elements.map(element => element.getAttribute('data-aerobraking-edge')).sort()))

@@ -23,6 +23,7 @@ interface DraftBodyPlan {
   capture: boolean
   landing: boolean
   landingText: string
+  landingPreset?: AtmosphericBodyPlan['landingPreset']
 }
 
 function validAllowance(text: string): boolean {
@@ -39,21 +40,28 @@ function AtmosphereContent({ pack, plan, onApply, onClose }: Omit<AtmosphereDial
       capture: capture && existing?.capture === true,
       landing: landing && existing?.landing === true,
       landingText: existing?.landing === true ? String(existing.landingDeltaV) : '',
+      ...(landing && existing?.landing && existing.landingPreset ? { landingPreset: existing.landingPreset } : {}),
     }
   }))
   const valid = draft.every(entry => !entry.landing || validAllowance(entry.landingText))
 
   function updateBody(id: string, changes: Partial<Omit<DraftBodyPlan, 'bodyId'>>) {
-    setDraft(entries => entries.map(entry => entry.bodyId === id ? { ...entry, ...changes } : entry))
+    setDraft(entries => entries.map(entry => {
+      if (entry.bodyId !== id) return entry
+      const next = { ...entry, ...changes }
+      if (changes.landingText !== undefined || changes.landing === false) delete next.landingPreset
+      return next
+    }))
   }
 
   function apply() {
     if (!valid) return
-    const next: AtmosphericBodyPlan[] = draft.filter(entry => entry.capture || entry.landing).map(entry => ({
+    const next: AtmosphericBodyPlan[] = draft.map(entry => ({
       bodyId: entry.bodyId,
       capture: entry.capture,
       landing: entry.landing,
       landingDeltaV: entry.landing ? Number(entry.landingText) : 0,
+      ...(entry.landing && entry.landingPreset ? { landingPreset: entry.landingPreset } : {}),
     }))
     onApply(next)
   }
@@ -88,6 +96,7 @@ function AtmosphereContent({ pack, plan, onApply, onClose }: Omit<AtmosphereDial
               : <Typography aria-label={`Capture not available at ${body.name}`} sx={{ textAlign: 'center', fontSize: 12, color: 'text.secondary' }}>—</Typography>}
             {landing ? <Checkbox size="small" checked={entry.landing} onChange={(_, checked) => updateBody(body.id, { landing: checked })} slotProps={{ input: { 'aria-label': `Atmospheric landing at ${body.name}` } }} sx={{ justifySelf: 'center', p: .5, '& .MuiSvgIcon-root': { fontSize: 20 } }} />
               : <Typography aria-label={`Landing not available at ${body.name}`} sx={{ textAlign: 'center', fontSize: 12, color: 'text.secondary' }}>—</Typography>}
+            {entry.landingPreset && <Typography sx={{ gridColumn: '1 / -1', mt: .75, fontSize: 11, lineHeight: 1.4, color: '#92d5c6' }}>Default Kerbin re-entry: 0 m/s for landing engines, assuming atmospheric braking and parachutes. Deorbit and correction burns are separate. Edit the allowance below or uncheck Landing to use the map budget.</Typography>}
             {entry.landing && <TextField required fullWidth size="small" type="number" label={`Landing allowance at ${body.name}`} value={entry.landingText} error={entry.landingText !== '' && invalid} onChange={event => updateBody(body.id, { landingText: event.target.value })} helperText={invalid ? 'Enter 0–1,000,000 m/s. Zero assumes no landing engine burn.' : 'Replaces the budget for each separate landing step at this body.'} slotProps={{
               htmlInput: { 'aria-label': `Landing allowance at ${body.name}`, min: 0, max: 1_000_000, step: 'any' },
               input: { endAdornment: <InputAdornment position="end"><Typography sx={{ fontSize: 11 }}>m/s</Typography></InputAdornment> },
@@ -97,7 +106,7 @@ function AtmosphereContent({ pack, plan, onApply, onClose }: Omit<AtmosphereDial
       </Box>
     </DialogContent>
     <DialogActions sx={{ px: 1.5, py: .75, gap: .5, justifyContent: 'space-between' }}>
-      <Button size="small" onClick={() => setDraft(entries => entries.map(entry => ({ ...entry, capture: false, landing: false, landingText: '' })))} sx={{ minHeight: 36, minWidth: 0, px: .75, fontSize: 11 }}>Disable all</Button>
+      <Button size="small" onClick={() => setDraft(entries => entries.map(entry => ({ bodyId: entry.bodyId, capture: false, landing: false, landingText: '' })))} sx={{ minHeight: 36, minWidth: 0, px: .75, fontSize: 11 }}>Disable all</Button>
       <Stack direction="row" spacing={.5}>
         <Button size="small" onClick={onClose} sx={{ minHeight: 36, minWidth: 0, px: 1.25, fontSize: 12 }}>Cancel</Button>
         <Button size="small" variant="contained" disabled={!valid} onClick={apply} sx={{ minHeight: 36, minWidth: 64, px: 1.5, fontSize: 12 }}>Apply</Button>

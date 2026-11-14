@@ -52,6 +52,22 @@ function futurePackFixture(): PlanetPack {
 
 const futurePack = futurePackFixture()
 
+it('keeps Stock short-screen hover rings and hit areas clear of neighboring nodes', () => {
+  const layout = createMapLayout(stockPack, 'short')
+  const points = [...layout.nodePositions]
+  for (let index = 0; index < points.length; index++) {
+    const [id, point] = points[index]!
+    const radius = layout.radius + (id === layout.hubId ? 9 : 0)
+    for (const [otherId, other] of points.slice(index + 1)) {
+      const otherRadius = layout.radius + (otherId === layout.hubId ? 9 : 0)
+      const gap = Math.hypot(point.x - other.x, point.y - other.y)
+      expect(gap, `${id} and ${otherId} hover rings`).toBeGreaterThan(radius + otherRadius + 14)
+      expect(Math.abs(point.x - other.x) >= layout.hitRadius * 2 || Math.abs(point.y - other.y) >= layout.hitRadius * 2,
+        `${id} and ${otherId} hit areas`).toBe(true)
+    }
+  }
+})
+
 describe.each([stockPack, opmPack, rssPack, futurePack])('$name', (pack) => {
   describe.each<MapMode>(['wide', 'portrait', 'short'])('%s schematic layout', (mode) => {
     it('places every supported state at a distinct point with room for selection and touch targets', () => {

@@ -11,8 +11,8 @@ const highlightedEdges = (page: Page) => page.locator('[data-route-edge="true"]'
 const packButton = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 
 const missions = [
-  { pack: 'Stock', home: 'stock:kerbin:surface', target: 'stock:mun:surface', homeName: 'Kerbin surface', targetName: 'Mun surface', base: '5,120', returnBase: '5,120', reserve: '1,024', total: '6,144' },
-  { pack: 'OPM', home: 'stock:kerbin:surface', target: 'opm:tekto:surface', homeName: 'Kerbin surface', targetName: 'Tekto surface', base: '11,927', returnBase: '11,927', reserve: '2,386', total: '14,313' },
+  { pack: 'Stock', home: 'stock:kerbin:surface', target: 'stock:mun:surface', homeName: 'Kerbin surface', targetName: 'Mun surface', base: '5,120', returnBase: '1,720', reserve: '344', total: '2,064' },
+  { pack: 'OPM', home: 'stock:kerbin:surface', target: 'opm:tekto:surface', homeName: 'Kerbin surface', targetName: 'Tekto surface', base: '11,927', returnBase: '8,527', reserve: '1,706', total: '10,233' },
   { pack: 'RSS', home: 'rss:earth:surface', target: 'rss:moon:surface', homeName: 'Earth surface', targetName: 'Moon surface', base: '14,660', returnBase: '14,660', reserve: '2,932', total: '17,592' },
 ] as const
 
@@ -178,7 +178,7 @@ for (const mission of missions) {
       await expect(highlightedEdges(page)).toHaveCount(4)
       await expect(page.locator('[data-aerobraking-edge][data-selected="true"]')).toHaveCount(2)
       await expect(maneuvers(page).first()).toContainText('580 m/s')
-      await expect(maneuvers(page).last()).toContainText('3,400 m/s')
+      await expect(maneuvers(page).last()).toContainText('0 m/s')
     }
   })
 }
@@ -198,7 +198,7 @@ test('switches modes, swaps the return direction, and clears a zero-distance mis
   const roundTrip = missionModeButton(page, 'round-trip')
   await roundTrip.focus()
   await roundTrip.press('Enter')
-  await expect(page.getByTestId('route-total')).toHaveText('10,240 m/s')
+  await expect(page.getByTestId('route-total')).toHaveText('6,840 m/s')
   await expect(page.getByRole('tab', { name: 'Outbound', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.getByRole('tab', { name: 'Return', exact: true }).click()
   await missionModeButton(page, 'one-way').click()
@@ -240,7 +240,7 @@ test('retains return-only mode and reserve through compatible and incompatible p
   await expect(missionModeButton(page, 'return-only')).toHaveAttribute('aria-pressed', 'true')
   await expect(origin(page)).toContainText('Kerbin surface')
   await expect(destination(page)).toContainText('Mun surface')
-  await expect(page.getByTestId('route-total')).toHaveText('6,144 m/s')
+  await expect(page.getByTestId('route-total')).toHaveText('2,064 m/s')
   await expect(detailsToggle(page)).not.toBeChecked()
   await packButton(page, 'RSS').click()
   await expect(missionModeButton(page, 'return-only')).toHaveAttribute('aria-pressed', 'true')

@@ -115,22 +115,22 @@ test('visits the Mun before Minmus and budgets each stage and the complete round
   await expect(nextStage(page)).toBeDisabled()
 
   await missionModeButton(page, 'round-trip').click()
-  await expect(page.getByTestId('route-total')).toHaveText('12,420 m/s')
+  await expect(page.getByTestId('route-total')).toHaveText('9,020 m/s')
   await expectStage(page, '1 / 2', 'Kerbin surface', 'Mun surface', '5,120')
   await page.getByRole('tab', { name: 'Return', exact: true }).click()
   await expectStage(page, '1 / 2', 'Minmus surface', 'Mun surface', '1,090')
   await nextStage(page).click()
-  await expectStage(page, '2 / 2', 'Mun surface', 'Kerbin surface', '5,120')
+  await expectStage(page, '2 / 2', 'Mun surface', 'Kerbin surface', '1,720')
   await reserve(page, 20)
-  await expect(page.getByTestId('route-base')).toHaveText('12,420 m/s')
-  await expect(page.getByTestId('route-margin')).toHaveText('+2,484 m/s')
-  await expect(page.getByTestId('route-total')).toHaveText('14,904 m/s')
-  await expect(page.getByTestId('stage-total')).toHaveText('5,120 m/s')
+  await expect(page.getByTestId('route-base')).toHaveText('9,020 m/s')
+  await expect(page.getByTestId('route-margin')).toHaveText('+1,804 m/s')
+  await expect(page.getByTestId('route-total')).toHaveText('10,824 m/s')
+  await expect(page.getByTestId('stage-total')).toHaveText('1,720 m/s')
 })
 
 for (const mission of [
-  { pack: 'OPM', start: 'stock:kerbin:surface', end: 'opm:tekto:surface', home: 'Kerbin surface', stop: 'Kerbin low orbit', target: 'Tekto surface', base: '11,927', first: '3,400', second: '8,527', returnSecond: '8,527', reserved: '14,313' },
-  { pack: 'RSS', start: 'rss:earth:surface', end: 'rss:moon:surface', home: 'Earth surface', stop: 'Earth low orbit', target: 'Moon surface', base: '14,660', first: '9,000', second: '5,660', returnSecond: '5,660', reserved: '17,592' },
+  { pack: 'OPM', start: 'stock:kerbin:surface', end: 'opm:tekto:surface', home: 'Kerbin surface', stop: 'Kerbin low orbit', target: 'Tekto surface', base: '11,927', first: '3,400', second: '8,527', returnSecond: '8,527', returnFirst: '0', reserved: '10,233' },
+  { pack: 'RSS', start: 'rss:earth:surface', end: 'rss:moon:surface', home: 'Earth surface', stop: 'Earth low orbit', target: 'Moon surface', base: '14,660', first: '9,000', second: '5,660', returnSecond: '5,660', returnFirst: '9,000', reserved: '17,592' },
 ]) {
   test(`splits the sourced ${mission.pack} budget at a stop and reverses its stage order`, async ({ page }) => {
     await pack(page, mission.pack).click()
@@ -146,7 +146,7 @@ for (const mission of [
     await missionModeButton(page, 'return-only').click()
     await expectStage(page, '1 / 2', mission.target, mission.stop, mission.returnSecond)
     await nextStage(page).click()
-    await expectStage(page, '2 / 2', mission.stop, mission.home, mission.first)
+    await expectStage(page, '2 / 2', mission.stop, mission.home, mission.returnFirst)
     await reserve(page, 20)
     await expect(page.getByTestId('route-total')).toHaveText(`${mission.reserved} m/s`)
   })
@@ -229,7 +229,7 @@ test('retains supported stops across packs, drops unavailable stops, and clears 
   await expect(stopRows(page)).toHaveCount(1)
   await expect(stopRows(page)).toContainText(['Mun surface'])
   await finishEditing(page)
-  await expect(page.getByTestId('route-total')).toHaveText('7,452 m/s')
+  await expect(page.getByTestId('route-total')).toHaveText('3,372 m/s')
   await pack(page, 'RSS').click()
   await openEditor(page)
   await expect(stopRows(page)).toHaveCount(0)
