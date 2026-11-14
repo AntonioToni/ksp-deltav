@@ -258,10 +258,15 @@ budget for Kerbin restores the source-only **10,240 m/s** round trip.
 The dialog stages edits: **Apply** saves them and recalculates the mission;
 **Cancel** or Escape discards them. Switching bodies or landing methods keeps
 the draft, including a custom value you entered. **Use reference budgets** turns
-off all landing overrides and ideal capture choices. **Restore defaults** instead
+off all landing overrides and ideal capture choices. **Enable all atmospheric
+landings** instead stages the 0 m/s landing method for every body with supported
+landing overrides. It preserves capture choices and custom values in the draft;
+it does not add support for other maneuvers or change the starting defaults of
+RSS or imported packs. Choose **Apply** to use the bulk selection.
+**Restore defaults** instead
 restores the active pack's starting assumptions, including the Kerbin preset
 where supported; it does not enable atmospheric landings in RSS or imported
-packs. Both actions edit the draft until you choose Apply.
+packs. These actions edit the draft until you choose Apply.
 Swapping endpoints and changing mission mode retain body choices. Changing packs
 retains compatible eligible choices, including an explicit opt-out or a personal
 landing allowance. Choices for unavailable bodies are discarded. **Clear**

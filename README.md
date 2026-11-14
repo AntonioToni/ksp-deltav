@@ -102,6 +102,9 @@ flight or its arrival conditions. The reserve applies once to the full budget.
 **Landing & Capture** distinguishes default assumptions from custom settings.
 The atmospheric explanation in the mission result opens the relevant body's
 settings. **Apply** saves a draft; **Cancel** or Escape discards it.
+**Enable all atmospheric landings** selects the 0 m/s landing assumption for
+every supported body in the active pack. It leaves capture choices unchanged
+and takes effect when you choose **Apply**.
 **Use reference budgets** turns off all landing overrides and ideal capture
 choices, while **Restore defaults** brings back the active pack's starting
 settings, including Kerbin's reentry assumption where supported.

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   Accordion, AccordionDetails, AccordionSummary, Box, Button, Checkbox, Dialog,
   DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton,
-  InputAdornment, MenuItem, Radio, RadioGroup, Stack, TextField, Typography,
+  InputAdornment, MenuItem, Radio, RadioGroup, Stack, TextField, Tooltip, Typography,
 } from '@mui/material'
 import AirRounded from '@mui/icons-material/AirRounded'
 import CloseRounded from '@mui/icons-material/CloseRounded'
@@ -40,6 +40,7 @@ function customValueValid(text: string): boolean {
 
 function AtmosphereContent({ pack, plan, isBuiltIn, initialBodyId, onApply, onClose }: Omit<AtmosphereDialogProps, 'open'>) {
   const capabilities = useMemo(() => getAtmosphericCapabilities(pack), [pack])
+  const landingBodies = useMemo(() => new Set(capabilities.filter(option => option.landing).map(option => option.body.id)), [capabilities])
   const defaults = useMemo(() => getDefaultAtmosphericPlan(pack, isBuiltIn), [pack, isBuiltIn])
   const defaultBodies = useMemo(() => new Set(defaults.map(option => option.bodyId)), [defaults])
   const [draft, setDraft] = useState<AtmosphericChoice[]>(() => createAtmosphericChoices(pack, plan))
@@ -58,6 +59,7 @@ function AtmosphereContent({ pack, plan, isBuiltIn, initialBodyId, onApply, onCl
   const invalidElsewhere = invalidChoices.find(choice => choice.bodyId !== bodyId)
   const invalidBodyName = capabilities.find(option => option.body.id === invalidElsewhere?.bodyId)?.body.name
   const selectedInvalid = selected?.landingMethod === 'custom' && !customValueValid(selected.customLandingText)
+  const allLandingsEnabled = landingBodies.size > 0 && draft.every(choice => !landingBodies.has(choice.bodyId) || choice.landingMethod === 'atmospheric')
 
   function update(changes: Partial<Omit<AtmosphericChoice, 'bodyId'>>) {
     setDraft(choices => choices.map(choice => choice.bodyId === bodyId ? { ...choice, ...changes } : choice))
@@ -112,6 +114,16 @@ function AtmosphereContent({ pack, plan, isBuiltIn, initialBodyId, onApply, onCl
             <Typography component="span" sx={{ color: 'text.secondary', fontSize: 11, maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis' }}>{summary(draft.find(choice => choice.bodyId === option.body.id))}</Typography>
           </MenuItem>)}
         </TextField>
+        {landingBodies.size > 0 && <Box sx={{ mb: 1.5 }}>
+          <Tooltip describeChild title="Select atmospheric landing (0 m/s) for every supported body. Orbital capture settings and entered custom values are kept.">
+            <Button size="small" variant="outlined" startIcon={<ParaglidingRounded sx={{ fontSize: 17 }} />}
+              onClick={() => setDraft(choices => choices.map(choice => landingBodies.has(choice.bodyId) ? { ...choice, landingMethod: 'atmospheric' } : choice))}
+              sx={{ minHeight: 40, width: { xs: '100%', sm: 'auto' }, px: 1.25, fontSize: 11.5, textTransform: 'none' }}>
+              Enable all atmospheric landings
+            </Button>
+          </Tooltip>
+          {allLandingsEnabled && <Typography role="status" sx={{ mt: .5, fontSize: 11, lineHeight: 1.4, color: '#92d5c6' }}>All supported landings use 0 m/s.</Typography>}
+        </Box>}
         {capability && selected && <Stack spacing={1.25}>
           {capability.landing && <Box component="section" aria-labelledby="atmospheric-landing-heading">
             <Typography id="atmospheric-landing-heading" component="h3" sx={{ mb: .75, fontSize: 14, fontWeight: 600 }}>Atmospheric landing</Typography>
