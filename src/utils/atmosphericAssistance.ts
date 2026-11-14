@@ -9,6 +9,8 @@ export interface AtmosphericBodyPlan {
   landingDeltaV: number
   /** App-selected assumption; omitted for an amount entered by the user. */
   landingPreset?: 'kerbin-reentry'
+  /** UI method, so atmospheric zero remains distinct from a custom-entered zero. */
+  landingMethod?: 'atmospheric' | 'custom'
 }
 
 export type AtmosphericPlan = readonly AtmosphericBodyPlan[]
@@ -65,7 +67,7 @@ export function reconcileAtmosphericPlan(pack: PlanetPack, previous: Atmospheric
   const next = previous.flatMap(option => {
     const capability = capabilities.get(option.bodyId)
     if (!capability) return []
-    const { landingPreset, ...entered } = option
+    const { landingPreset, landingMethod, ...entered } = option
     // A built-in assumption must not silently become an imported pack's default.
     const keepPreset = landingPreset === 'kerbin-reentry' && isBuiltIn
     const capture = option.capture && capability.capture
@@ -75,6 +77,7 @@ export function reconcileAtmosphericPlan(pack: PlanetPack, previous: Atmospheric
       capture,
       landing: option.landing && capability.landing && (landingPreset === undefined || keepPreset),
       ...(keepPreset ? { landingPreset } : {}),
+      ...(landingMethod && option.landing && capability.landing && (landingPreset === undefined || keepPreset) ? { landingMethod } : {}),
     }]
   })
   const chosen = new Set(next.map(option => option.bodyId))
@@ -110,6 +113,9 @@ export function applyAtmosphericAssistance(graph: PlannerGraph, pack: PlanetPack
     if (row.landingPreset !== undefined && (row.landingPreset !== 'kerbin-reentry' || row.bodyId !== 'stock:kerbin' || row.landingDeltaV !== 0)) {
       throw new RangeError('The Kerbin reentry preset requires Kerbin and a 0 m/s landing budget.')
     }
+    if (row.landingMethod !== undefined && row.landingMethod !== 'atmospheric' && row.landingMethod !== 'custom') throw new RangeError('Choose atmospheric or custom as the landing method.')
+    if (row.landingMethod === 'atmospheric' && row.landingDeltaV !== 0) throw new RangeError('Atmospheric landing requires a 0 m/s landing budget.')
+    if (row.landingMethod === 'custom' && row.landingPreset !== undefined) throw new RangeError('Custom landing budgets cannot use the Kerbin reentry preset.')
     const capability = capabilities.get(row.bodyId)
     if (row.capture && !capability?.capture) throw new RangeError('This body has no supported standalone atmospheric capture maneuver.')
     if (row.landing && !capability?.landing) throw new RangeError('This body has no supported atmospheric landing maneuver.')
@@ -133,7 +139,9 @@ export function applyAtmosphericAssistance(graph: PlannerGraph, pack: PlanetPack
         ? 'Assumes the atmosphere replaces this capture burn with 0 m/s of engine burns. Safe entry and later correction burns are not calculated.'
         : settings.landingPreset === 'kerbin-reentry'
           ? 'Default Kerbin reentry assumes atmospheric braking and parachutes replace the landing engine burn (0 m/s). Safe entry, deorbit and correction burns are not calculated.'
-          : `Uses your ${deltaV} m/s engine-burn budget for landing instead of the source’s ${edge.deltaV} m/s descent figure.`
+          : settings.landingMethod === 'atmospheric'
+            ? 'Assumes atmospheric braking and parachutes replace this landing engine burn (0 m/s). Safe entry, deorbit and correction burns are not calculated.'
+            : `Uses your ${deltaV} m/s engine-burn budget for landing instead of the source’s ${edge.deltaV} m/s descent figure.`
       return { ...edge, deltaV, assumptions: [...edge.assumptions, assumption] }
     })
     if (changed) adjacency.set(nodeId, updated)

@@ -25,7 +25,7 @@ for (const viewport of [
 
     const controls = [
       github,
-      header.getByRole('button', { name: 'Atmospheric assistance', exact: true }),
+      header.getByRole('button', { name: 'Landing & Capture', exact: true }),
       header.getByRole('button', { name: 'CommNet relay planner', exact: true }),
       header.getByRole('button', { name: 'Model assumptions and data sources', exact: true }),
     ]
@@ -47,7 +47,7 @@ for (const viewport of [
     await expect(page.getByTestId('route-total')).toHaveText('5,120 m/s')
 
     for (const { button, dialogName, closeName } of [
-      { button: 'Atmospheric assistance', dialogName: 'Atmospheric assistance', closeName: 'Cancel' },
+      { button: 'Landing & Capture', dialogName: 'Landing & Capture', closeName: 'Cancel' },
       { button: 'CommNet relay planner', dialogName: 'CommNet relay planner', closeName: 'Close relay planner' },
       { button: 'Model assumptions and data sources', dialogName: 'About these estimates', closeName: 'Close' },
     ]) {

@@ -1,0 +1,243 @@
+import { expect, test, type Page } from '@playwright/test'
+import { stockPack } from '../src/data/stock'
+import {
+  atmosphereButton, atmosphereDialog, chooseAtmosphericBody, chooseLandingMethod,
+  landingInput, landingMethod, openAtmosphere, revealCapture, setCustomLanding, setIdealCapture,
+} from './helpers/atmosphere'
+import { missionModeButton } from './helpers/missionMode'
+
+const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
+const total = (page: Page) => page.getByTestId('route-total')
+const info = (page: Page) => page.getByRole('dialog', { name: 'About these estimates', exact: true })
+const summary = (page: Page, kind: string) => info(page).locator(`[data-budget-summary-kind="${kind}"]`)
+let errors: string[]
+
+test.beforeEach(async ({ page }) => {
+  errors = []
+  page.on('pageerror', error => errors.push(error.message))
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
+  await page.goto('./')
+  await expect(atmosphereButton(page)).toBeVisible()
+})
+
+test.afterEach(() => expect(errors, 'Landing and capture controls must not produce browser errors').toEqual([]))
+
+async function plan(page: Page, start: string, end: string) {
+  await page.locator(`[data-node-id="${start}"]`).click()
+  await page.locator(`[data-node-id="${end}"]`).click()
+}
+
+async function munRoundTrip(page: Page) {
+  await plan(page, 'stock:kerbin:surface', 'stock:mun:surface')
+  await missionModeButton(page, 'round-trip').click()
+  await expect(total(page)).toHaveText('6,840 m/s')
+}
+
+async function apply(page: Page) {
+  await atmosphereDialog(page).getByRole('button', { name: 'Apply', exact: true }).click()
+  await expect(atmosphereDialog(page)).toBeHidden()
+}
+
+test('offers three landing methods and restores Kerbin preset provenance after a custom budget', async ({ page }) => {
+  await munRoundTrip(page)
+  await expect(atmosphereButton(page)).toHaveAttribute('data-assistance-state', 'default')
+  await openAtmosphere(page, 'Kerbin')
+  await expect(landingMethod(page, 'atmospheric')).toBeChecked()
+  await expect(landingInput(page, 'Kerbin')).toHaveCount(0)
+  await expect(atmosphereDialog(page).getByText('3,400 m/s', { exact: true })).toBeVisible()
+  await chooseLandingMethod(page, 'Kerbin', 'reference')
+  await expect(total(page)).toHaveText('6,840 m/s')
+  await apply(page)
+  await expect(total(page)).toHaveText('10,240 m/s')
+  await expect(atmosphereButton(page)).toHaveAttribute('data-assistance-state', 'off')
+
+  await openAtmosphere(page, 'Kerbin')
+  await setCustomLanding(page, 'Kerbin', '150')
+  await expect(await revealCapture(page, 'Kerbin')).not.toBeChecked()
+  await apply(page)
+  await expect(total(page)).toHaveText('6,990 m/s')
+  await expect(atmosphereButton(page)).toHaveAttribute('data-assistance-state', 'custom')
+
+  await openAtmosphere(page, 'Kerbin')
+  await chooseLandingMethod(page, 'Kerbin', 'atmospheric')
+  await apply(page)
+  await expect(total(page)).toHaveText('6,840 m/s')
+  await expect(atmosphereButton(page)).toHaveAttribute('data-assistance-state', 'default')
+  await button(page, 'Budget assumptions').click()
+  await expect(summary(page, 'ideal')).toContainText('Atmospheric reentry')
+  await expect(summary(page, 'user')).toHaveCount(0)
+})
+
+test('retains a custom draft across modes and bodies and identifies an invalid hidden body', async ({ page }) => {
+  await plan(page, 'stock:kerbin:surface', 'stock:duna:surface')
+  await openAtmosphere(page, 'Duna')
+  await setCustomLanding(page, 'Duna', '150')
+  await setIdealCapture(page, 'Duna')
+  await chooseLandingMethod(page, 'Duna', 'atmospheric')
+  await expect(landingInput(page, 'Duna')).toHaveCount(0)
+  await chooseLandingMethod(page, 'Duna', 'custom')
+  await expect(landingInput(page, 'Duna')).toHaveValue('150')
+  await chooseAtmosphericBody(page, 'Kerbin')
+  await chooseAtmosphericBody(page, 'Duna')
+  await expect(landingInput(page, 'Duna')).toHaveValue('150')
+  await expect(await revealCapture(page, 'Duna')).toBeChecked()
+
+  await landingInput(page, 'Duna').fill('-1')
+  await chooseAtmosphericBody(page, 'Kerbin')
+  await expect(atmosphereDialog(page).getByRole('button', { name: 'Apply', exact: true })).toBeDisabled()
+  await expect(atmosphereDialog(page).getByRole('alert')).toContainText('Duna')
+  await atmosphereDialog(page).getByRole('button', { name: 'Review', exact: true }).click()
+  await expect(landingInput(page, 'Duna')).toHaveValue('-1')
+  await landingInput(page, 'Duna').fill('100')
+  await apply(page)
+  await expect(total(page)).toHaveText('4,580 m/s')
+})
+
+test('remembers another body atmospheric choice while keeping a manually entered zero distinct', async ({ page }) => {
+  await plan(page, 'stock:kerbin:surface', 'stock:duna:surface')
+  await openAtmosphere(page, 'Duna')
+  await chooseLandingMethod(page, 'Duna', 'atmospheric')
+  await expect(await revealCapture(page, 'Duna')).not.toBeChecked()
+  await apply(page)
+  await expect(total(page)).toHaveText('5,090 m/s')
+  await expect(atmosphereButton(page)).toHaveAttribute('data-assistance-state', 'custom')
+  await openAtmosphere(page, 'Duna')
+  await expect(landingMethod(page, 'atmospheric')).toBeChecked()
+  await atmosphereDialog(page).getByRole('button', { name: 'Cancel', exact: true }).click()
+  await button(page, 'Budget assumptions').click()
+  await expect(summary(page, 'ideal')).toContainText('Atmospheric landing')
+  await expect(summary(page, 'user')).toHaveCount(0)
+  await info(page).getByRole('button', { name: 'Close', exact: true }).click()
+  await openAtmosphere(page, 'Duna')
+  await setCustomLanding(page, 'Duna', '0')
+  await apply(page)
+  await expect(total(page)).toHaveText('5,090 m/s')
+  await button(page, 'Budget assumptions').click()
+  await expect(summary(page, 'user')).toContainText('0 m/s')
+  await expect(summary(page, 'ideal')).toHaveCount(0)
+})
+
+test('stages reference-for-all and Restore defaults separately from Apply and Cancel', async ({ page }) => {
+  await munRoundTrip(page)
+  await openAtmosphere(page, 'Kerbin')
+  await atmosphereDialog(page).getByRole('button', { name: 'Use reference budgets', exact: true }).click()
+  await expect(landingMethod(page, 'reference')).toBeChecked()
+  await expect(total(page)).toHaveText('6,840 m/s')
+  await atmosphereDialog(page).getByRole('button', { name: 'Cancel', exact: true }).click()
+  await openAtmosphere(page, 'Kerbin')
+  await expect(landingMethod(page, 'atmospheric')).toBeChecked()
+  await atmosphereDialog(page).getByRole('button', { name: 'Use reference budgets', exact: true }).click()
+  await apply(page)
+  await expect(total(page)).toHaveText('10,240 m/s')
+  await openAtmosphere(page, 'Kerbin')
+  await atmosphereDialog(page).getByRole('button', { name: 'Restore defaults', exact: true }).click()
+  await expect(landingMethod(page, 'atmospheric')).toBeChecked()
+  await expect(await revealCapture(page, 'Kerbin')).not.toBeChecked()
+  await expect(total(page)).toHaveText('10,240 m/s')
+  await apply(page)
+  await expect(total(page)).toHaveText('6,840 m/s')
+  await expect(atmosphereButton(page)).toHaveAttribute('data-assistance-state', 'default')
+})
+
+test('restores RSS and imported-pack reference budgets without adding the Kerbin default', async ({ page }) => {
+  await button(page, 'RSS').click()
+  await plan(page, 'rss:earth:orbit', 'rss:earth:surface')
+  await openAtmosphere(page, 'Earth')
+  await setCustomLanding(page, 'Earth', '200')
+  await apply(page)
+  await expect(total(page)).toHaveText('200 m/s')
+  await openAtmosphere(page, 'Earth')
+  await atmosphereDialog(page).getByRole('button', { name: 'Restore defaults', exact: true }).click()
+  await expect(landingMethod(page, 'reference')).toBeChecked()
+  await apply(page)
+  await expect(total(page)).toHaveText('9,000 m/s')
+  await expect(atmosphereButton(page)).toHaveAttribute('data-assistance-state', 'off')
+
+  const custom = { ...stockPack, id: 'custom:landing-methods', name: 'Imported landing methods' }
+  await button(page, 'Custom planet packs').click()
+  const manager = page.getByRole('dialog', { name: 'Planet packs', exact: true })
+  await manager.getByRole('tab', { name: 'Custom packs', exact: true }).click()
+  await manager.getByLabel('Import planet pack', { exact: true }).setInputFiles({ name: 'landing-methods.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(custom)) })
+  await manager.getByRole('button', { name: `Use ${custom.name}`, exact: true }).click()
+  await plan(page, 'stock:kerbin:orbit', 'stock:kerbin:surface')
+  await openAtmosphere(page, 'Kerbin')
+  await chooseLandingMethod(page, 'Kerbin', 'atmospheric')
+  await apply(page)
+  await expect(total(page)).toHaveText('0 m/s')
+  await expect(atmosphereButton(page)).toHaveAttribute('data-assistance-state', 'custom')
+  await openAtmosphere(page, 'Kerbin')
+  await atmosphereDialog(page).getByRole('button', { name: 'Restore defaults', exact: true }).click()
+  await expect(landingMethod(page, 'reference')).toBeChecked()
+  await apply(page)
+  await expect(total(page)).toHaveText('3,400 m/s')
+  await expect(atmosphereButton(page)).toHaveAttribute('data-assistance-state', 'off')
+})
+
+test('foregrounds applied arrival assumptions before reference settings on a multi-body round trip', async ({ page }) => {
+  await plan(page, 'stock:kerbin:surface', 'stock:duna:surface')
+  await missionModeButton(page, 'round-trip').click()
+  await expect(total(page)).toHaveText('9,680 m/s')
+  const kerbinEdit = button(page, 'Edit landing and capture at Kerbin')
+  const dunaEdit = button(page, 'Edit landing and capture at Duna')
+  await expect(kerbinEdit).toBeVisible()
+  await expect(dunaEdit).toHaveCount(0)
+  await kerbinEdit.click()
+  await expect(atmosphereDialog(page).getByRole('radiogroup', { name: 'Landing method at Kerbin', exact: true })).toBeVisible()
+  await expect(landingMethod(page, 'atmospheric')).toBeChecked()
+  await setCustomLanding(page, 'Duna', '100')
+  await apply(page)
+  await expect(total(page)).toHaveText('8,330 m/s')
+  await expect(dunaEdit).toBeVisible()
+  await expect(kerbinEdit).toHaveCount(0)
+  await dunaEdit.click()
+  await expect(landingInput(page, 'Duna')).toHaveValue('100')
+  await atmosphereDialog(page).getByRole('button', { name: 'Use reference budgets', exact: true }).click()
+  await apply(page)
+  await expect(total(page)).toHaveText('13,080 m/s')
+  await expect(dunaEdit).toBeVisible()
+  await expect(kerbinEdit).toHaveCount(0)
+  await dunaEdit.click()
+  await expect(atmosphereDialog(page).getByRole('radiogroup', { name: 'Landing method at Duna', exact: true })).toBeVisible()
+  await expect(landingMethod(page, 'reference')).toBeChecked()
+})
+
+test('opens the relevant body from the mission result and supports keyboard method selection', async ({ page }) => {
+  await munRoundTrip(page)
+  const edit = button(page, 'Edit landing and capture at Kerbin')
+  await expect(edit).toBeVisible()
+  await edit.click()
+  await expect(atmosphereDialog(page).getByRole('radiogroup', { name: 'Landing method at Kerbin', exact: true })).toBeVisible()
+  await landingMethod(page, 'atmospheric').focus()
+  await landingMethod(page, 'atmospheric').press('ArrowDown')
+  await expect(landingMethod(page, 'custom')).toBeChecked()
+  await landingInput(page, 'Kerbin').fill('150')
+  await landingMethod(page, 'custom').focus()
+  await landingMethod(page, 'custom').press('ArrowDown')
+  await expect(landingMethod(page, 'reference')).toBeChecked()
+  await landingMethod(page, 'reference').press('ArrowUp')
+  await expect(landingMethod(page, 'custom')).toBeChecked()
+  await expect(landingInput(page, 'Kerbin')).toHaveValue('150')
+  await page.keyboard.press('Escape')
+  await expect(atmosphereDialog(page)).toBeHidden()
+  await expect(edit).toBeFocused()
+  await expect(total(page)).toHaveText('6,840 m/s')
+})
+
+for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }, { width: 1920, height: 1080 }]) {
+  test(`keeps landing and capture editing usable at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    await plan(page, 'stock:kerbin:surface', 'stock:duna:surface')
+    await openAtmosphere(page, 'Duna')
+    await setCustomLanding(page, 'Duna', '100')
+    await setIdealCapture(page, 'Duna')
+    for (const name of ['Apply', 'Cancel', 'Use reference budgets', 'Restore defaults']) {
+      await expect(atmosphereDialog(page).getByRole('button', { name, exact: true })).toBeInViewport({ ratio: 1 })
+    }
+    const content = atmosphereDialog(page).locator('.MuiDialogContent-root')
+    expect(await content.evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(await content.evaluate(element => element.clientWidth + 1))
+    await apply(page)
+    await expect(total(page)).toHaveText('4,580 m/s')
+    await expect(page.getByTestId('atmospheric-change')).toContainText('1,960')
+    expect(await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight }))).toEqual(viewport)
+  })
+}

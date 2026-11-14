@@ -46,10 +46,10 @@ with Stock or OPM.
   have page controls; details stay hidden until you enable them.
 - **Atmospheric-braking markers** showing where atmospheric assistance may be
   possible in the indicated direction.
-- **Atmospheric assistance**, with a default Kerbin landing assumption of
-  **0 m/s** using atmospheric braking and parachutes. Choose ideal capture or
-  enter other landing budgets in Atmosphere. Routes recalculate before the
-  mission reserve is added.
+- **Landing & Capture** settings, with a default Kerbin landing assumption of
+  **0 m/s** using atmospheric braking and parachutes. Choose a landing method
+  for each supported body and configure orbital capture separately. Routes
+  recalculate before the mission reserve is added.
 - **CommNet relay planning** for equally spaced satellites in a circular orbit
   above the equator. Check coverage, antenna ranges, signal strengths, and burns
   to release the satellites into position. Body presets cover Stock, OPM, RSS,
@@ -81,21 +81,30 @@ with Stock or OPM.
 4. Open **Stops** to add up to four map points in outbound order. Use
    **Choose a stop** or **Select stop on map**, then reorder or remove entries.
    Numbered teal badges identify the stops on the map.
-5. Open **Atmosphere** (**Aero** on phones) in the header to choose ideal capture
-   or enter a powered landing allowance for supported bodies, then choose
-   **Apply**. Built-in Kerbin maps start with a **0 m/s** atmospheric landing
-   assumption. Capture and other bodies' landing options start disabled.
+5. Open **Landing & Capture** in the header (the landing icon on phones).
+   Choose an **Atmospheric body**, then select **Atmospheric landing (0 m/s)**,
+   **Custom powered landing**, or **Use reference map budget**. Open
+   **Orbital capture** to configure supported capture burns independently,
+   then choose **Apply**. Built-in Kerbin maps start with the atmospheric
+   landing assumption; capture and other bodies' landing overrides start off.
 6. Adjust **Redundancy** for your reserve and enable **Breakdown** to inspect
    individual maneuvers. Use the stage arrows to browse a multi-stop journey.
 
 All budgets are shown in **m/s**. For example, the stock Kerbin surface → Mun
 surface route is **5,120 m/s**, or **6,840 m/s** for a round trip before reserves
-with the default Kerbin landing assumption. Turning that assumption off restores
-the map's **10,240 m/s** powered round-trip budget.
+with the default Kerbin landing assumption. Choosing **Use reference map budget**
+for Kerbin restores the map's **10,240 m/s** powered round-trip budget.
 With stops, One way follows origin → stops → destination. Return only reverses
 that itinerary, and Round trip follows it outward and then in reverse. Return
 only starts at the selected destination point without including an outbound
 flight or its arrival conditions. The reserve applies once to the full budget.
+
+**Landing & Capture** distinguishes default assumptions from custom settings.
+The atmospheric explanation in the mission result opens the relevant body's
+settings. **Apply** saves a draft; **Cancel** or Escape discards it.
+**Use reference budgets** turns off all landing overrides and ideal capture
+choices, while **Restore defaults** brings back the active pack's starting
+settings, including Kerbin's reentry assumption where supported.
 
 The planner first avoids unrequested planet or moon parking visits, then finds
 the lowest Delta-V budget for that itinerary. Necessary parent-system passages
@@ -215,9 +224,9 @@ for scope and examples.
 ## About the estimates
 
 Open **Budget assumptions** beside the total to see the selected mission's
-published map figures, calculated estimates, budgets you entered, ideal capture,
-and default landing budgets. The dialog lists reserves and final rounding
-separately. **Sources & assumptions** explains the active pack. Imported budgets
+published map figures, calculated estimates, budgets you entered, atmospheric
+assumptions, and default landing budgets. The dialog lists reserves and final
+rounding separately. **Sources & assumptions** explains the active pack. Imported budgets
 remain author-supplied even when their source metadata names a map or model.
 
 The numbers have three distinct origins: published map budgets, calculated
@@ -266,13 +275,16 @@ atmosphere replaces separately listed arrival and circularization burns with
 OPM, and their Kcalbeloh configurations assume **0 m/s** for Kerbin's landing
 step, using atmospheric braking and parachutes. This leaves ascent, orbital
 capture, and combined transfer costs unchanged. Safe entry and any deorbit or
-correction burns are not calculated. Edit the landing allowance or uncheck
-**Landing** in Atmosphere to change this assumption.
+correction burns are not calculated. In **Landing & Capture**, choose
+**Custom powered landing** to enter an engine-burn budget, or
+**Use reference map budget** to restore the original landing cost.
 
-Other landing options use the engine-burn budget you enter, including an explicit
-zero if appropriate for your plan. Entry heating, guidance, and parachute
-performance are not modeled. Turning a landing option off restores the source's
-original landing budget. Built-in atmospheric landing placeholders reuse launch
+Other supported bodies keep their reference landing budgets until you choose a
+different method. **Atmospheric landing (0 m/s)** explicitly assumes no landing
+engine burn; **Custom powered landing** accepts your own amount, including zero.
+Entry heating, guidance, and parachute performance are not modeled.
+The reference option restores the source's original landing budget.
+Built-in atmospheric landing placeholders reuse launch
 budgets; they are not verified landing costs or guaranteed maximums.
 The source data and exported packs retain their original figures.
 See the [data guide](docs/DATA.md) for worked examples and the exact scope of

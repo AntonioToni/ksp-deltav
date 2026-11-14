@@ -118,18 +118,27 @@ connection type, and apply only to physical planets/moons. Set optional
 markers. That flag also excludes the body from
 the optional atmospheric assistance controls.
 
-The **Atmospheric assistance** dialog works with imported packs using the same
-rules as built-in packs. Ideal capture replaces separate same-body inward
-capture and circularization costs with a zero-powered-burn lower bound. An
-enabled atmospheric landing replaces a same-body orbit → surface descent with
-the powered allowance entered by the user, from 0 to 1,000,000 m/s. An allowance
-may increase the original budget. Ascent and escape edges, airless-body costs,
-and bundled transfer costs stay unchanged. An arrow on a moon-return transfer
-does not discount that indivisible edge.
+The **Landing & Capture** dialog works with imported packs using the same
+supported-maneuver rules as built-in packs. Choose an **Atmospheric body**, then
+select **Atmospheric landing (0 m/s)**, **Custom powered landing**, or
+**Use reference map budget** where landing is supported. Custom accepts
+0 to 1,000,000 m/s, including zero; its amount may increase the original budget.
+The reference option restores the pack author's original descent costs.
+
+The separate **Orbital capture** section can replace supported same-body inward
+capture and circularization costs with zero engine-burn Delta-V. Ascent and escape
+edges, airless-body costs, and bundled transfer costs stay unchanged. An arrow
+on a moon-return transfer does not discount that indivisible edge.
 
 These choices change the effective routing graph for the session; they do not
 edit the imported pack or its exported JSON, and require no additional JSON
-fields. They start disabled, are not saved with the pack, and reset with Clear.
+fields. Imported packs start with their reference budgets and capture off;
+they receive no automatic Kerbin landing preset, even if they reuse Stock IDs.
+**Apply** saves the draft; **Cancel** or Escape discards it.
+**Use reference budgets** stages all overrides off. **Restore defaults** or
+the main **Clear** action restores the active pack's starting settings, which
+for imported packs means no atmospheric overrides. Settings are not saved with
+the pack.
 Entry heating, guidance, parachutes, and capture cleanup burns are not simulated;
 choose appropriate powered allowances and mission reserves. See the
 [data guide](DATA.md#optional-atmospheric-assistance) for the calculation model.

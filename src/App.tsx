@@ -14,6 +14,8 @@ import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import ExtensionOutlined from '@mui/icons-material/ExtensionOutlined'
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 import AirRounded from '@mui/icons-material/AirRounded'
+import ParaglidingRounded from '@mui/icons-material/ParaglidingRounded'
+import EditOutlined from '@mui/icons-material/EditOutlined'
 import SatelliteAltRounded from '@mui/icons-material/SatelliteAltRounded'
 import GitHub from '@mui/icons-material/GitHub'
 import { stockPack } from './data/stock'
@@ -37,6 +39,7 @@ import { applyConnectionAllowances, type ConnectionPlan } from './utils/connecti
 import { hasPotentialConnectionRoute } from './utils/connectionAvailability'
 import { describeManeuverBasis, summarizeBudgetBasis } from './utils/estimateBasis'
 import { referenceParkingStops } from './utils/referenceParking'
+import { atmosphericRouteContexts } from './utils/atmosphericContext'
 
 const format = new Intl.NumberFormat('en-US')
 const compactBreakdown = '@media (max-height: 500px), (max-width: 699px) and (max-height: 650px)'
@@ -66,6 +69,7 @@ export default function App() {
   const activeAddons = activeConfiguration?.addons ?? []
   const [showPacks, setShowPacks] = useState(false)
   const [showAtmosphere, setShowAtmosphere] = useState(false)
+  const [atmosphereBodyId, setAtmosphereBodyId] = useState<string | null>(null)
   const [showRelays, setShowRelays] = useState(false)
   const [showAllowances, setShowAllowances] = useState(false)
   const [connectionPlan, setConnectionPlan] = useState<ConnectionPlan>([])
@@ -73,6 +77,7 @@ export default function App() {
   const [atmosphericPlan, setAtmosphericPlan] = useState<AtmosphericPlan>(() => getDefaultAtmosphericPlan(stockPack, true))
   const hasAtmosphericOptions = atmosphericPlan.some(option => option.capture || option.landing)
   const kerbinReentryEnabled = atmosphericPlan.some(option => option.landing && option.landingPreset === 'kerbin-reentry')
+  const assistanceState = !hasAtmosphericOptions ? 'off' : atmosphericPlan.some(option => option.capture || option.landing && !option.landingPreset) ? 'custom' : 'default'
   const referenceGraph = useMemo(() => buildGraph(pack), [pack])
   const { graph: allowanceGraph, edges: allowanceEdges } = useMemo(() => applyConnectionAllowances(referenceGraph, pack, connectionPlan), [referenceGraph, pack, connectionPlan])
   const displayPack = useMemo(() => allowanceEdges.length ? { ...pack, maneuvers: [...pack.maneuvers, ...allowanceEdges] } : pack, [pack, allowanceEdges])
@@ -113,7 +118,7 @@ export default function App() {
   const atmosphericDifference = route?.status === 'success' && referenceRoute?.status === 'success'
     ? route.totalDeltaV - referenceRoute.totalDeltaV : null
   const atmosphericComparison = atmosphericDifference !== null && referenceRoute?.status === 'success'
-    ? `${atmosphericDifference > 0 ? '+' : ''}${format.format(atmosphericDifference)} m/s atmosphere · ${format.format(referenceRoute.totalDeltaV)} m/s before atmosphere, before reserve.` : null
+    ? `${atmosphericDifference > 0 ? '+' : ''}${format.format(atmosphericDifference)} m/s vs reference · ${format.format(referenceRoute.totalDeltaV)} m/s reference budget, before reserve.` : null
   const showingReturn = returnOnly || roundTrip && breakdownLeg === 'return'
   const activeJourney = route?.status === 'success'
     ? showingReturn ? route.returnRoute : route.outbound
@@ -165,8 +170,15 @@ export default function App() {
   const basisOptions = useMemo(() => ({ customPack: isCustomPack, allowanceEdgeIds, atmosphericPlan }), [isCustomPack, allowanceEdgeIds, atmosphericPlan])
   const basisGroups = useMemo(() => route?.status === 'success' ? summarizeBudgetBasis(route.legs, pack, basisOptions) : [], [route, pack, basisOptions])
   const basisByEdge = useMemo(() => new Map(route?.status === 'success' ? route.legs.map(({ edge }) => [edge.id, describeManeuverBasis(edge, pack, basisOptions)]) : []), [route, pack, basisOptions])
-  const defaultReentry = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && basisByEdge.get(edge.id)?.kind === 'ideal')
+  const defaultReentry = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && basisByEdge.get(edge.id)?.kind === 'ideal' && nodesById.get(edge.to)?.bodyId === 'stock:kerbin' && kerbinReentryEnabled)
+  const atmosphericLanding = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && basisByEdge.get(edge.id)?.kind === 'ideal' && !(nodesById.get(edge.to)?.bodyId === 'stock:kerbin' && kerbinReentryEnabled))
   const idealCapture = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'capture' && basisByEdge.get(edge.id)?.kind === 'ideal')
+  const atmosphericContexts = useMemo(() => route?.status === 'success' ? atmosphericRouteContexts(pack, route.legs, atmosphericPlan) : [], [pack, route, atmosphericPlan])
+  const appliedAtmosphericContexts = atmosphericContexts.filter(context => atmosphericPlan.some(choice => choice.bodyId === context.body.id
+    && (context.landingCount > 0 && choice.landing || context.captureCount > 0 && choice.capture)))
+  const contextChoices = appliedAtmosphericContexts.length ? appliedAtmosphericContexts : atmosphericContexts
+  const primaryAtmosphericContext = contextChoices.find(context => context.body.id === nodesById.get(endId ?? '')?.bodyId)
+    ?? contextChoices.find(context => context.landingCount > 0) ?? contextChoices[0]
   const estimateNotices = [
     ...(unavailableInterstellarNotice ? [unavailableInterstellarNotice] : []),
     ...(hasLayover ? [layoverNotice] : []),
@@ -183,6 +195,16 @@ export default function App() {
     setInfoSection(section)
     setShowBreakdown(false)
     setShowInfo(true)
+  }
+
+  function openAtmosphere(bodyId: string | null = primaryAtmosphericContext?.body.id ?? null) {
+    if (selection === 'stop') setSelection(previousSelection.current)
+    setAtmosphereBodyId(bodyId)
+    setShowStops(false)
+    setShowPacks(false)
+    setShowBreakdown(false)
+    setShowInfo(false)
+    setShowAtmosphere(true)
   }
 
   useEffect(() => {
@@ -303,10 +325,7 @@ export default function App() {
     setShowBreakdown(false)
   }
 
-  const personalLanding = route?.status === 'success' && route.legs.some(({ edge }) => edge.kind === 'descent' && !allowanceEdgeIds.has(edge.id) && basisByEdge.get(edge.id)?.kind === 'user')
-  const reentryNotice = 'Kerbin landing: 0 m/s (atmosphere + parachutes).'
-  const landingNotice = basisGroups.some(group => group.kind === 'placeholder') ? `Atmospheric landing uses a default Delta-V allowance. Set your own in Atmosphere.${defaultReentry ? ` ${reentryNotice}` : ''}`
-    : defaultReentry ? reentryNotice : personalLanding ? 'Atmospheric landing uses your powered-landing Delta-V.' : "Atmospheric landing uses the pack's supplied Delta-V."
+  const arrivalNotice = primaryAtmosphericContext ? `${primaryAtmosphericContext.label}.${atmosphericContexts.length > 1 ? ` +${atmosphericContexts.length - 1} other ${atmosphericContexts.length === 2 ? 'body' : 'bodies'}.` : ''}` : null
   const routeFeatures = [
     ...(directTransferCount > 0 ? [`${directTransferCount} ${isCustomPack ? 'pack-supplied' : 'calculated'} direct transfer${directTransferCount === 1 ? '' : 's'}.`] : []),
     ...(usesLinkAllowances ? ['Includes your link allowances.'] : []),
@@ -314,7 +333,7 @@ export default function App() {
   const routeStatus = unavailableInterstellarNotice ?? (needsLinkAllowances ? 'Some connections have no Delta-V budget. Open Link allowances to enter your estimates.'
     : route?.status === 'invalid' || route?.status === 'unreachable' ? route.message
     : route?.status === 'success' && route.legs.length === 0 ? 'No maneuvers required.'
-      : hasAtmosphericLanding ? `${landingNotice}${routeFeatures ? ` ${routeFeatures}` : ''}${hasLayover ? ` ${layoverNotice}` : ''}`
+      : arrivalNotice ? `${arrivalNotice}${routeFeatures ? ` ${routeFeatures}` : ''}${hasLayover ? ` ${layoverNotice}` : ''}`
         : hasLayover ? `${layoverNotice}${routeFeatures ? ` ${routeFeatures}` : ''}`
           : route?.status === 'success' ? `${route.legs.length} maneuver${route.legs.length === 1 ? '' : 's'} · ${routeFeatures || `Select a map point to update your ${selection === 'start' ? 'origin' : 'destination'}.`}`
             : `Select ${selection === 'start' ? 'an origin' : 'a destination'} on the map.`)
@@ -332,20 +351,16 @@ export default function App() {
           <Typography component="h1" sx={{ minWidth: 0, fontWeight: 700, fontSize: { xs: 14, sm: 16 }, letterSpacing: '-.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>KSP DeltaV Planner</Typography>
         </Stack>
         <Stack direction="row" spacing={{ xs: .5, sm: 1 }} sx={{ alignItems: 'center', minWidth: 0, flexShrink: 0 }}>
-          <Tooltip title={`${kerbinReentryEnabled ? 'Kerbin landing uses an atmospheric-braking and parachute assumption (0 m/s of engine burns). Open Atmosphere to change it or set other landing and capture assumptions.' : 'Set atmospheric capture assumptions and your powered-landing Delta-V.'} Arrows mark where an atmosphere may help; complete transfer budgets keep their original cost.`}>
+          <Tooltip title={`${assistanceState === 'default' ? 'Using the built-in Kerbin landing default.' : assistanceState === 'custom' ? 'Using your landing or capture choices.' : 'Using reference arrival budgets.'} Choose atmospheric landing, a custom engine-burn budget, or atmospheric orbital capture. Only supported arrival maneuvers change.`}>
             <Box role="note" aria-label="Aerobraking legend">
-            <Button aria-label="Atmospheric assistance" aria-haspopup="dialog" aria-expanded={showAtmosphere} aria-pressed={hasAtmosphericOptions} onClick={() => {
-              if (selection === 'stop') setSelection(previousSelection.current)
-              setShowStops(false)
-              setShowPacks(false)
-              setShowBreakdown(false)
-              setShowAtmosphere(true)
-            }} sx={{ display: 'flex', alignItems: 'center', gap: .5, minWidth: 0, minHeight: 28, px: .75, py: .35, border: '1px solid', borderColor: hasAtmosphericOptions ? '#92d5c680' : '#c6e8d830', borderRadius: 4, bgcolor: hasAtmosphericOptions ? '#285044' : '#1a202c99', color: hasAtmosphericOptions ? '#c1efdf' : '#b5c9bf', whiteSpace: 'nowrap', '&:hover': { bgcolor: '#285044' } }}>
-              <svg width="10" height="10" viewBox="-8 -8 16 16" aria-hidden="true"><path d="M -7 -6 L 7 0 L -7 6 Z" fill="#c6e8d8" /></svg>
+            <Button aria-label="Landing & Capture" aria-haspopup="dialog" aria-expanded={showAtmosphere} data-assistance-state={assistanceState} onClick={() => openAtmosphere()} sx={{ display: 'flex', alignItems: 'center', gap: .5, minWidth: 28, minHeight: 28, px: .75, py: .35, border: '1px solid', borderColor: assistanceState === 'custom' ? '#73c8fa80' : '#c6e8d830', borderRadius: 4, bgcolor: assistanceState === 'custom' ? '#73c8fa18' : '#92d5c606', color: assistanceState === 'custom' ? 'primary.light' : '#c1d5ce', whiteSpace: 'nowrap', '&:hover': { bgcolor: '#285044' } }}>
+              <ParaglidingRounded sx={{ fontSize: 17 }} />
               <Typography component="span" sx={{ fontSize: 10, lineHeight: 1.4 }}>
-                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Atmosphere</Box>
-                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Aero</Box>
+                <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>Landing &amp; Capture</Box>
+                <Box component="span" sx={{ display: 'none', '@media (min-width: 360px) and (max-width: 899px)': { display: 'inline' } }}>Landing</Box>
               </Typography>
+              <Box component="span" sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: assistanceState === 'custom' ? '#73c8fa' : assistanceState === 'default' ? '#92d5c6' : '#7c899f', flexShrink: 0 }} />
+              <Box component="span" sx={{ display: 'none', '@media (min-width: 1100px)': { display: 'inline' }, fontSize: 9, color: 'text.secondary' }}>{assistanceState === 'default' ? 'Default' : assistanceState === 'custom' ? 'Custom' : 'Reference'}</Box>
               <ExpandMoreRounded sx={{ fontSize: 14 }} />
             </Button>
             </Box>
@@ -487,9 +502,12 @@ export default function App() {
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', columnGap: 1, rowGap: .25, px: { xs: 1.25, sm: 2.5 }, pb: .75, minHeight: 20 }}>
           <Box role={selection !== 'stop' && (hasAtmosphericLanding || route?.status === 'invalid') ? 'alert' : 'status'} title={atmosphericComparison && selection !== 'stop' ? `${status} ${atmosphericComparison}` : status} sx={{ flex: '1 1 100%', minWidth: 0, color: selection === 'stop' ? '#92d5c6' : hasAtmosphericOptions ? '#92d5c6' : hasAtmosphericLanding ? 'secondary.main' : 'text.secondary', '@media (min-width: 700px)': { flex: '1 1 0' } }}>
-            <Typography data-testid="route-status" sx={{ fontSize: 11, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', '@media (max-height: 500px)': { fontSize: 10, lineHeight: 1.2 } }}>{status}</Typography>
+            {primaryAtmosphericContext && selection !== 'stop' ? <Button aria-label={`Edit landing and capture at ${primaryAtmosphericContext.body.name}`} onClick={() => openAtmosphere(primaryAtmosphericContext.body.id)} title={atmosphericContexts.map(context => context.label).join('; ')} sx={{ minWidth: 0, maxWidth: '100%', minHeight: 32, px: 0, py: .25, gap: .75, textAlign: 'left', justifyContent: 'flex-start', color: 'inherit', '&:hover': { bgcolor: '#73c8fa0a' }, '@media (max-height: 500px)': { minHeight: 28 } }}>
+              <Typography component="span" data-testid="route-status" sx={{ fontSize: 11, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', '@media (max-height: 500px)': { fontSize: 10, lineHeight: 1.2 } }}>{status}</Typography>
+              <Box component="span" sx={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: .25, color: 'primary.main', fontSize: 10 }}>Change<EditOutlined sx={{ fontSize: 13 }} /></Box>
+            </Button> : <Typography data-testid="route-status" sx={{ fontSize: 11, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', '@media (max-height: 500px)': { fontSize: 10, lineHeight: 1.2 } }}>{status}</Typography>}
             {atmosphericDifference !== null && referenceRoute?.status === 'success' && selection !== 'stop' && <Typography sx={{ fontSize: 10, lineHeight: 1.3, color: '#92d5c6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              <Box component="output" data-testid="atmospheric-change">{atmosphericDifference > 0 ? '+' : ''}{format.format(atmosphericDifference)} m/s</Box> atmosphere · <Box component="output" data-testid="atmospheric-reference">{format.format(referenceRoute.totalDeltaV)} m/s</Box> before atmosphere
+              <Box component="output" data-testid="atmospheric-change">{atmosphericDifference > 0 ? '+' : ''}{format.format(atmosphericDifference)} m/s</Box> vs reference · <Box component="output" data-testid="atmospheric-reference">{format.format(referenceRoute.totalDeltaV)} m/s</Box> reference budget
             </Typography>}
           </Box>
           {needsLinkAllowances ? <Button size="small" color="secondary" onClick={() => setShowAllowances(true)} sx={{ minHeight: 20, minWidth: 0, px: .25, py: 0, fontSize: 11, whiteSpace: 'nowrap' }}>Link allowances</Button>
@@ -553,11 +571,11 @@ export default function App() {
 
       <ConnectionAllowancesDialog open={showAllowances} pack={pack} plan={connectionPlan} onApply={options => { setConnectionPlan(options); setShowAllowances(false); resetDetails() }} onClose={() => setShowAllowances(false)} />
 
-      <AtmosphereDialog open={showAtmosphere} pack={pack} plan={atmosphericPlan} onApply={options => { setAtmosphericPlan(options); setShowAtmosphere(false); resetDetails() }} onClose={() => setShowAtmosphere(false)} />
+      <AtmosphereDialog open={showAtmosphere} pack={pack} plan={atmosphericPlan} isBuiltIn={!isCustomPack} initialBodyId={atmosphereBodyId} onApply={options => { setAtmosphericPlan(options); setShowAtmosphere(false); resetDetails() }} onClose={() => setShowAtmosphere(false)} />
 
       <RelayPlannerDialog key={pack.id} open={showRelays} pack={pack} initialBodyId={nodesById.get(endId ?? '')?.bodyId ?? pack.transferHubBodyId ?? null} onClose={() => setShowRelays(false)} />
 
-      <EstimateInfoDialog open={showInfo} initialSection={infoSection} pack={pack} customPack={isCustomPack} groups={basisGroups} budget={budget} notices={estimateNotices} defaultReentry={defaultReentry} idealCapture={idealCapture} onClose={() => setShowInfo(false)} />
+      <EstimateInfoDialog open={showInfo} initialSection={infoSection} pack={pack} customPack={isCustomPack} groups={basisGroups} budget={budget} notices={estimateNotices} defaultReentry={defaultReentry} atmosphericLanding={atmosphericLanding} idealCapture={idealCapture} onClose={() => setShowInfo(false)} />
     </Box>
   )
 }

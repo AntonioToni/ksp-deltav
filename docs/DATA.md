@@ -230,46 +230,69 @@ maneuvers, rather than treating every arrow as a free transfer.
 
 ## Optional atmospheric assistance
 
-Open **Atmosphere** (**Aero** on phones) in the header to edit **Atmospheric
-assistance**. Choices apply by body ID to every eligible visit, including
-endpoints, ordered stops, and intermediate layovers. Built-in Stock, OPM, and
-their Kcalbeloh configurations start with **Kerbin landing at 0 m/s**;
-capture and other bodies' landing choices start disabled. RSS and imported
-custom packs receive no automatic landing assumption, even if a custom pack
-reuses Stock body IDs.
+Open **Landing & Capture** in the header (the landing icon on phones), then
+choose an **Atmospheric body**. Its landing methods and orbital capture settings
+are separate; only supported options appear. Choices apply by body ID to every
+eligible visit, including endpoints, ordered stops, and intermediate layovers.
+Built-in Stock, OPM, and their Kcalbeloh configurations start with **Kerbin
+landing at 0 m/s**. Orbital capture starts off; other bodies initially use their
+reference landing budgets. RSS and imported custom packs receive no automatic
+landing assumption, even if a custom pack reuses Stock body IDs.
 
 The default Kerbin landing assumes atmospheric braking and parachutes replace
 the landing engine burn. It does not prove that a craft can survive entry, and
 it does not calculate deorbit or correction burns. Kerbin ascent remains
 **3,400 m/s**, separate encounter-to-orbit capture remains **950 m/s**, and
-combined moon-return transfer figures stay unchanged. Open Atmosphere to edit
-the landing allowance or uncheck **Landing** to restore the source's **3,400 m/s**
-descent placeholder. The default is labeled **Atmospheric reentry** in Budget
-assumptions; an amount entered by the user is labeled **Your allowance**.
+combined moon-return transfer figures stay unchanged. Select **Custom powered
+landing** to enter a different budget, or **Use reference map budget** to restore
+the source's **3,400 m/s** descent placeholder. The default is labeled
+**Atmospheric reentry** in Budget assumptions. An explicit atmospheric landing
+on another body is an atmospheric assumption; an amount entered under Custom,
+including zero, is labeled **Your allowance**.
 
 For example, Kerbin surface → Mun surface remains **5,120 m/s** outward.
 The return is **1,720 m/s** with the default Kerbin landing assumption, giving
-**6,840 m/s** for the round trip before reserve. Turning that assumption off
-restores the source-only **10,240 m/s** round trip.
+**6,840 m/s** for the round trip before reserve. Choosing the reference landing
+budget for Kerbin restores the source-only **10,240 m/s** round trip.
 
-The dialog stages edits:
-**Apply** uses them, **Cancel** discards them, and **Disable all** clears the draft.
+The dialog stages edits: **Apply** saves them and recalculates the mission;
+**Cancel** or Escape discards them. Switching bodies or landing methods keeps
+the draft, including a custom value you entered. **Use reference budgets** turns
+off all landing overrides and ideal capture choices. **Restore defaults** instead
+restores the active pack's starting assumptions, including the Kerbin preset
+where supported; it does not enable atmospheric landings in RSS or imported
+packs. Both actions edit the draft until you choose Apply.
 Swapping endpoints and changing mission mode retain body choices. Changing packs
 retains compatible eligible choices, including an explicit opt-out or a personal
 landing allowance. Choices for unavailable bodies are discarded. **Clear**
 restores the active pack's atmospheric defaults. These are session settings;
 source data and exported packs keep their original budgets.
 
-- **Ideal capture** sets separate same-body inward `capture` segments to zero,
+The button distinguishes default assumptions from user-modified settings.
+When the selected mission uses a supported atmospheric maneuver, its result
+shows the active assumption and its budget effect, with a way to reopen that
+body's settings. Budget assumptions and the maneuver breakdown retain the
+distinction between original costs, atmospheric assumptions, and personal inputs.
+
+- **Orbital capture → Use atmospheric capture (0 m/s)** sets separate same-body inward `capture`
+  segments to zero,
   including encounter → high ellipse/low orbit and high ellipse → low orbit.
   This is an optimistic lower bound on powered burns, not a calculated entry
   trajectory. Capture cleanup burns are excluded and must be planned separately.
   A percentage reserve does not calculate them and adds nothing to a zero budget.
-- **Atmospheric landing** replaces an eligible same-body low-orbit → surface
-  `descent` with that body's landing allowance. Apart from the default Kerbin
-  assumption above, the user must enter a finite value from **0 to 1,000,000 m/s**.
-  Zero assumes no powered landing burn; it is not a vehicle-specific calculation.
-  A higher allowance can increase the original budget.
+- **Atmospheric landing (0 m/s)** replaces an eligible same-body low-orbit →
+  surface `descent` with zero engine-burn Delta-V. It is selected automatically
+  only for the supported built-in Kerbin preset. On other bodies it is an
+  explicit choice, not a claim that every craft can land without engines.
+- **Custom powered landing** replaces the same supported descent with the
+  amount you enter, from **0 to 1,000,000 m/s**, including zero. A higher amount
+  can increase the original budget. Selecting the atmospheric method and then
+  returning to Custom retains your value while editing.
+- **Use reference map budget** removes that body's landing override and uses
+  its original eligible descent costs. Available source figures are shown in
+  the dialog. They come from the active pack, including author-supplied budgets
+  in imported packs; they are not inferred from another body or hardcoded to
+  Kerbin's figures.
 - Atmospheric assistance requires `hasAtmosphere: true` and a supported inward
   maneuver. `supportsAtmosphericBraking: false` excludes a body, including RSS
   Pluto and Triton. Gas giants can have capture options but no landing option.
@@ -511,14 +534,14 @@ its capture is free in the idealized model.
 
 An ideal capture choice can select a high arrival followed by a separately
 adjusted circularization. In RSS, the one-way **Mars low orbit → Venus low orbit** route remains
-**7,850 m/s** with atmospheric options off. With **Ideal capture at Venus**, the
+**7,850 m/s** with atmospheric options off. With atmospheric capture enabled for Venus, the
 route can instead use the complete **5,014 m/s** Mars-low-to-Venus-high pair,
 then the standalone Venus-high-to-low circularization at the idealized
 **0 m/s** powered allowance. The mission estimate is **5,014 m/s**; the bundled
 departure and powered high capture are still charged in full. This does not
 validate entry, capture cleanup, or the geometry of a real aerobraking flight.
 
-For example, with **Ideal capture at Duna**, Kerbin surface → Dres low orbit
+For example, with atmospheric capture enabled for Duna, Kerbin surface → Dres low orbit
 remains **6,260 m/s** by default. Adding **Duna low orbit** as an explicit stop
 gives a separate **6,012 m/s** estimate: **4,480 m/s** to reach that stop, then
 the unchanged **1,532 m/s** direct transfer to Dres. Adding Dres powered descent

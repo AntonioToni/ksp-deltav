@@ -293,4 +293,17 @@ describe('atmospheric option validation', () => {
     for (const plan of invalid) expect(() => applyAtmosphericAssistance(graph, stockPack, plan)).toThrow(RangeError)
     expect(() => applyAtmosphericAssistance(graph, stockPack, [{ bodyId: 'stock:mun', capture: false, landing: false, landingDeltaV: 0 }])).not.toThrow()
   })
+
+  it('validates UI method metadata without changing valid legacy options', () => {
+    const malformed = [
+      { ...duna(false, true, 0), landingMethod: 'reference' },
+      { ...duna(false, true, 150), landingMethod: 'atmospheric' },
+      { bodyId: 'stock:kerbin', capture: false, landing: true, landingDeltaV: 0, landingMethod: 'custom', landingPreset: 'kerbin-reentry' },
+    ]
+    for (const option of malformed) expect(() => applyAtmosphericAssistance(graph, stockPack, [option] as unknown as AtmosphericPlan)).toThrow(RangeError)
+    for (const landingMethod of ['atmospheric', 'custom'] as const) {
+      expect(() => applyAtmosphericAssistance(graph, stockPack, [{ ...duna(false, true, 0), landingMethod }])).not.toThrow()
+    }
+    expect(() => applyAtmosphericAssistance(graph, stockPack, [duna(false, true, 0)])).not.toThrow()
+  })
 })

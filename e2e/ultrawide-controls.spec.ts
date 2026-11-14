@@ -42,7 +42,7 @@ async function centralControlsFit(page: Page) {
     button(page, 'Reset mission'), page.getByRole('checkbox', { name: 'Show breakdown', exact: true }),
     page.getByTestId('route-status'),
     page.getByRole('heading', { name: 'KSP DeltaV Planner', exact: true }),
-    button(page, 'Atmospheric assistance'), button(page, 'CommNet relay planner'),
+    button(page, 'Landing & Capture'), button(page, 'CommNet relay planner'),
     page.getByRole('link', { name: 'GitHub project (opens in a new tab)', exact: true }),
     button(page, 'Model assumptions and data sources'),
   ]) {

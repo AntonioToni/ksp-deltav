@@ -2,11 +2,12 @@ import { readFile } from 'node:fs/promises'
 import { expect, test, type Page } from '@playwright/test'
 import type { PlanetPack } from '../src/types/planner'
 import { missionModeButton } from './helpers/missionMode'
+import { setCustomLanding, setIdealCapture } from './helpers/atmosphere'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const state = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
 const total = (page: Page) => page.getByTestId('route-total')
-const atmosphere = (page: Page) => page.getByRole('dialog', { name: 'Atmospheric assistance', exact: true })
+const atmosphere = (page: Page) => page.getByRole('dialog', { name: 'Landing & Capture', exact: true })
 const breakdown = (page: Page) => page.getByRole('list', { name: 'Maneuver breakdown', exact: true }).getByRole('listitem')
 let browserErrors: string[]
 
@@ -28,11 +29,10 @@ async function plan(page: Page, from: string, to: string) {
 }
 
 async function idealTektoArrival(page: Page) {
-  await button(page, 'Atmospheric assistance').click()
-  await atmosphere(page).getByRole('checkbox', { name: 'Ideal capture at Sarnus', exact: true }).check()
-  await atmosphere(page).getByRole('checkbox', { name: 'Ideal capture at Tekto', exact: true }).check()
-  await atmosphere(page).getByRole('checkbox', { name: 'Atmospheric landing at Tekto', exact: true }).check()
-  await atmosphere(page).getByRole('spinbutton', { name: 'Landing allowance at Tekto', exact: true }).fill('100')
+  await button(page, 'Landing & Capture').click()
+  await setIdealCapture(page, 'Sarnus')
+  await setIdealCapture(page, 'Tekto')
+  await setCustomLanding(page, 'Tekto', '100')
   await atmosphere(page).getByRole('button', { name: 'Apply', exact: true }).click()
   await expect(atmosphere(page)).not.toBeVisible()
 }

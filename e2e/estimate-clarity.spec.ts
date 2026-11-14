@@ -3,13 +3,14 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import type { PlanetPack } from '../src/types/planner'
 import { stockKcalbelohPack } from '../src/data/kcalbeloh'
 import { missionModeButton } from './helpers/missionMode'
+import { setCustomLanding, setIdealCapture } from './helpers/atmosphere'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const state = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
 const total = (page: Page) => page.getByTestId('route-total')
 const info = (page: Page) => page.getByRole('dialog', { name: 'About these estimates', exact: true })
 const manager = (page: Page) => page.getByRole('dialog', { name: 'Planet packs', exact: true })
-const atmosphere = (page: Page) => page.getByRole('dialog', { name: 'Atmospheric assistance', exact: true })
+const atmosphere = (page: Page) => page.getByRole('dialog', { name: 'Landing & Capture', exact: true })
 const links = (page: Page) => page.getByRole('dialog', { name: 'Link allowances', exact: true })
 const relays = (page: Page) => page.getByRole('dialog', { name: 'CommNet relay planner', exact: true })
 const relayField = (page: Page, name: string) => relays(page).getByRole('spinbutton', { name, exact: true })
@@ -144,9 +145,8 @@ test('keeps an equal-valued personal landing distinct from the atmospheric place
   await expectSummary(page, 'placeholder', '1,450', 1)
   await expect(info(page).getByText(/not a verified landing cost or guaranteed maximum/)).toBeVisible()
   await info(page).getByRole('button', { name: 'Close', exact: true }).click()
-  await button(page, 'Atmospheric assistance').click()
-  await atmosphere(page).getByRole('checkbox', { name: 'Atmospheric landing at Duna', exact: true }).check()
-  await atmosphere(page).getByRole('spinbutton', { name: 'Landing allowance at Duna', exact: true }).fill('1450')
+  await button(page, 'Landing & Capture').click()
+  await setCustomLanding(page, 'Duna', '1450')
   await atmosphere(page).getByRole('button', { name: 'Apply', exact: true }).click()
   await expect(total(page)).toHaveText('6,540 m/s')
   await openMissionInfo(page)
@@ -159,8 +159,8 @@ test('keeps an equal-valued personal landing distinct from the atmospheric place
 
 test('counts explicit zero ideal capture maneuvers separately from map values', async ({ page }) => {
   await plan(page, 'stock:kerbin:surface', 'stock:duna:surface')
-  await button(page, 'Atmospheric assistance').click()
-  await atmosphere(page).getByRole('checkbox', { name: 'Ideal capture at Duna', exact: true }).check()
+  await button(page, 'Landing & Capture').click()
+  await setIdealCapture(page, 'Duna')
   await atmosphere(page).getByRole('button', { name: 'Apply', exact: true }).click()
   await expect(total(page)).toHaveText('5,930 m/s')
   await openMissionInfo(page)
@@ -206,13 +206,12 @@ test('labels a mixed personal plan before atmosphere and retains its landing not
   await expectSummary(page, 'user', '1,000', 1)
   await expectSummary(page, 'placeholder', '3,630', 1)
   await info(page).getByRole('button', { name: 'Close', exact: true }).click()
-  await button(page, 'Atmospheric assistance').click()
-  await atmosphere(page).getByRole('checkbox', { name: 'Atmospheric landing at Sera', exact: true }).check()
-  await atmosphere(page).getByRole('spinbutton', { name: 'Landing allowance at Sera', exact: true }).fill('100')
+  await button(page, 'Landing & Capture').click()
+  await setCustomLanding(page, 'Sera', '100')
   await atmosphere(page).getByRole('button', { name: 'Apply', exact: true }).click()
   await expect(total(page)).toHaveText('9,370 m/s')
   await expect(page.getByTestId('atmospheric-reference')).toContainText('12,900')
-  await expect(page.getByRole('contentinfo')).toContainText('before atmosphere')
+  await expect(page.getByRole('contentinfo')).toContainText('reference budget')
   await expect(page.getByRole('contentinfo')).toContainText(/landing/i)
   await openMissionInfo(page)
   await expectSummary(page, 'user', '1,100', 2)

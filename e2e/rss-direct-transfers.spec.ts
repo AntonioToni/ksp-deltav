@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { missionModeButton } from './helpers/missionMode'
+import { setIdealCapture } from './helpers/atmosphere'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const node = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
@@ -218,9 +219,9 @@ test('keeps bundled prices intact while ideal capture opens the new Venus high r
   await plan(page, 'rss:mars:orbit', 'rss:venus:orbit')
   await expect(total(page)).toHaveText('7,850 m/s')
   await expect(direct(page)).toHaveAttribute('data-edge-id', 'direct:rss:mars:orbit->rss:venus:orbit')
-  await button(page, 'Atmospheric assistance').click()
-  const dialog = page.getByRole('dialog', { name: 'Atmospheric assistance', exact: true })
-  await dialog.getByRole('checkbox', { name: 'Ideal capture at Venus', exact: true }).check()
+  await button(page, 'Landing & Capture').click()
+  const dialog = page.getByRole('dialog', { name: 'Landing & Capture', exact: true })
+  await setIdealCapture(page, 'Venus')
   await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
   // 5,014 m/s complete Mars-low → Venus-high departure/capture stays paid.
   // Only the separate high → low circularization uses the ideal zero allowance.
@@ -239,8 +240,8 @@ test('keeps bundled prices intact while ideal capture opens the new Venus high r
   await expect(rows(page).first()).toContainText('5,014 m/s')
   await expect(rows(page).nth(1)).toHaveAttribute('data-budget-basis', 'ideal')
   await expect(rows(page).nth(1)).toContainText('0 m/s')
-  await button(page, 'Atmospheric assistance').click()
-  await dialog.getByRole('checkbox', { name: 'Ideal capture at Venus', exact: true }).uncheck()
+  await button(page, 'Landing & Capture').click()
+  await setIdealCapture(page, 'Venus', false)
   await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
   await expect(total(page)).toHaveText('7,850 m/s')
   await expect(direct(page)).toHaveAttribute('data-edge-id', 'direct:rss:mars:orbit->rss:venus:orbit')

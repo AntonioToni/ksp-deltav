@@ -44,7 +44,10 @@ export function describeManeuverBasis(edge: ManeuverEdge, pack: PlanetPack, opti
   const eligible = standalone && choice && getAerobrakingEdges(pack).some(candidate => candidate.id === edge.id)
   if (eligible && edge.kind === 'descent' && choice.landing) {
     if (!options.customPack && choice.landingPreset === 'kerbin-reentry' && choice.bodyId === 'stock:kerbin' && choice.landingDeltaV === 0 && edge.deltaV === 0) {
-      return basis('ideal', 'Atmospheric reentry', 'The default Kerbin landing assumes atmospheric braking and parachutes replace the landing engine burn (0 m/s). Safe entry, deorbit and correction burns are not calculated. You can set a different landing budget in Atmosphere.')
+      return basis('ideal', 'Atmospheric reentry', 'The default Kerbin landing assumes atmospheric braking and parachutes replace the landing engine burn (0 m/s). Safe entry, deorbit and correction burns are not calculated. You can change the landing method in Landing & Capture.')
+    }
+    if (choice.landingMethod === 'atmospheric' && choice.landingDeltaV === 0 && edge.deltaV === 0) {
+      return basis('ideal', 'Atmospheric landing', 'Assumes atmospheric braking and parachutes replace this landing engine burn (0 m/s). Safe entry, deorbit and correction burns are not calculated.')
     }
     return basis('user', 'Your allowance', 'The engine-burn budget you entered for this landing. Safe atmospheric entry and your vehicle’s landing performance are not calculated.')
   }

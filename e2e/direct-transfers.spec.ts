@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { missionModeButton } from './helpers/missionMode'
+import { setCustomLanding, setIdealCapture } from './helpers/atmosphere'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const node = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
@@ -9,7 +10,7 @@ const flow = (page: Page) => page.locator('[data-route-animation="true"]')
 const trail = (page: Page) => flow(page).locator('[data-flow-run]').first().locator('path.route-flow-trail').last()
 const total = (page: Page) => page.getByTestId('route-total')
 const info = (page: Page) => page.getByRole('dialog', { name: 'About these estimates', exact: true })
-const atmosphere = (page: Page) => page.getByRole('dialog', { name: 'Atmospheric assistance', exact: true })
+const atmosphere = (page: Page) => page.getByRole('dialog', { name: 'Landing & Capture', exact: true })
 const stops = (page: Page) => page.getByRole('dialog', { name: /^Mission stops\b/ })
 const rows = (page: Page) => page.getByRole('list', { name: 'Maneuver breakdown', exact: true }).getByRole('listitem')
 let browserErrors: string[]
@@ -250,8 +251,8 @@ test('retains bundled high-orbit capture while applying ideal local circularizat
   const marker = page.locator('[data-aerobraking-edge][data-from="stock:eve:orbit"][data-to="stock:duna:orbit"]')
   await expect(marker).toHaveCount(1)
   await expect(marker).toHaveAttribute('data-selected', 'true')
-  await button(page, 'Atmospheric assistance').click()
-  await atmosphere(page).getByRole('checkbox', { name: 'Ideal capture at Duna', exact: true }).check()
+  await button(page, 'Landing & Capture').click()
+  await setIdealCapture(page, 'Duna')
   await atmosphere(page).getByRole('button', { name: 'Apply', exact: true }).click()
   // The optimizer can choose the cheaper high arrival plus standalone ideal
   // circularization; the complete 2,368 m/s high-arrival pair stays intact.
@@ -262,9 +263,8 @@ test('retains bundled high-orbit capture while applying ideal local circularizat
   await button(page, 'Choose destination').click()
   await node(page, 'stock:duna:surface').click()
   await expect(total(page)).toHaveText('3,818 m/s')
-  await button(page, 'Atmospheric assistance').click()
-  await atmosphere(page).getByRole('checkbox', { name: 'Atmospheric landing at Duna', exact: true }).check()
-  await atmosphere(page).getByRole('spinbutton', { name: 'Landing allowance at Duna', exact: true }).fill('100')
+  await button(page, 'Landing & Capture').click()
+  await setCustomLanding(page, 'Duna', '100')
   await atmosphere(page).getByRole('button', { name: 'Apply', exact: true }).click()
   await expect(total(page)).toHaveText('2,468 m/s')
   await expect(direct(page)).toHaveCount(1)

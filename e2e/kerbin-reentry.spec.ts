@@ -1,14 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 import { stockPack } from '../src/data/stock'
 import { missionModeButton } from './helpers/missionMode'
+import { atmosphereDialog, chooseAtmosphericBody, chooseLandingMethod, landingInput, landingMethod, revealCapture, setCustomLanding } from './helpers/atmosphere'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const node = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
 const total = (page: Page) => page.getByTestId('route-total')
-const atmosphere = (page: Page) => page.getByRole('dialog', { name: 'Atmospheric assistance', exact: true })
-const landing = (page: Page) => atmosphere(page).getByRole('checkbox', { name: 'Atmospheric landing at Kerbin', exact: true })
-const capture = (page: Page) => atmosphere(page).getByRole('checkbox', { name: 'Ideal capture at Kerbin', exact: true })
-const allowance = (page: Page) => atmosphere(page).getByRole('spinbutton', { name: 'Landing allowance at Kerbin', exact: true })
+const atmosphere = atmosphereDialog
+const allowance = (page: Page) => landingInput(page, 'Kerbin')
 const information = (page: Page) => page.getByRole('dialog', { name: 'About these estimates', exact: true })
 const summary = (page: Page, kind: string) => information(page).locator(`[data-budget-summary-kind="${kind}"]`)
 const manager = (page: Page) => page.getByRole('dialog', { name: 'Planet packs', exact: true })
@@ -20,7 +19,7 @@ test.beforeEach(async ({ page }) => {
   page.on('pageerror', error => browserErrors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()) })
   await page.goto('./')
-  await expect(button(page, 'Atmospheric assistance')).toBeVisible()
+  await expect(button(page, 'Landing & Capture')).toBeVisible()
 })
 
 test.afterEach(() => {
@@ -33,8 +32,9 @@ async function plan(page: Page, from: string, to: string) {
 }
 
 async function editAtmosphere(page: Page) {
-  await button(page, 'Atmospheric assistance').click()
+  await button(page, 'Landing & Capture').click()
   await expect(atmosphere(page)).toBeVisible()
+  await chooseAtmosphericBody(page, 'Kerbin')
 }
 
 async function apply(page: Page) {
@@ -48,12 +48,13 @@ async function openInformation(page: Page) {
 }
 
 test('defaults only Kerbin landing to atmospheric re-entry and keeps launch and orbital capture costs', async ({ page }) => {
-  await expect(button(page, 'Atmospheric assistance')).toHaveAttribute('aria-pressed', 'true')
+  await expect(button(page, 'Landing & Capture')).toHaveAttribute('data-assistance-state', 'default')
   await editAtmosphere(page)
-  await expect(landing(page)).toBeChecked()
-  await expect(allowance(page)).toHaveValue('0')
-  await expect(capture(page)).not.toBeChecked()
-  await expect(atmosphere(page).getByRole('checkbox', { name: 'Atmospheric landing at Duna', exact: true })).not.toBeChecked()
+  await expect(landingMethod(page, 'atmospheric')).toBeChecked()
+  await expect(allowance(page)).toHaveCount(0)
+  await expect(await revealCapture(page, 'Kerbin')).not.toBeChecked()
+  await chooseAtmosphericBody(page, 'Duna')
+  await expect(landingMethod(page, 'reference')).toBeChecked()
   await atmosphere(page).getByRole('button', { name: 'Cancel', exact: true }).click()
 
   await plan(page, 'stock:kerbin:surface', 'stock:mun:surface')
@@ -82,7 +83,7 @@ test('distinguishes the default assumption from manual zero, preserves overrides
   await plan(page, 'stock:kerbin:orbit', 'stock:kerbin:surface')
   await expect(total(page)).toHaveText('0 m/s')
   await editAtmosphere(page)
-  await allowance(page).fill('120')
+  await setCustomLanding(page, 'Kerbin', '120')
   await apply(page)
   await expect(total(page)).toHaveText('120 m/s')
   await openInformation(page)
@@ -97,7 +98,7 @@ test('distinguishes the default assumption from manual zero, preserves overrides
   await expect(summary(page, 'ideal')).toHaveCount(0)
   await information(page).getByRole('button', { name: 'Close', exact: true }).click()
   await editAtmosphere(page)
-  await landing(page).uncheck()
+  await chooseLandingMethod(page, 'Kerbin', 'reference')
   await apply(page)
   await expect(total(page)).toHaveText('3,400 m/s')
   await button(page, 'OPM').click()
@@ -105,7 +106,7 @@ test('distinguishes the default assumption from manual zero, preserves overrides
   await button(page, 'Stock').click()
   await expect(total(page)).toHaveText('3,400 m/s')
   await editAtmosphere(page)
-  await expect(landing(page)).not.toBeChecked()
+  await expect(landingMethod(page, 'reference')).toBeChecked()
   await atmosphere(page).getByRole('button', { name: 'Cancel', exact: true }).click()
   await button(page, 'Reset mission').click()
   await plan(page, 'stock:kerbin:orbit', 'stock:kerbin:surface')
@@ -126,7 +127,7 @@ test('keeps the default in built-in Kerbin configurations without applying it to
     await expect(total(page)).toHaveText('0 m/s')
   }
   await button(page, 'RSS').click()
-  await expect(button(page, 'Atmospheric assistance')).toHaveAttribute('aria-pressed', 'false')
+  await expect(button(page, 'Landing & Capture')).toHaveAttribute('data-assistance-state', 'off')
   await plan(page, 'rss:earth:orbit', 'rss:earth:surface')
   await expect(total(page)).toHaveText('9,000 m/s')
 
@@ -141,9 +142,9 @@ test('keeps the default in built-in Kerbin configurations without applying it to
   })
   await manager(page).getByRole('button', { name: `Use ${custom.name}`, exact: true }).click()
   await expect(total(page)).toHaveText('3,400 m/s')
-  await expect(button(page, 'Atmospheric assistance')).toHaveAttribute('aria-pressed', 'false')
+  await expect(button(page, 'Landing & Capture')).toHaveAttribute('data-assistance-state', 'off')
   await editAtmosphere(page)
-  await expect(landing(page)).not.toBeChecked()
+  await expect(landingMethod(page, 'reference')).toBeChecked()
 })
 
 test('applies the assumption to each ordered Kerbin landing while retaining every ascent', async ({ page }) => {
@@ -172,10 +173,10 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 3440, height: 1440
     await plan(page, 'stock:kerbin:orbit', 'stock:kerbin:surface')
     await expect(total(page)).toHaveText('0 m/s')
     await expect(page.getByTestId('route-status')).toContainText(/Kerbin.*0 m\/s/i)
-    await expect(button(page, 'Atmospheric assistance')).toBeInViewport({ ratio: 1 })
+    await expect(button(page, 'Landing & Capture')).toBeInViewport({ ratio: 1 })
     await editAtmosphere(page)
-    await allowance(page).scrollIntoViewIfNeeded()
-    await expect(allowance(page)).toHaveValue('0')
+    await landingMethod(page, 'atmospheric').scrollIntoViewIfNeeded()
+    await expect(landingMethod(page, 'atmospheric')).toBeChecked()
     await expect(atmosphere(page).getByRole('button', { name: 'Apply', exact: true })).toBeInViewport({ ratio: 1 })
     expect(await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight })))
       .toEqual(viewport)

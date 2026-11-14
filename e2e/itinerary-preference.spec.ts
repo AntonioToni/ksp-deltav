@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { missionModeButton } from './helpers/missionMode'
+import { setIdealCapture } from './helpers/atmosphere'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const node = (page: Page, id: string) => page.locator(`[data-node-id="${id}"]`)
@@ -145,9 +146,9 @@ test('does not turn an unrelated atmospheric option into an implicit Duna stop',
   await button(page, 'Stock').click()
   await plan(page, 'stock:kerbin:surface', 'stock:dres:orbit')
   await expect(total(page)).toHaveText('6,260 m/s')
-  await button(page, 'Atmospheric assistance').click()
-  const dialog = page.getByRole('dialog', { name: 'Atmospheric assistance', exact: true })
-  await dialog.getByRole('checkbox', { name: 'Ideal capture at Duna', exact: true }).check()
+  await button(page, 'Landing & Capture').click()
+  const dialog = page.getByRole('dialog', { name: 'Landing & Capture', exact: true })
+  await setIdealCapture(page, 'Duna')
   await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
   await expect(total(page)).toHaveText('6,260 m/s')
   await expect(selected(page).and(page.locator('[data-edge-id*="stock:duna:"]'))).toHaveCount(0)

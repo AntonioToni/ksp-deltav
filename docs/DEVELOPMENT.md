@@ -156,7 +156,7 @@ costs and apply once after the selected atmospheric adjustments.
 
 `DataSource.budgetType` optionally records `reference` or `model`. The estimate
 basis helpers classify the effective flown edges: active directional/landing
-allowances and ideal capture precede source metadata, atmospheric descent
+allowances and atmospheric assumptions precede source metadata, atmospheric descent
 placeholders have their own label, and imported figures remain author-supplied.
 Classification changes presentation only. `summarizeBudgetBasis` counts every
 flown occurrence, including repeated and zero-cost maneuvers, before reserves.
@@ -164,10 +164,25 @@ The information dialog separates those totals, the percentage reserve, and any
 round-up to whole m/s. Source URLs provide context and do not verify personal
 allowances or imported costs.
 
-Atmospheric choices are session state keyed by body ID. The dialog edits a draft;
-Apply commits it, Cancel discards it, and Disable all clears the draft. A checked
-landing option requires an explicit finite allowance from 0 to 1,000,000 m/s.
-Pack changes retain only compatible eligible choices, while Clear resets them.
+Atmospheric choices are session state keyed by body ID. **Landing & Capture**
+edits an `AtmosphericChoice` draft with separate reference, atmospheric, and
+custom landing methods plus an independent capture flag. `toAtmosphericPlan`
+translates these methods into the existing landing/capture flags and Delta-V
+values. The custom method accepts a finite amount from 0 to 1,000,000 m/s;
+its text survives method switches while editing.
+
+Apply commits the draft; Cancel or Escape discards it. **Use reference budgets**
+stages all landing overrides and capture flags off. **Restore defaults** stages
+the active pack's defaults, including the marked Kerbin reentry assumption only
+for eligible built-in configurations. Both require Apply. The main Clear action
+also restores the active pack's defaults.
+
+The optional `landingMethod` UI metadata distinguishes an atmospheric zero from
+a custom-entered zero after reopening. It changes presentation, not the burn
+calculation, and is not part of planet-pack JSON. The existing
+`landingPreset: 'kerbin-reentry'` marker retains built-in default provenance.
+Pack changes preserve compatible explicit choices, including inactive opt-outs;
+RSS and imported packs receive no automatic Kerbin preset.
 
 `getAtmosphericCapabilities` identifies bodies with standalone inward capture or
 descent edges supported by the atmospheric markers. `applyAtmosphericAssistance`
@@ -239,8 +254,8 @@ raising the orbit again. Ordinary ordered-stop and return planning still apply;
 the added edges do not create free encounter-to-encounter flybys. Legacy
 encounter-arrival context blocks a direct departure until the required low orbit
 is reached; a complete direct arrival establishes its own bound reference state.
-Atmospheric assistance leaves
-their bundled departure-plus-capture price intact, while separate eligible
+Landing & Capture settings leave their bundled departure-plus-capture price
+intact, while separate eligible
 captures or landing allowances can change the lowest budget within the selected
 itinerary preference. They do not bypass the preference to add an unrequested
 planetary parking detour.

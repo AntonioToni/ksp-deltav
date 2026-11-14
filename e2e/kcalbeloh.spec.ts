@@ -6,6 +6,7 @@ import { buildGraph } from '../src/utils/buildGraph'
 import { applyConnectionAllowances } from '../src/utils/connectionAllowances'
 import { expectedMission, expectBreakdownPages } from './helpers/breakdownPages'
 import { missionModeButton } from './helpers/missionMode'
+import { chooseAtmosphericBody, setCustomLanding } from './helpers/atmosphere'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const state = (page: Page, id: string) => page.locator('[data-node-id="' + id + '"]')
@@ -254,11 +255,11 @@ test('keeps bundled transfers intact while applying a user landing allowance to 
   await useConfiguration(page)
   await plan(page, 'kcalbeloh:tot:surface', 'kcalbeloh:suluco:surface')
   await expect(total(page)).toHaveText('3,931 m/s')
-  await button(page, 'Atmospheric assistance').click()
-  const dialog = page.getByRole('dialog', { name: 'Atmospheric assistance', exact: true })
+  await button(page, 'Landing & Capture').click()
+  const dialog = page.getByRole('dialog', { name: 'Landing & Capture', exact: true })
+  await chooseAtmosphericBody(page, 'Suluco')
   await expect(dialog.getByRole('checkbox', { name: 'Ideal capture at Suluco', exact: true })).toHaveCount(0)
-  await dialog.getByRole('checkbox', { name: 'Atmospheric landing at Suluco', exact: true }).check()
-  await dialog.getByRole('spinbutton', { name: 'Landing allowance at Suluco', exact: true }).fill('100')
+  await setCustomLanding(page, 'Suluco', '100')
   await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
   await expect(total(page)).toHaveText('1,111 m/s')
   await expect(page.getByTestId('atmospheric-reference')).toContainText('3,931')

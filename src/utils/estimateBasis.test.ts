@@ -91,6 +91,26 @@ describe('effective maneuver budget basis', () => {
     ])
   })
 
+  it('distinguishes an atmospheric landing method from a custom-entered zero', () => {
+    for (const landingMethod of ['atmospheric', 'custom'] as const) {
+      const plan: AtmosphericPlan = [{ bodyId: 'stock:duna', capture: false, landing: true, landingDeltaV: 0, landingMethod }]
+      const adjusted = applyAtmosphericAssistance(buildGraph(stockPack), stockPack, plan)
+      const landing = adjusted.graph.adjacency.get(dunaLanding.from)!.find(candidate => candidate.id === dunaLanding.id)!
+      expect(describeManeuverBasis(landing, stockPack, { atmosphericPlan: plan }))
+        .toMatchObject(landingMethod === 'atmospheric' ? { kind: 'ideal', label: 'Atmospheric landing' } : { kind: 'user', label: 'Your allowance' })
+    }
+  })
+
+  it('groups default reentry and other explicit atmospheric landings as assumptions', () => {
+    const plan: AtmosphericPlan = [...getDefaultAtmosphericPlan(stockPack, true), { bodyId: 'stock:duna', capture: false, landing: true, landingDeltaV: 0, landingMethod: 'atmospheric' }]
+    const adjusted = applyAtmosphericAssistance(buildGraph(stockPack), stockPack, plan)
+    const kerbinLanding = adjusted.graph.adjacency.get('stock:kerbin:orbit')!.find(candidate => candidate.to === 'stock:kerbin:surface')!
+    const landing = adjusted.graph.adjacency.get(dunaLanding.from)!.find(candidate => candidate.id === dunaLanding.id)!
+    expect(summarizeBudgetBasis(asLegs([kerbinLanding, landing]), stockPack, { atmosphericPlan: plan })).toEqual([
+      { kind: 'ideal', label: 'Atmospheric assumptions', deltaV: 0, maneuvers: 2 },
+    ])
+  })
+
   it('describes ideal standalone capture separately while retaining a bundled moon-return budget', () => {
     const plan: AtmosphericPlan = [{ bodyId: 'stock:duna', capture: true, landing: false, landingDeltaV: 0 }, { bodyId: 'stock:kerbin', capture: true, landing: false, landingDeltaV: 0 }]
     const adjusted = applyAtmosphericAssistance(buildGraph(stockPack), stockPack, plan)
