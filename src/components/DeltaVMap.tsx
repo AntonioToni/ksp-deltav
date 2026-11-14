@@ -145,7 +145,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
 
   return (
     <Box data-map-region={regions.length ? regionId : undefined} sx={{ position: 'relative', display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minWidth: 0, minHeight: 0, overflow: 'hidden' }} onMouseLeave={() => setInspectedId(null)}>
-      {regions.length > 0 && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, pt: .75, pb: .25, minWidth: 0, flexShrink: 0 }}>
+      {regions.length > 0 && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, pt: .75, pb: .25, width: '100%', maxWidth: 1800, mx: 'auto', minWidth: 0, flexShrink: 0 }}>
         <TextField select size="small" label="Map view" value={regionId} onChange={event => {
           setRegionChoice({ packId: pack.id, focusNodeId, regionId: event.target.value })
           setInspectedId(null)

@@ -325,7 +325,8 @@ export default function App() {
 
   return (
     <Box sx={{ width: '100%', height: '100dvh', display: 'grid', gridTemplateRows: '44px minmax(0, 1fr) auto', overflow: 'hidden', '@media (max-height: 500px)': { gridTemplateRows: '34px minmax(0, 1fr) auto' } }}>
-      <Box component="header" sx={{ minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: { xs: 1.25, sm: 2.5 }, borderBottom: '1px solid', borderColor: 'divider', gap: 1, background: 'linear-gradient(100deg, #111d32, #0c1628)', boxShadow: 'inset 0 1px 0 #ffffff04' }}>
+      <Box component="header" sx={{ minWidth: 0, borderBottom: '1px solid', borderColor: 'divider', background: 'linear-gradient(100deg, #111d32, #0c1628)', boxShadow: 'inset 0 1px 0 #ffffff04' }}>
+        <Box sx={{ width: '100%', maxWidth: 1800, height: '100%', mx: 'auto', minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: { xs: 1.25, sm: 2.5 }, gap: 1 }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0, flex: '1 1 auto' }}>
           <RocketLaunchRounded sx={{ color: 'primary.main', fontSize: 21, flexShrink: 0 }} />
           <Typography component="h1" sx={{ minWidth: 0, fontWeight: 700, fontSize: { xs: 14, sm: 16 }, letterSpacing: '-.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>KSP DeltaV Planner</Typography>
@@ -372,6 +373,7 @@ export default function App() {
           <Typography variant="caption" color="text.secondary" title={pack.name} sx={{ display: { xs: 'none', sm: 'block' }, minWidth: 0, fontSize: 10, letterSpacing: '.1em', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.shortName ?? pack.name} · KSP 1</Typography>
           <Tooltip title="Model assumptions and data sources"><IconButton aria-label="Model assumptions and data sources" size="small" onClick={() => openInfo('sources')}><InfoOutlined sx={{ fontSize: 19 }} /></IconButton></Tooltip>
         </Stack>
+        </Box>
       </Box>
 
       <Box component="main" aria-label="Interactive Delta-V map" sx={{ minHeight: 0, minWidth: 0, overflow: 'hidden', position: 'relative' }}>
@@ -379,7 +381,8 @@ export default function App() {
         <DeltaVMap key={pack.id} pack={displayPack} startId={startId} endId={endId} waypointIds={waypointIds} focusNodeId={mapFocusNodeId} route={route} adjustments={adjustments} onSelect={selectNode} />
       </Box>
 
-      <Box ref={setBreakdownAnchor} component="footer" sx={{ bgcolor: 'background.paper', backgroundImage: 'linear-gradient(180deg, #16243b, #101b2f)', borderTop: '2px solid', borderColor: 'primary.dark', minWidth: 0, boxShadow: '0 -8px 24px #00000018, inset 0 1px 0 #ffffff03' }}>
+      <Box component="footer" sx={{ bgcolor: 'background.paper', backgroundImage: 'linear-gradient(180deg, #16243b, #101b2f)', borderTop: '2px solid', borderColor: 'primary.dark', minWidth: 0, boxShadow: '0 -8px 24px #00000018, inset 0 1px 0 #ffffff03' }}>
+        <Box ref={setBreakdownAnchor} sx={{ width: '100%', maxWidth: 1800, minWidth: 0, mx: 'auto' }}>
         <Box component="section" aria-label="Mission controls" sx={{
           display: 'grid', minWidth: 0, columnGap: 2, rowGap: .75,
           gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
@@ -492,6 +495,7 @@ export default function App() {
           {needsLinkAllowances ? <Button size="small" color="secondary" onClick={() => setShowAllowances(true)} sx={{ minHeight: 20, minWidth: 0, px: .25, py: 0, fontSize: 11, whiteSpace: 'nowrap' }}>Link allowances</Button>
             : pack.dataNotice && <Button size="small" color="secondary" onClick={() => openInfo('sources')} title={pack.dataNotice} sx={{ minHeight: 18, minWidth: 0, maxWidth: isCustomPack ? '40%' : pack.mapRegions ? '45%' : undefined, flexShrink: 0, p: 0, fontSize: 10, lineHeight: 1.5 }}><Box component="span" sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pack.dataNotice}</Box></Button>}
           <Typography sx={{ display: { xs: 'none', md: 'block' }, fontSize: 10, color: 'text.secondary', whiteSpace: 'nowrap' }}>Estimates in m/s · {redundancy}% reserve · Map not to scale</Typography>
+        </Box>
         </Box>
       </Box>
 
