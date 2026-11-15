@@ -1,3 +1,4 @@
+import { preferAdvancedRelayMode } from './helpers/relayMode'
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import type { PlanetPack } from '../src/types/planner'
@@ -25,6 +26,7 @@ test.beforeEach(async ({ page }) => {
   browserErrors = []
   page.on('pageerror', error => browserErrors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()) })
+  await preferAdvancedRelayMode(page)
   await page.goto('./')
   await expect(button(page, 'Custom planet packs')).toBeVisible()
 })

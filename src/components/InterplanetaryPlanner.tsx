@@ -13,11 +13,16 @@ import { calculateInterplanetarySignal } from '../utils/interplanetary'
 import { resolveSignalEndpointPower } from '../utils/signalEndpoint'
 import { calculateKerbalismBitrate, resolveKerbalismBaseRate } from '../utils/kerbalismBitrate'
 import { formatBitrate } from '../utils/formatBitrate'
+import type { RelayMode } from '../utils/relayMode'
+import AdvancedSettingsNotice from './AdvancedSettingsNotice'
 import AntennaArrayDialog from './AntennaArrayDialog'
 import InterplanetaryDiagram from './InterplanetaryDiagram'
 import UnavailableAntennaAlert from './UnavailableAntennaAlert'
 
 interface InterplanetaryPlannerProps {
+  mode: RelayMode
+  onOpenAdvanced: () => void
+  advancedRadioSettingsActive: boolean
   pack: PlanetPack
   initialBodyId: string | null
   radioId: RadioProfileId
@@ -73,7 +78,8 @@ function Metric({ label, value, testId, color }: { label: string; value: string;
   </Box>
 }
 
-export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, onRadioChange, rangeMultiplier, onRangeMultiplierChange, dampingExponent, dampingControls, antennaSpeed, minimumBitsPerSecond, rateControls }: InterplanetaryPlannerProps) {
+export default function InterplanetaryPlanner({ mode, onOpenAdvanced, advancedRadioSettingsActive, pack, initialBodyId, radioId, onRadioChange, rangeMultiplier, onRangeMultiplierChange, dampingExponent, dampingControls, antennaSpeed, minimumBitsPerSecond, rateControls }: InterplanetaryPlannerProps) {
+  const advanced = mode === 'advanced'
   const presets = useMemo(() => getInterplanetaryPresets(pack), [pack])
   const firstA = presets.orbits.find(orbit => orbit.id === pack.transferHubBodyId) ?? presets.orbits[0]
   let initialPlanetId = initialBodyId
@@ -151,6 +157,15 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
   })
   const firstMissing = missingEndpoints[0]
   const restoreRadio = getRadioProfile(getKerbalismRadioProfileId(radioId))
+  const manualRequired = !firstA || !firstB
+  const advancedSettingsActive = !reference || numeric(rangeMultiplier) !== 1 || numeric(occlusionFactor) !== 1
+    || [aDraft.selection, bDraft.selection].some(selection => selection === 'custom' || selection === 'array')
+    || radio.kerbalism === true && advancedRadioSettingsActive
+
+  function editArray(endpoint: 'a' | 'b') {
+    if (!advanced) onOpenAdvanced()
+    setEditingArray(endpoint)
+  }
 
   function changeGeometry(next: 'reference' | 'manual') {
     if (next === 'manual' && !manual.initialized) setManual({ a: orbitA ? String(orbitA.semiMajorAxisM / 1e9) : '', b: orbitB ? String(orbitB.semiMajorAxisM / 1e9) : '', center: center ? String(center.radiusM / 1000) : '', initialized: true })
@@ -194,8 +209,9 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
       && !radio.vesselAntennas.some(antenna => antenna.id === draft.selection)
     const unavailableName = radioProfileOptions.flatMap(profile => profile.vesselAntennas).find(antenna => antenna.id === draft.selection)?.name ?? draft.selection
     const unavailableArray = draft.selection === 'array' && draft.array?.some(entry => !radio.vesselAntennas.some(antenna => antenna.id === entry.antennaId))
-    return <Stack spacing={1.25} sx={{ minWidth: 0 }}>
-      <TextField select fullWidth size="small" label={`Antenna ${label}`} value={draft.selection} error={unavailable || unavailableArray || resolved.status === 'needs-relay'}
+    const antennaLabel = `${names[endpoint]} antenna${names.a === names.b ? ` (${label})` : ''}`
+    return <Stack data-signal-endpoint-config={endpoint} spacing={1.25} sx={{ minWidth: 0 }}>
+      <TextField data-signal-antenna={endpoint} select fullWidth size="small" label={antennaLabel} value={draft.selection} error={unavailable || unavailableArray || resolved.status === 'needs-relay'}
         onChange={event => { if (event.target.value !== 'array') setDraft(endpoint, { selection: event.target.value }) }} sx={fieldStyles}
         helperText={<Box component="span" data-testid={`signal-power-${endpoint}`}>{unavailable ? 'Unavailable in this setup' : unavailableArray ? 'Edit array or restore its radio setup' : resolved.status === 'needs-relay' ? 'Relay receiver required' : Number.isFinite(value) && value > 0 ? `Effective power ${distance(value)}` : 'Enter effective power'}</Box>}
         slotProps={{ select: { renderValue: () => unavailable ? `${unavailableName} (unavailable)` : draft.selection === 'array' ? `Array (${array?.status === 'success' ? array.totalCount : '—'})`
@@ -205,13 +221,13 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
         {radio.vesselAntennas.map(antenna => <MenuItem key={antenna.id} value={antenna.id} sx={{ fontSize: 12 }}>{antenna.name}</MenuItem>)}
         {allowDsn(endpoint) && <ListSubheader sx={{ fontSize: 12, lineHeight: '24px' }}>DSN station power</ListSubheader>}
         {allowDsn(endpoint) && radio.dsnLevels.map(level => <MenuItem key={level.id} value={`dsn:${level.id}`} sx={{ fontSize: 12 }}>{level.name}</MenuItem>)}
-        <MenuItem value="array" onClick={() => setEditingArray(endpoint)} sx={{ fontSize: 12 }}>Antenna array…</MenuItem>
-        <MenuItem value="custom" sx={{ fontSize: 12 }}>Custom power</MenuItem>
+        {(advanced || draft.selection === 'array') && <MenuItem value="array" disabled={!advanced} onClick={advanced ? () => editArray(endpoint) : undefined} sx={{ fontSize: 12 }}>{advanced ? 'Antenna array…' : 'Custom array (Advanced)'}</MenuItem>}
+        {(advanced || draft.selection === 'custom') && <MenuItem value="custom" disabled={!advanced} sx={{ fontSize: 12 }}>{advanced ? 'Custom power' : 'Custom power (Advanced)'}</MenuItem>}
       </TextField>
       {isReceiver && resolved.status === 'success' && resolved.ignoredDirectCount > 0 && <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>{resolved.ignoredDirectCount} direct antenna{resolved.ignoredDirectCount === 1 ? '' : 's'} retained for sending; only relay antennas help receive this link.</Typography>}
       {isReceiver && draft.selection === 'custom' && <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>This custom value assumes the receiving craft has a working relay antenna.</Typography>}
-      {draft.selection === 'custom' && <NumberField label={`Power ${label}`} value={draft.customPower} onChange={value => setDraft(endpoint, { customPower: value })} min={Number.MIN_VALUE} max={1e18} unit="m" />}
-      {radio.kerbalism && draft.selection === 'custom' && <NumberField label={`Full-strength rate ${label}`} value={draft.customRate} onChange={value => setDraft(endpoint, { customRate: value })} max={1e18} unit="bit/s"
+      {advanced && draft.selection === 'custom' && <NumberField label={`Power ${label}`} value={draft.customPower} onChange={value => setDraft(endpoint, { customPower: value })} min={Number.MIN_VALUE} max={1e18} unit="m" />}
+      {advanced && radio.kerbalism && draft.selection === 'custom' && <NumberField label={`Full-strength rate ${label}`} value={draft.customRate} onChange={value => setDraft(endpoint, { customRate: value })} max={1e18} unit="bit/s"
         helperText="Science rate at full signal, before the Antenna speed multiplier. Needed only when this craft sends science." />}
     </Stack>
   }
@@ -237,18 +253,20 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
     <Typography sx={{ mt: .25, mb: 1.5, fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>Choose planet positions to estimate one direct radio link. The selected angle sets their positions on circular orbits: 0° is closest and 180° is farthest. No in-game date is used.</Typography>
     <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5, '@media (min-width: 760px)': { gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.05fr)' } }}>
       <Stack spacing={1.5} sx={{ minWidth: 0 }}>
-        <Box sx={{ pt: .5, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 1 }}>
-          <TextField select fullWidth size="small" label="Signal geometry" value={geometry} onChange={event => changeGeometry(event.target.value as typeof geometry)} sx={fieldStyles}
-            slotProps={{ select: { renderValue: () => geometry === 'reference' ? 'Reference' : 'Manual orbits' } }}>
-            <MenuItem value="reference" disabled={presets.orbits.length === 0} sx={{ fontSize: 12 }}>Reference planets</MenuItem><MenuItem value="manual" sx={{ fontSize: 12 }}>Manual orbits</MenuItem>
-          </TextField>
+        {!advanced && advancedSettingsActive && <AdvancedSettingsNotice onOpen={onOpenAdvanced}
+          message={!reference && manualRequired ? 'Reference orbits are unavailable for this pair. Enter orbital data in Advanced mode.' : undefined} />}
+        <Box sx={{ pt: .5, display: 'grid', gridTemplateColumns: advanced ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 1 }}>
+          {advanced && <TextField select fullWidth size="small" label="Signal geometry" value={geometry} onChange={event => changeGeometry(event.target.value as typeof geometry)} sx={fieldStyles}
+            slotProps={{ select: { renderValue: () => geometry === 'reference' ? 'Reference orbits' : 'Manual orbits' } }}>
+            <MenuItem value="reference" disabled={presets.orbits.length === 0} sx={{ fontSize: 12 }}>Reference orbits</MenuItem><MenuItem value="manual" sx={{ fontSize: 12 }}>Manual orbits</MenuItem>
+          </TextField>}
           <TextField select fullWidth size="small" label="Radio setup" value={radioId} onChange={event => onRadioChange(event.target.value as RadioProfileId)} sx={fieldStyles}>
             {radioProfileOptions.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 12 }}>{option.name}</MenuItem>)}
           </TextField>
         </Box>
         <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>{radioId === 'stock' ? 'Uses stock antenna and ground-station power ratings.' : radio.description}</Typography>
-        {radio.kerbalism && dampingControls}
-        {radio.kerbalism && rateControls}
+        {advanced && radio.kerbalism && dampingControls}
+        {advanced && radio.kerbalism && rateControls}
         {reference ? <>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 28px minmax(0, 1fr)', gap: .5, alignItems: 'center' }}>
             <TextField select fullWidth size="small" label="Planet A" value={orbitA?.id ?? ''} onChange={event => changePlanet('a', event.target.value)} sx={fieldStyles}>
@@ -260,7 +278,7 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
             </TextField>
           </Box>
           <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>Both bodies orbit {names.center}. Orbit radii: {orbitA ? distance(orbitA.semiMajorAxisM) : '—'} / {orbitB ? distance(orbitB.semiMajorAxisM) : '—'}.</Typography>
-        </> : <>
+        </> : advanced ? <>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 28px minmax(0, 1fr)', gap: .5, alignItems: 'center' }}>
             <NumberField label="Orbit radius A" value={manual.a} onChange={value => setManual(previous => ({ ...previous, a: value, initialized: true }))} unit="Gm" min={Number.MIN_VALUE} />
             {swapControl}
@@ -268,7 +286,12 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
           </Box>
           <NumberField label="Central radius" value={manual.center} onChange={value => setManual(previous => ({ ...previous, center: value, initialized: true }))} unit="km" min={Number.MIN_VALUE} />
           <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>Enter both orbit radii from the same center, not as altitudes above a surface. Central radius is the radius of the body at that center. Separate star systems and wormholes aren't modeled.</Typography>
-        </>}
+        </> : <Box data-testid="signal-manual-summary" sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}>Manual orbit geometry is active</Typography>
+          <Typography sx={{ mt: .375, fontSize: 12, color: 'text.secondary', lineHeight: 1.45 }}>
+            Orbit radii: {Number.isFinite(input.orbitRadiusAM) ? distance(input.orbitRadiusAM) : 'Not supplied'} / {Number.isFinite(input.orbitRadiusBM) ? distance(input.orbitRadiusBM) : 'Not supplied'}. Central body radius: {Number.isFinite(input.centralRadiusM) ? distance(input.centralRadiusM) : 'Not supplied'}.
+          </Typography>
+        </Box>}
         <TextField select fullWidth size="small" label="Signal receiver" value={receivingEndpoint} onChange={event => setReceivingEndpoint(event.target.value as 'a' | 'b')} sx={fieldStyles}>
           <MenuItem value="a" sx={{ fontSize: 12 }}>A · {names.a}</MenuItem><MenuItem value="b" sx={{ fontSize: 12 }}>B · {names.b}</MenuItem>
         </TextField>
@@ -277,23 +300,24 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
           <Typography sx={{ mt: .375, fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>The receiving spacecraft needs a relay antenna. Only relay antennas in its array count; a DSN ground station can receive directly.</Typography>
         </Box>
         <Box sx={{ pt: .25, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1 }}>{endpointFields('a')}{endpointFields('b')}</Box>
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1 }}>
+        {advanced && <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1 }}>
           <NumberField label="Range multiplier" value={rangeMultiplier} onChange={onRangeMultiplierChange} min={Number.MIN_VALUE} max={100} />
           <NumberField label="Occlusion factor" value={occlusionFactor} onChange={setOcclusionFactor} min={Number.MIN_VALUE} max={1} />
-        </Box>
-        <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>Range multiplier scales maximum link distance; 2 doubles it. Occlusion factor scales the blocking radius: 1 is full size, 0.9 is 90%.</Typography>
+        </Box>}
+        {advanced && <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>Range multiplier scales maximum link distance; 2 doubles it. Occlusion factor scales the blocking radius: 1 is full size, 0.9 is 90%.</Typography>}
         {(aDraft.selection.startsWith('dsn:') || bDraft.selection.startsWith('dsn:')) && <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>DSN is KSP's ground-station network. The selected Tracking Station level sets its receiving power.</Typography>}
-        {(aDraft.selection === 'custom' || bDraft.selection === 'custom') && <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>Custom power uses KSP's antenna rating in metres, not watts. It is used as entered; Radio setup does not rescale it.</Typography>}
+        {advanced && (aDraft.selection === 'custom' || bDraft.selection === 'custom') && <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>Custom power uses KSP's antenna rating in metres, not watts. It is used as entered; Radio setup does not rescale it.</Typography>}
       </Stack>
       <Stack spacing={1} sx={{ minWidth: 0 }}>
         {firstMissing ? <UnavailableAntennaAlert
           names={[...new Set(missingEndpoints.flatMap(endpoint => endpoint.names))]}
           restoreLabel={restoreRadio.name} onRestore={() => onRadioChange(restoreRadio.id)}
-          replaceLabel={firstMissing.draft.selection === 'array' ? 'Edit antenna array' : 'Use RA-100'}
-          onReplace={() => { if (firstMissing.draft.selection === 'array') setEditingArray(firstMissing.endpoint); else setDraft(firstMissing.endpoint, { selection: 'ra-100' }) }}
+          replaceLabel={firstMissing.draft.selection === 'array' ? advanced ? 'Edit antenna array' : 'Edit in Advanced mode' : 'Use RA-100'}
+          onReplace={() => { if (firstMissing.draft.selection === 'array') editArray(firstMissing.endpoint); else setDraft(firstMissing.endpoint, { selection: 'ra-100' }) }}
         /> : receiverNeedsRelay ? <Alert severity="warning" data-testid="signal-receiver-warning" sx={{ fontSize: 12, '& .MuiAlert-message': { minWidth: 0 } }}>
           <Typography sx={{ fontSize: 12, lineHeight: 1.45 }}>Choose a relay antenna or a DSN level for signal receiver {receivingEndpoint.toUpperCase()}.</Typography>
           <Button size="small" onClick={() => setDraft(receivingEndpoint, { selection: 'ra-100' })} sx={{ mt: .5, minHeight: 32, px: 1, fontSize: 12 }}>Use RA-100</Button>
+          {!advanced && (receivingEndpoint === 'a' ? aDraft : bDraft).selection === 'array' && <Button size="small" onClick={() => editArray(receivingEndpoint)} sx={{ mt: .5, minHeight: 32, px: 1, fontSize: 12 }}>Edit in Advanced mode</Button>}
         </Alert> : success ? <>
           <Typography role="status" data-testid="signal-link-status" sx={{ fontSize: 12, fontWeight: 500, color: colors[success.linkStatus] }}>{status}</Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
@@ -314,7 +338,10 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
             </Typography>
           </>}
           <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Maximum antenna range <Box component="output" data-testid="signal-range" sx={{ color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>{distance(success.maximumRangeM)}</Box></Typography>
-        </> : <Alert severity="info" sx={{ fontSize: 12 }}>{result.status === 'invalid' ? result.errors[0] : 'Enter two orbital radii and antenna powers.'}</Alert>}
+        </> : <Alert severity="info" sx={{ fontSize: 12, '& .MuiAlert-message': { minWidth: 0 } }}>
+          <Typography sx={{ fontSize: 12, lineHeight: 1.45 }}>{result.status === 'invalid' ? result.errors[0] : 'Enter two orbital radii and antenna powers.'}</Typography>
+          {!advanced && <Button size="small" onClick={onOpenAdvanced} sx={{ mt: .5, minHeight: 32, px: 1, fontSize: 12 }}>Edit in Advanced mode</Button>}
+        </Alert>}
         {phaseControl}
         {success && <InterplanetaryDiagram input={input} result={success} kerbalism={radio.kerbalism} receivingEndpoint={receivingEndpoint} nameA={names.a} nameB={names.b} centerName={names.center} colorA={orbitA?.color ?? '#73c8fa'} colorB={orbitB?.color ?? '#e7bd7b'} centerColor={center?.color} onPhaseChange={setPhase} />}
       </Stack>
@@ -322,8 +349,8 @@ export default function InterplanetaryPlanner({ pack, initialBodyId, radioId, on
     {success && <Box sx={{ mt: .5 }}>
       <Typography sx={{ mb: .5, fontSize: 12, color: 'text.secondary' }}>Closest and farthest positions · {radio.kerbalism ? 'Kerbalism signal ' : 'signal '}before blockage</Typography>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
-        <Metric label={`Best / closest · ${distance(success.minimumDistanceM)}`} value={strength(radio.kerbalism ? success.bestDampedStrength : success.bestRangeStrength)} testId="signal-best" />
-        <Metric label={`Worst / farthest · ${distance(success.maximumDistanceM)}`} value={strength(radio.kerbalism ? success.worstDampedStrength : success.worstRangeStrength)} testId="signal-worst" />
+        <Metric label={`Closest position · ${distance(success.minimumDistanceM)}`} value={strength(radio.kerbalism ? success.bestDampedStrength : success.bestRangeStrength)} testId="signal-best" />
+        <Metric label={`Farthest position · ${distance(success.maximumDistanceM)}`} value={strength(radio.kerbalism ? success.worstDampedStrength : success.worstRangeStrength)} testId="signal-worst" />
       </Box>
     </Box>}
     <Typography sx={{ mt: 1, fontSize: 12, color: 'text.secondary', lineHeight: 1.45 }}>Checks one direct link and blocking by {names.center}. A complete path home, other bodies and terrain near either craft are not checked.</Typography>

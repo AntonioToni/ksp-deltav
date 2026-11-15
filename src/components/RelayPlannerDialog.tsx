@@ -20,6 +20,9 @@ import {
   DEFAULT_KERBALISM_ANTENNA_SPEED, DEFAULT_KERBALISM_MINIMUM_BITS_PER_SECOND,
 } from '../utils/kerbalismBitrate'
 import { formatBitrate } from '../utils/formatBitrate'
+import { readRelayModePreference, writeRelayModePreference, type RelayMode } from '../utils/relayMode'
+import AdvancedSettingsNotice from './AdvancedSettingsNotice'
+import RelayBodyReference from './RelayBodyReference'
 import AntennaArrayDialog from './AntennaArrayDialog'
 import RelayDiagram from './RelayDiagram'
 import DeploymentDiagram from './DeploymentDiagram'
@@ -44,6 +47,8 @@ interface BodyDraft {
   altitudeAutomatic: boolean
   edited: boolean
 }
+
+type RelayTab = 'network' | 'deployment' | 'body' | 'signals'
 
 const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
 const signalNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
@@ -145,7 +150,9 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const [antennaSpeed, setAntennaSpeed] = useState(String(DEFAULT_KERBALISM_ANTENNA_SPEED))
   const [minimumBitsPerSecond, setMinimumBitsPerSecond] = useState(String(DEFAULT_KERBALISM_MINIMUM_BITS_PER_SECOND))
   const rateControls = radioProfile.kerbalism ? <KerbalismRateControls antennaSpeed={antennaSpeed} minimumBitsPerSecond={minimumBitsPerSecond} onSpeedChange={setAntennaSpeed} onMinimumChange={setMinimumBitsPerSecond} /> : null
-  const [tab, setTab] = useState<'network' | 'deployment' | 'body' | 'signals'>(() => !first ? 'signals' : findRelayBodyPreset(first) ? 'network' : 'body')
+  const [mode, setMode] = useState<RelayMode>(() => readRelayModePreference())
+  const advanced = mode === 'advanced'
+  const [tab, setTab] = useState<RelayTab>(() => !first ? 'signals' : findRelayBodyPreset(first) ? 'network' : 'body')
   const [signalsOpened, setSignalsOpened] = useState(!first)
   const [satelliteCount, setSatelliteCount] = useState(3)
   const [relayId, setRelayId] = useState(relayAntennas.find(antenna => antenna.id === 'hg-5')?.id ?? relayAntennas[0]?.id ?? '')
@@ -168,7 +175,18 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const clientArrayResult = clientArray ? calculateAntennaArray(clientArray, 'client', vesselAntennas) : null
   const normalOcclusionFactor = numeric(current.atmosphere) > 0 ? radioProfile.normalOcclusion.atmospheric : radioProfile.normalOcclusion.vacuum
 
+  function changeMode(next: RelayMode) {
+    setMode(next)
+    writeRelayModePreference(next)
+  }
+
+  function openAdvanced(section: RelayTab = tab) {
+    changeMode('advanced')
+    setTab(section)
+  }
+
   function openArray(role: AntennaArrayRole) {
+    if (!advanced) changeMode('advanced')
     const saved = role === 'relay' ? relayArray : clientArray
     const selectedId = role === 'relay' ? relayId : clientId
     const options = role === 'relay' ? relayAntennas : vesselAntennas
@@ -241,6 +259,30 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const missingArrayRole = missingRelay.length && relayId === 'array' ? 'relay' : missingClient.length && clientId === 'array' ? 'client' : null
   const result = calculateRelayPlan(input)
   const success = result.status === 'success' ? result : null
+  const bodyOverrides = preset
+    ? numeric(current.radius) !== preset.radiusM / 1000
+      || numeric(current.mu) !== preset.gravitationalParameter
+      || numeric(current.atmosphere) !== preset.atmosphereHeightM / 1000
+      || (preset.sphereOfInfluenceM === undefined ? current.soi.trim() !== '' : numeric(current.soi) !== preset.sphereOfInfluenceM / 1000)
+    : current.edited
+  const bodySettingsActive = bodyOverrides || numeric(rangeMultiplier) !== 1 || input.occlusionFactor !== 1
+  const advancedRadioSettingsActive = Boolean(radioProfile.kerbalism && (dampingMode !== 'automatic'
+    || numeric(antennaSpeed) !== DEFAULT_KERBALISM_ANTENNA_SPEED
+    || numeric(minimumBitsPerSecond) !== DEFAULT_KERBALISM_MINIMUM_BITS_PER_SECOND))
+  const advancedAntennaSettingsActive = [relayId, clientId, dsnId].some(id => id === 'array' || id === 'custom')
+    || dsnId !== dsnLevels.at(-1)?.id
+  const networkSettingsActive = bodySettingsActive || advancedRadioSettingsActive || advancedAntennaSettingsActive
+  const deploymentSettingsActive = bodyOverrides || numeric(safetyMargin) !== 10
+  const homeName = bodies.find(candidate => candidate.id === pack.transferHubBodyId)?.name ?? 'home'
+
+  function invalidSettingsSection(fallback: RelayTab): RelayTab {
+    if (result.status !== 'invalid') return fallback
+    const error = result.errors[0] ?? ''
+    if (/Body radius|Gravitational parameter|Atmosphere height|Sphere of influence|Range multiplier|Occlusion factor/.test(error)) return 'body'
+    if (/Safety margin/.test(error) || numeric(safetyMargin) !== 10 && /Raise the relay orbit/.test(error)) return 'deployment'
+    if (/antenna power|DSN power|Damping exponent/.test(error)) return 'network'
+    return fallback
+  }
   const relayBaseRate = radioProfile.kerbalism ? resolveKerbalismBaseRate({ selection: relayId, customPower: relayCustomPower, array: relayArray }, vesselAntennas, numeric(relayCustomRate)) : null
   const clientBaseRate = radioProfile.kerbalism ? resolveKerbalismBaseRate({ selection: clientId, customPower: clientCustomPower, array: clientArray }, vesselAntennas, numeric(clientCustomRate)) : null
   const rateFor = (base: typeof relayBaseRate, rawStrength: number | null, linkAvailable: boolean) => base?.status === 'success' && rawStrength !== null
@@ -269,15 +311,20 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     return <TextField select fullWidth size="small" label={label} value={value} error={unavailable || unavailableArray} onChange={event => { if (event.target.value !== 'array') setValue(event.target.value) }} helperText={<Box component="span" data-testid={`relay-${role ?? 'dsn'}-power`}>{unavailable ? 'Unavailable in this setup' : unavailableArray ? 'Edit array or restore its radio setup' : Number.isFinite(power) && power > 0 ? range(power) : 'Enter power'}</Box>} slotProps={{ select: { renderValue: () => <Box component="span" title={`${selectedName} · ${Number.isFinite(power) ? range(power) : 'Enter power'}`}>{compactName}</Box> } }} sx={fieldStyles}>
       {unavailable && <MenuItem value={value} disabled sx={{ fontSize: 13 }}>{unavailableName} (unavailable)</MenuItem>}
       {options.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 13 }}>{option.name}</MenuItem>)}
-      {role && <MenuItem value="array" onClick={() => openArray(role)} sx={{ fontSize: 13 }}>Antenna array…</MenuItem>}
-      <MenuItem value="custom" sx={{ fontSize: 13 }}>Custom power</MenuItem>
+      {role && (advanced || value === 'array') && <MenuItem value="array" disabled={!advanced} onClick={() => { if (advanced) openArray(role) }} sx={{ fontSize: 13 }}>{advanced ? 'Antenna array…' : 'Saved array · Advanced'}</MenuItem>}
+      {(advanced || value === 'custom') && <MenuItem value="custom" disabled={!advanced} sx={{ fontSize: 13 }}>{advanced ? 'Custom power' : 'Custom power · Advanced'}</MenuItem>}
     </TextField>
   }
 
   return <>
-    <DialogTitle id="relay-planner-title-row" sx={{ px: 1.5, py: .5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, fontSize: 16, lineHeight: 1.5 }}>
-      <Box component="span" id="relay-planner-heading">CommNet relay planner</Box>
-      <IconButton aria-label="Close relay planner" size="small" onClick={onClose}><CloseRounded sx={{ fontSize: 19 }} /></IconButton>
+    <DialogTitle id="relay-planner-title-row" sx={{ px: 1.5, py: .5, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: .75, fontSize: 16, lineHeight: 1.5 }}>
+      <Box component="span" id="relay-planner-heading" sx={{ flex: 1, minWidth: 0 }}>CommNet relay planner</Box>
+      <Box sx={{ order: { xs: 2, sm: 1 }, flexBasis: { xs: '100%', sm: 'auto' }, display: 'flex', justifyContent: 'flex-end' }}>
+        <ToggleButtonGroup exclusive size="small" aria-label="Relay planner mode" value={mode} onChange={(_, value: RelayMode | null) => { if (value) changeMode(value) }} sx={{ '& .MuiToggleButton-root': { minHeight: 32, px: 1.25, py: .5, fontSize: 12, textTransform: 'none' } }}>
+          <ToggleButton value="basic">Basic</ToggleButton><ToggleButton value="advanced">Advanced</ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+      <IconButton aria-label="Close relay planner" size="small" onClick={onClose} sx={{ order: { xs: 1, sm: 2 } }}><CloseRounded sx={{ fontSize: 19 }} /></IconButton>
     </DialogTitle>
     <Box sx={{ px: 1.5, pt: 1.5, pb: .75, display: tab === 'signals' || !body ? 'none' : 'flex', alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' }, columnGap: 1, rowGap: .5, minWidth: 0 }}>
       <TextField select fullWidth size="small" label="Relay body" value={bodyId} onChange={event => changeBody(event.target.value)} sx={{ ...fieldStyles, maxWidth: 380 }}>
@@ -293,7 +340,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     </Tabs>
     <DialogContent sx={{ p: 1.5, minWidth: 0, minHeight: 0, overflowY: 'auto', [compact]: { pb: 1 } }}>
       <Box role="tabpanel" id="relay-signals-panel" aria-labelledby="relay-signals-tab" hidden={tab !== 'signals'} sx={{ display: tab === 'signals' ? 'block' : 'none', minWidth: 0 }}>
-        {signalsOpened && <InterplanetaryPlanner pack={pack} initialBodyId={initialBodyId} radioId={radioId} onRadioChange={setRadioId} rangeMultiplier={rangeMultiplier} onRangeMultiplierChange={setRangeMultiplier} dampingExponent={dampingExponent} dampingControls={dampingControls} antennaSpeed={numeric(antennaSpeed)} minimumBitsPerSecond={numeric(minimumBitsPerSecond)} rateControls={rateControls} />}
+        {signalsOpened && <InterplanetaryPlanner pack={pack} initialBodyId={initialBodyId} radioId={radioId} onRadioChange={setRadioId} rangeMultiplier={rangeMultiplier} onRangeMultiplierChange={setRangeMultiplier} dampingExponent={dampingExponent} dampingControls={dampingControls} antennaSpeed={numeric(antennaSpeed)} minimumBitsPerSecond={numeric(minimumBitsPerSecond)} rateControls={rateControls} mode={mode} onOpenAdvanced={() => openAdvanced('signals')} advancedRadioSettingsActive={advancedRadioSettingsActive} />}
       </Box>
       <Box sx={{ display: tab === 'signals' || !body ? 'none' : 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5, alignItems: 'start', '@media (min-width: 600px)': { gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' } }}>
         <Box role={tab === 'signals' ? undefined : 'tabpanel'} id={tab === 'signals' ? undefined : `relay-${tab}-panel`} aria-labelledby={tab === 'signals' ? undefined : `relay-${tab}-tab`} sx={{ minWidth: 0, containerType: 'inline-size' }}>
@@ -301,9 +348,10 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
             <TextField select fullWidth size="small" label="Radio setup" value={radioId} onChange={event => setRadioId(event.target.value as RadioProfileId)} sx={fieldStyles}>
               {radioProfileOptions.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 13 }}>{option.name}</MenuItem>)}
             </TextField>
-            <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>{radioProfile.description}</Typography>
-            {dampingControls}
-            {rateControls}
+            <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>{advanced ? radioProfile.description : radioProfile.kerbalism ? 'Includes Kerbalism signal and science estimates.' : radioId === 'stock' ? 'Uses stock antenna ratings.' : 'Uses RSS antenna ratings.'}</Typography>
+            {!advanced && networkSettingsActive && <AdvancedSettingsNotice onOpen={() => openAdvanced(bodySettingsActive ? 'body' : 'network')} />}
+            {advanced && dampingControls}
+            {advanced && rateControls}
             <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, .7fr)', gap: .75 }}>
               <NumericField label="Orbit altitude" value={current.altitude} unit="km" onChange={value => changeProfile({ altitude: value, altitudeAutomatic: false })} />
               <TextField select fullWidth size="small" label="Relay count" value={satelliteCount} onChange={event => setSatelliteCount(Number(event.target.value))} sx={fieldStyles}>
@@ -313,44 +361,44 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
             <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))', gap: 1 }}>
               {antennaField('Relay antenna', relayId, setRelayId, relayAntennas, 'relay')}
               {antennaField('Surface antenna', clientId, setClientId, clientAntennas, 'client')}
-              {antennaField('DSN level', dsnId, setDsnId, dsnLevels)}
+              {advanced && antennaField('DSN level', dsnId, setDsnId, dsnLevels)}
             </Box>
-            {(relayId === 'custom' || clientId === 'custom' || dsnId === 'custom') && <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', columnGap: .75, rowGap: 1.5 }}>
+            {advanced && (relayId === 'custom' || clientId === 'custom' || dsnId === 'custom') && <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', columnGap: .75, rowGap: 1.5 }}>
               {relayId === 'custom' && <NumericField label="Relay power" value={relayCustomPower} onChange={setRelayCustomPower} unit="m" min={Number.MIN_VALUE} />}
               {clientId === 'custom' && <NumericField label="Surface power" value={clientCustomPower} onChange={setClientCustomPower} unit="m" min={Number.MIN_VALUE} />}
               {dsnId === 'custom' && <NumericField label="DSN power" value={dsnCustomPower} onChange={setDsnCustomPower} unit="m" min={Number.MIN_VALUE} />}
             </Box>}
-            {(relayId === 'custom' || clientId === 'custom' || dsnId === 'custom') && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Enter the antenna's final KSP power rating in metres. The radio setup does not multiply custom values again.</Typography>}
-            {radioProfile.kerbalism && (relayId === 'custom' || clientId === 'custom') && <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', columnGap: .75, rowGap: 1.5 }}>
+            {advanced && (relayId === 'custom' || clientId === 'custom' || dsnId === 'custom') && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Enter the antenna's final KSP power rating in metres. The radio setup does not multiply custom values again.</Typography>}
+            {advanced && radioProfile.kerbalism && (relayId === 'custom' || clientId === 'custom') && <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', columnGap: .75, rowGap: 1.5 }}>
               {relayId === 'custom' && <NumericField label="Relay full-strength rate" value={relayCustomRate} onChange={setRelayCustomRate} unit="bit/s" max={1e18} optional />}
               {clientId === 'custom' && <NumericField label="Surface full-strength rate" value={clientCustomRate} onChange={setClientCustomRate} unit="bit/s" max={1e18} optional />}
             </Box>}
-            {radioProfile.kerbalism && (relayId === 'custom' || clientId === 'custom') && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Enter the science rate from your antenna configuration, before speed or signal adjustments. Leave it blank to calculate signal and coverage without a bitrate.</Typography>}
+            {advanced && radioProfile.kerbalism && (relayId === 'custom' || clientId === 'custom') && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Enter the science rate from your antenna configuration, before speed or signal adjustments. Leave it blank to calculate signal and coverage without a bitrate.</Typography>}
             {success ? <>
               <Typography role="status" data-testid="relay-ring-status" sx={{ fontSize: 12, color: statusColor, lineHeight: 1.3 }}>Neighbor links · {ringLabel}<Box component="span" data-testid="relay-coverage-status" sx={{ color: 'text.secondary' }}> · {success.coverageStatus === null ? 'No surface' : ({ full: 'Full equator', partial: 'Partial equator', marginal: 'Coverage at boundary', none: 'No surface links' } as const)[success.coverageStatus]}</Box></Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
                 <Metric label="Equatorial coverage" value={coverage} testId="relay-coverage" color={success.coverageStatus === 'full' ? '#92d5c6' : undefined} />
                 <Metric label="Neighbor distance" value={distance(success.neighborDistanceM)} testId="relay-neighbor-distance" />
                 <Metric label="Orbital period" value={duration(success.orbitalPeriodS)} testId="relay-period" />
-                <Metric label="Maximum DSN range" value={range(success.dsnRangeM)} testId="relay-dsn-range" />
-                <Metric label={radioProfile.kerbalism ? 'Neighbor Kerbalism signal' : 'Neighbor signal'} value={signalPercent(radioProfile.kerbalism ? success.neighborDampedStrength : success.neighborSignalStrength)} testId="relay-neighbor-signal" rawValue={radioProfile.kerbalism ? signalPercent(success.neighborSignalStrength) : undefined} rawTestId="relay-neighbor-raw-signal" />
-                <Metric label={radioProfile.kerbalism ? 'Best station Kerbalism signal' : 'Best station signal'} value={success.bestStationSignalStrength === null ? 'No surface' : signalPercent((radioProfile.kerbalism ? success.bestStationDampedStrength : success.bestStationSignalStrength)!)} testId="relay-station-signal" rawValue={radioProfile.kerbalism && success.bestStationSignalStrength !== null ? signalPercent(success.bestStationSignalStrength) : undefined} rawTestId="relay-station-raw-signal" />
+                {advanced && <Metric label="Maximum relay-to-DSN range" value={range(success.dsnRangeM)} testId="relay-dsn-range" />}
+                <Metric label={radioProfile.kerbalism ? 'Neighbor Kerbalism signal' : 'Neighbor signal'} value={signalPercent(radioProfile.kerbalism ? success.neighborDampedStrength : success.neighborSignalStrength)} testId="relay-neighbor-signal" rawValue={advanced && radioProfile.kerbalism ? signalPercent(success.neighborSignalStrength) : undefined} rawTestId="relay-neighbor-raw-signal" />
+                <Metric label="Best surface-to-relay signal" value={success.bestStationSignalStrength === null ? 'No surface' : signalPercent((radioProfile.kerbalism ? success.bestStationDampedStrength : success.bestStationSignalStrength)!)} testId="relay-station-signal" rawValue={advanced && radioProfile.kerbalism && success.bestStationSignalStrength !== null ? signalPercent(success.bestStationSignalStrength) : undefined} rawTestId="relay-station-raw-signal" />
                 {radioProfile.kerbalism && <>
                   <Metric label="Neighbor science rate" value={rateValue(relayBaseRate, neighborRate)} testId="relay-neighbor-rate" color="primary.light" />
                   <Metric label="Surface → relay rate" value={success.bestStationSignalStrength === null ? 'No surface' : rateValue(clientBaseRate, stationRate)} testId="relay-station-rate" color="primary.light" />
                 </>}
               </Box>
-              <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Best station signal is the strongest link from the blue surface point at the current relay positions.</Typography>
+              <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Best surface-to-relay signal is the strongest link from the blue surface point at the current relay positions.</Typography>
               {radioProfile.kerbalism && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Science rates assume active, powered antennas. A relay's next link may be slower; the complete route home is not checked. Coverage still uses raw CommNet signal.</Typography>}
               {radioProfile.kerbalism && clientBaseRate?.status === 'success' && clientBaseRate.externalCount === 0 && success.bestStationSignalStrength !== null && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Internal antennas provide control but do not transmit science.</Typography>}
               {radioProfile.kerbalism && rateFloorApplied && <Typography data-testid="relay-rate-floor" sx={{ fontSize: 12, lineHeight: 1.4, color: 'secondary.main' }}>A positive science rate was raised to the configured minimum of {formatBitrate(numeric(minimumBitsPerSecond))}.</Typography>}
             </> : missingIds.length ? <UnavailableAntennaAlert names={missingNames} restoreLabel={getRadioProfile(restoreProfileId).name} onRestore={() => setRadioId(restoreProfileId)}
-              replaceLabel={missingArrayRole ? 'Edit antenna array' : missingRelay.length ? 'Use HG-5' : 'Use Communotron 16'} onReplace={() => {
+              replaceLabel={missingArrayRole ? advanced ? 'Edit antenna array' : 'Edit array in Advanced mode' : missingRelay.length ? 'Use HG-5' : 'Use Communotron 16'} onReplace={() => {
                 if (missingArrayRole) openArray(missingArrayRole)
                 else { if (missingRelay.length) setRelayId('hg-5'); if (missingClient.length) setClientId('communotron-16') }
-              }} /> : <Alert severity="info" sx={{ py: .25, fontSize: 12, '& .MuiAlert-message': { minWidth: 0 } }}>{result.status === 'invalid' ? result.errors[0] : 'Enter the body and orbit data to calculate a network.'}</Alert>}
+              }} /> : <Alert severity="info" sx={{ py: .25, fontSize: 12, '& .MuiAlert-message': { minWidth: 0 } }}>{result.status === 'invalid' ? result.errors[0] : 'Enter the body and orbit data to calculate a network.'}{!advanced && <Button size="small" onClick={() => openAdvanced(invalidSettingsSection('network'))} sx={{ display: 'block', minHeight: 32, mt: .5, fontSize: 12 }}>Edit in Advanced mode</Button>}</Alert>}
             <Typography sx={{ fontSize: 12, lineHeight: 1.35, color: 'text.secondary' }}>Every relay uses this antenna setup. Coverage checks only the equator, not the whole surface.</Typography>
-            <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>Maximum DSN range is a distance limit, not a checked connection home. DSN level changes this estimate; it does not change the local relay or surface links.</Typography>
+            <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>{advanced ? 'Maximum relay-to-DSN range is a distance limit, not a checked connection home. DSN level changes this estimate; it does not change the local relay or surface links.' : `A working local constellation still needs a separate connection back to ${homeName}.`}</Typography>
             <Box component="details" sx={{ fontSize: 12, color: 'text.secondary', '& summary': { cursor: 'pointer', color: 'primary.main', minHeight: 32, py: .25 } }}>
               <Box component="summary">Network assumptions</Box>
               <Typography sx={{ mt: .5, fontSize: 12, lineHeight: 1.45 }}>DSN is the Tracking Station ground network. A working local relay network still needs a separate link back to a ground station.</Typography>
@@ -360,15 +408,16 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
 
           {tab === 'deployment' && <Stack spacing={1}>
             <Typography component="h3" sx={{ fontSize: 14, fontWeight: 500 }}>Carrier deployment</Typography>
+            {!advanced && deploymentSettingsActive && <AdvancedSettingsNotice onOpen={() => openAdvanced(bodyOverrides ? 'body' : 'deployment')} />}
             <ToggleButtonGroup exclusive fullWidth aria-label="Carrier orbit" value={deploymentMode} onChange={(_, value: typeof deploymentMode | null) => { if (value) setDeploymentMode(value) }} sx={{ '& .MuiToggleButton-root': { flex: 1, minHeight: 34, py: .5, px: .5, fontSize: 12 } }}>
               <ToggleButton value="lower">Lower carrier</ToggleButton><ToggleButton value="higher">Higher carrier</ToggleButton>
             </ToggleButtonGroup>
-            <Box sx={{ pt: .5, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
-              <NumericField label="Orbit altitude" value={current.altitude} unit="km" onChange={value => changeProfile({ altitude: value, altitudeAutomatic: false })} />
-              <NumericField label="Clearance margin" value={safetyMargin} unit="km" onChange={value => {
+            <Box sx={{ pt: .5, display: 'grid', gridTemplateColumns: advanced ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)', gap: .75 }}>
+              <NumericField label="Target orbit altitude" value={current.altitude} unit="km" onChange={value => changeProfile({ altitude: value, altitudeAutomatic: false })} />
+              {advanced && <NumericField label="Clearance margin" value={safetyMargin} unit="km" onChange={value => {
                 setSafetyMargin(value)
                 if (current.altitudeAutomatic) changeProfile({}, numeric(value))
-              }} />
+              }} />}
             </Box>
             {success ? <>
               <Typography component="output" role="status" data-testid="relay-deployment-status" sx={{ display: 'block', fontSize: 12, color: success.deployment.status === 'clear' ? '#92d5c6' : success.deployment.status === 'blocked' ? '#ee987d' : 'secondary.main' }}>{({ clear: 'Orbit fits entered limits', blocked: 'Deployment blocked', marginal: 'Orbit at a limit', unchecked: 'Outer orbit limit not checked' } as const)[success.deployment.status]}</Typography>
@@ -376,21 +425,24 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
                 <Metric label="Carrier periapsis" value={distance(success.deployment.periapsisAltitudeM)} testId="relay-periapsis" />
                 <Metric label="Carrier apoapsis" value={distance(success.deployment.apoapsisAltitudeM)} testId="relay-apoapsis" />
                 <Metric label="Release interval" value={duration(success.deployment.carrierPeriodS)} testId="relay-release-interval" />
-                <Metric label="Deployment elapsed" value={duration(success.deployment.deploymentDurationS)} />
+                <Metric label="Total deployment time" value={duration(success.deployment.deploymentDurationS)} testId="relay-deployment-duration" />
                 <Metric label="Each relay circularizes" value={`${number.format(success.deployment.relayCircularizationDeltaVMps)} m/s`} testId="relay-circularization" />
-                <Metric label="Carrier injection burn" value={`${number.format(success.deployment.injectionDeltaVMps)} m/s`} />
+                <Metric label="Carrier injection burn" value={`${number.format(success.deployment.injectionDeltaVMps)} m/s`} testId="relay-injection" />
               </Box>
               {success.deployment.issues.map((issue, index) => <Typography key={index} sx={{ fontSize: 12, lineHeight: 1.4, color: 'secondary.main' }}>{issue}</Typography>)}
-            </> : <Alert severity="info" sx={{ py: .25, fontSize: 12 }}>{result.status === 'invalid' ? result.errors[0] : 'Enter a valid orbit first.'}</Alert>}
+              {!advanced && success.deployment.status !== 'clear' && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Using {distance(input.safetyMarginM)} clearance above the surface or atmosphere.</Typography>}
+            </> : <Alert severity="info" sx={{ py: .25, fontSize: 12 }}>{result.status === 'invalid' ? result.errors[0] : 'Enter a valid orbit first.'}{!advanced && <Button size="small" onClick={() => openAdvanced(invalidSettingsSection('deployment'))} sx={{ display: 'block', minHeight: 32, mt: .5, fontSize: 12 }}>Edit in Advanced mode</Button>}</Alert>}
+            {!advanced && <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>Use the carrier injection burn to enter the ellipse. At each return to the marked release point, release one relay and circularize it using the listed burn.</Typography>}
             <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>Times begin at the first release. These burns are separate from your Delta-V mission budget.</Typography>
             <Box component="details" sx={{ fontSize: 12, color: 'text.secondary', '& summary': { cursor: 'pointer', color: 'primary.main', minHeight: 32, py: .25 } }}>
               <Box component="summary">Deployment field guide</Box>
               <Typography sx={{ mt: .5, fontSize: 12, lineHeight: 1.4 }}>Periapsis is the carrier's lowest altitude; apoapsis is its highest. Clearance margin is the extra height required above the surface or atmosphere. The carrier must also stay inside the body's sphere of influence, where KSP uses that body as the main source of gravity.</Typography>
-              <Typography sx={{ mt: .5, fontSize: 12, lineHeight: 1.4 }}>Carrier injection moves from the target circular orbit into the release orbit. Each relay circularizes by burning back into the target circle after release. Launch, travel to this body, and arrival into the target orbit are excluded.</Typography>
+              <Typography sx={{ mt: .5, fontSize: 12, lineHeight: 1.4 }}>Carrier injection moves from the target circular orbit into the release orbit. Each relay circularizes by burning back into the target orbit after release. Launch, travel to this body, and arrival into the target orbit are excluded.</Typography>
             </Box>
           </Stack>}
 
           {tab === 'body' && <Stack spacing={1}>
+            {advanced ? <>
             <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: .5 }}>
               <Typography component="h3" sx={{ fontSize: 14, fontWeight: 500, lineHeight: 1.4 }}>{preset ? current.edited ? 'Edited reference body data' : 'Reference body preset' : 'Enter body data for this system'}</Typography>
               {preset && <Button size="small" onClick={() => setProfiles(previous => new Map(previous).set(bodyId, profile(body, numeric(safetyMargin))))} sx={{ minHeight: 32, fontSize: 12, minWidth: 0, flexShrink: 0, whiteSpace: 'nowrap' }}>Restore preset</Button>}
@@ -413,6 +465,10 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
             </Box>
             <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>Signal blocking uses {occlusion === 'full' ? 'the full body radius' : `${normalOcclusionFactor.toFixed(2)} × the body radius (${radioProfile.normalOcclusionLabel.replace(/ \(.*\)$/, '')})`}. Surface craft stay on the actual surface. Without a sphere-of-influence value, the outer orbit limit is not checked.</Typography>
             <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>{usesRssBodyData ? 'RSS presets provide this body’s size, atmosphere and gravity.' : 'Edit these values only if they differ in your installation.'} Choose antenna rules under Radio setup on Network. Terrain, gravity from other bodies, RealAntennas and RemoteTech are not simulated.</Typography>
+            </> : <>
+              <RelayBodyReference bodyName={body?.name ?? 'Selected body'} values={current} reference={Boolean(preset) && !bodyOverrides} onEdit={() => openAdvanced('body')} />
+              {bodySettingsActive && <AdvancedSettingsNotice onOpen={() => openAdvanced('body')} />}
+            </>}
             <Box component="details" sx={{ fontSize: 12, color: 'text.secondary', '& summary': { cursor: 'pointer', color: 'primary.main', minHeight: 32, py: .25 } }}>
               <Box component="summary">Body field guide</Box>
               <Typography sx={{ mt: .5, fontSize: 12, lineHeight: 1.4 }}>Body radius is the distance from the center to the surface. Atmosphere height is measured above that surface. Gravitational parameter (GM) describes the body's gravity for orbit calculations. It uses m³/s², not the surface-gravity value in m/s².</Typography>
@@ -434,8 +490,8 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
           {success && body ? tab === 'deployment'
             ? <DeploymentDiagram input={input} result={success} bodyName={body.name} bodyColor={body.color} />
             : <RelayDiagram input={input} result={success} bodyName={body.name} bodyColor={body.color} onRotate={() => setPhase(value => (value + 15) % 360)} />
-            : <Box sx={{ minHeight: 130, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 1 }}><Typography sx={{ textAlign: 'center', color: 'text.secondary', fontSize: 12 }}>{tab === 'deployment' ? 'Enter valid body and target-orbit data to preview the carrier orbit.' : 'Enter valid body and orbit data to preview the relay positions.'}</Typography></Box>}
-          {tab !== 'deployment' && success && body && !body.hasSurface && <Typography sx={{ mt: .5, fontSize: 12, color: 'text.secondary', lineHeight: 1.45 }}>This body has no landable surface, so only relay links and the DSN distance limit are shown.</Typography>}
+            : <Box sx={{ minHeight: 130, height: '100%', display: 'flex', flexDirection: 'column', gap: .75, alignItems: 'center', justifyContent: 'center', px: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 1 }}><Typography sx={{ textAlign: 'center', color: 'text.secondary', fontSize: 12 }}>{tab === 'body' && result.status === 'invalid' ? result.errors[0] : tab === 'deployment' ? 'Enter valid body and target-orbit data to preview the carrier orbit.' : 'Enter valid body and orbit data to preview the relay positions.'}</Typography>{!advanced && tab === 'body' && invalidSettingsSection('body') !== 'body' && <Button size="small" onClick={() => openAdvanced(invalidSettingsSection('body'))} sx={{ minHeight: 32, fontSize: 12 }}>Fix radio settings in Advanced mode</Button>}</Box>}
+          {tab !== 'deployment' && success && body && !body.hasSurface && <Typography sx={{ mt: .5, fontSize: 12, color: 'text.secondary', lineHeight: 1.45 }}>{advanced ? 'This body has no landable surface, so only relay links and the DSN distance limit are shown.' : 'This body has no landable surface, so only relay links are shown.'}</Typography>}
           {tab !== 'deployment' && success?.warnings.map((warning, index) => <Typography key={index} sx={{ mt: .5, fontSize: 12, lineHeight: 1.45, color: 'secondary.main' }}>{warning}</Typography>)}
         </Box>
       </Box>

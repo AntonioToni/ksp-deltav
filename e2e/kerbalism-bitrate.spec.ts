@@ -1,9 +1,12 @@
+import { preferAdvancedRelayMode } from './helpers/relayMode'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 const kerbalism = 'Kerbalism + CommNet'
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const planner = (page: Page) => page.getByRole('dialog', { name: 'CommNet relay planner', exact: true })
-const combo = (page: Page, name: string) => planner(page).getByRole('combobox', { name, exact: true })
+const combo = (page: Page, name: string) => /^Antenna [AB]$/.test(name)
+  ? planner(page).locator(`[data-signal-endpoint-config="${name.at(-1)!.toLowerCase()}"]`).getByRole('combobox')
+  : planner(page).getByRole('combobox', { name, exact: true })
 const field = (page: Page, name: string) => planner(page).getByRole('spinbutton', { name, exact: true })
 const metric = (page: Page, id: string) => planner(page).getByTestId(id)
 const rateSummary = (page: Page) => planner(page).locator('summary:visible').filter({ hasText: 'Science rate settings' })
@@ -14,6 +17,7 @@ test.beforeEach(async ({ page }) => {
   browserErrors = []
   page.on('pageerror', error => browserErrors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()) })
+  await preferAdvancedRelayMode(page)
   await page.goto('./')
   await expect(button(page, 'CommNet relay planner')).toBeVisible()
 })

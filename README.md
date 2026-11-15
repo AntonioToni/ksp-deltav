@@ -54,6 +54,9 @@ with Stock or OPM.
   above the equator. Check coverage, antenna ranges, signal strengths, and burns
   to release the satellites into position. Body presets cover Stock, OPM, RSS,
   and Kcalbeloh planets and moons.
+- **Basic and Advanced CommNet views**: start with everyday relay and signal
+  controls, then reveal body edits, antenna arrays, and detailed radio settings.
+  Switching views keeps the active setup and uses the same calculations.
 - **Interplanetary signal planning** for one link at a time. Move two bodies around
   simplified circular orbits to compare distance, signal strength, and blocking
   by their shared central body. Presets cover Stock, OPM, RSS, and compatible local
@@ -175,10 +178,14 @@ to use the draft. Source data and exported JSON keep those links without a cost.
 
 Open **Relays** in the header (the satellite icon on phones) to plan a local
 CommNet constellation. Choose a body, orbit altitude, relay count, and antennas,
-then inspect **Network**, **Deployment**, and **Body data**. Closing the tool
-keeps your current Delta-V mission intact. Kcalbeloh planets and moons load their
-body data automatically with either base system and wormhole setting. Inputs
-remain editable; **Restore preset** returns to the reference values. The
+then inspect **Network**, **Deployment**, and **Body data**. Start in **Basic**
+or choose **Advanced** for body edits and detailed settings. Switching views
+keeps your configuration; **View settings** reveals active Advanced settings
+while in Basic. Your browser can remember the view preference, while relay and
+signal inputs reset on reload. Closing the tool keeps your current Delta-V
+mission intact. Kcalbeloh planets and moons load their body data automatically
+with either base system and wormhole setting. In Advanced, **Restore preset**
+returns edited body data to the reference values. The
 [relay guide](docs/RELAYS.md) explains the calculations and supported data.
 
 **Radio setup** selects Stock CommNet, either RSS configuration, or the explicit
@@ -187,10 +194,11 @@ for Kerbalism 3.44. RSS maps start with RSS antenna powers (20× stock) and stoc
 DSN powers; select a CustomBarnKit option if your installation includes its RSS
 DSN patch. Radio setup is shared by Network and Signals and can be changed
 independently of the body map. Kerbalism presets retain CommNet range and signal
-rules, add **Communotron 8**, and show Kerbalism's **damped signal** alongside
-raw CommNet strength in Network and Signals. Damping adjusts the strength used
-for science transmission; it does not change maximum antenna range. Open
-**Kerbalism damping** to use the automatic 3.44 reference exponent or enter your
+rules, add **Communotron 8**, and show Kerbalism's **damped signal** in Network
+and Signals. Raw CommNet strength is also shown in Advanced Network and in
+Signals. Damping adjusts the strength used
+for science transmission; it does not change maximum antenna range. In Advanced,
+open **Kerbalism damping** to use the automatic 3.44 reference exponent or enter your
 installation's exponent.
 Damping settings are shared by both tabs. Reach and coverage still use raw
 CommNet geometry; the damped percentage and science bitrate are separate results.
@@ -198,7 +206,7 @@ See [Kerbalism radio configuration](docs/RELAYS.md#kerbalism-radio-configuration
 
 With a Kerbalism preset, **Neighbor science rate** and **Surface → relay rate**
 estimate the selected local hops. Signals shows the sending endpoint's rate
-toward the chosen receiver. Open **Science rate settings** and set **Antenna
+toward the chosen receiver. In Advanced, open **Science rate settings** and set **Antenna
 speed** to your game setting; the default is **1.5× (Normal)**.
 **Minimum science rate** defaults to **1 bit/s**;
 set it to zero to remove that minimum. These settings are shared by both tabs.
@@ -206,21 +214,22 @@ For custom power, enter the craft's full-strength rate in **bit/s** before speed
 and damping; leaving it blank keeps the bitrate unknown without hiding signal
 results. These are single-hop estimates, before any slower onward relay links.
 
-Choose **Antenna array…** under **Relay antenna** or **Surface antenna** to mix
+In Advanced, choose **Antenna array…** under **Relay antenna** or **Surface antenna** to mix
 catalog parts and counts, then choose **Apply**. A relay loadout is fitted to each
 satellite separately; antennas on different satellites do not combine. Arrays
 use the selected radio setup's powers. Custom powers are final effective values
 and are never scaled automatically.
 
 For planet-to-planet links, open **Relays → Signals**. Choose two planets around
-the same reference center and an antenna or array at each endpoint. Choose the
-**Receiving endpoint** (B by default): a receiving vessel needs a relay antenna,
+the same reference center and an antenna for each, using the selectors labeled
+with their body names. Advanced also offers arrays. Choose the
+**Signal receiver** (B by default): a receiving vessel needs a relay antenna,
 and only relay-capable parts contribute to its array power. A DSN power can
-represent the homeworld receiver. Move **Relative phase**, or use **Closest**
+represent the homeworld receiver. Move **Planet positions**, or use **Closest**
 and **Opposite**, to inspect changing distance and central-body obstruction.
-The current signal includes that obstruction; the nearest/farthest cards show
-the closest and farthest signal strengths for those circles, before blocking.
-No in-game date is used. Manual orbits accepts your own orbit radii measured from
+The estimated signal includes that obstruction; **Closest position** and
+**Farthest position** show the signal for those circles before blocking.
+No in-game date is used. In Advanced, **Manual orbits** accepts your own orbit radii measured from
 one shared center, plus the central body's radius. See the [signal guide](docs/RELAYS.md#interplanetary-signals)
 for scope and examples.
 
@@ -361,8 +370,8 @@ the [developer guide](docs/DEVELOPMENT.md).
 
 - Additional planet packs, rescaled systems, and alternative starting-homeworld
   configurations.
-- Advanced relay planning: inclined and polar constellations for coverage beyond
-  the equator, and complete communication paths through relays back to the DSN.
+- Inclined and polar relay constellations for coverage beyond the equator, and
+  complete communication paths through relays back to the DSN.
 
 Suggestions, bug reports, and contributions are welcome through
 [GitHub issues](https://github.com/AntonioToni/ksp-deltav/issues) and pull requests.

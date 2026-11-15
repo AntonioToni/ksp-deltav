@@ -17,7 +17,7 @@ const carrierColor = '#e7bd7b'
 const limitColor = '#b8a7d9'
 
 /** Draw the engine's returned apsides and semi-major axis, without solving a
- * second orbit. A fixed two-target-radius envelope keeps the target circle at
+ * second orbit. A fixed two-target-radius envelope keeps the target orbit at
  * exactly the same scale and position when the carrier mode changes.
  */
 export default function DeploymentDiagram({ input, result, bodyName, bodyColor }: DeploymentDiagramProps) {
@@ -73,7 +73,7 @@ export default function DeploymentDiagram({ input, result, bodyName, bodyColor }
   const carrier = { x: ellipseX, y: centerY - semiMinorAxis }
   const radiusEnd = { x: centerX + bodyRadius / Math.SQRT2, y: centerY + bodyRadius / Math.SQRT2 }
   const legend = [
-    { label: 'Target circle', color: targetColor, dash: false },
+    { label: 'Target orbit', color: targetColor, dash: false },
     { label: statusLabel, color: orbitColor, dash: orbitDash !== undefined },
     { label: 'Release / burn point', color: '#e9f5ff', dash: false },
     ...shownBoundaries.map(boundary => ({ label: boundary.name, color: boundary.color, dash: boundary.dash !== undefined })),
@@ -87,7 +87,7 @@ export default function DeploymentDiagram({ input, result, bodyName, bodyColor }
       sx={{ display: 'block', width: '100%', height: short ? 136 : compact ? 226 : 285, minHeight: short ? 0 : 180, maxHeight: 300, overflow: 'hidden', scrollMarginBlock: '2px' }}>
       <title>{`${bodyName}: ${deployment.mode} carrier and circular relay orbit`}</title>
       <desc id={`${prefix}-description`}>
-        {`The body is at one focus of the carrier ellipse. The target circle and carrier meet at the ${sharedName.toLowerCase()}, where relays are released and circularized. Body and orbits use one scale; markers are enlarged. Body radius ${distance(input.body.radiusM)}. Target altitude ${distance(input.altitudeM)} and period ${period(result.orbitalPeriodS)}. Carrier semi-major axis ${distance(deployment.semiMajorAxisM)}, periapsis altitude ${distance(deployment.periapsisAltitudeM)}, apoapsis altitude ${distance(deployment.apoapsisAltitudeM)}, and period ${period(deployment.carrierPeriodS)}. The first-to-last release duration is ${period(deployment.deploymentDurationS)}. Carrier injection uses ${number.format(deployment.injectionDeltaVMps)} m/s; each relay circularizes with ${number.format(deployment.relayCircularizationDeltaVMps)} m/s. The carrier marker is a static illustrative position, not a simulated time. ${deployment.issues.join(' ')}`}
+        {`The body is at one focus of the carrier ellipse. The target orbit and carrier meet at the ${sharedName.toLowerCase()}, where relays are released and circularized. Body and orbits use one scale; markers are enlarged. Body radius ${distance(input.body.radiusM)}. Target altitude ${distance(input.altitudeM)} and period ${period(result.orbitalPeriodS)}. Carrier semi-major axis ${distance(deployment.semiMajorAxisM)}, periapsis altitude ${distance(deployment.periapsisAltitudeM)}, apoapsis altitude ${distance(deployment.apoapsisAltitudeM)}, and period ${period(deployment.carrierPeriodS)}. The first-to-last release duration is ${period(deployment.deploymentDurationS)}. Carrier injection uses ${number.format(deployment.injectionDeltaVMps)} m/s; each relay circularizes with ${number.format(deployment.relayCircularizationDeltaVMps)} m/s. The carrier marker is a static illustrative position, not a simulated time. ${deployment.issues.join(' ')}`}
       </desc>
       {shownBoundaries.map(boundary => <circle key={boundary.kind} cx={centerX} cy={centerY} r={boundary.radiusM * scale}
         fill={boundary.kind === 'atmosphere' ? '#88adc708' : 'none'} stroke={boundary.color} strokeWidth={1} strokeOpacity={.65} strokeDasharray={boundary.dash}

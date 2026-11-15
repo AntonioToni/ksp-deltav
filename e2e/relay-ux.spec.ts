@@ -1,3 +1,4 @@
+import { preferAdvancedRelayMode } from './helpers/relayMode'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { findRelayBodyPreset } from '../src/data/commnet'
 import { stockPack } from '../src/data/stock'
@@ -5,7 +6,9 @@ import { calculateRelayPlan, type RelayNetworkInput, type SuccessfulRelayPlan } 
 
 const planner = (page: Page) => page.getByRole('dialog', { name: 'CommNet relay planner', exact: true })
 const field = (page: Page, name: string) => planner(page).getByRole('spinbutton', { name, exact: true })
-const combo = (page: Page, name: string) => planner(page).getByRole('combobox', { name, exact: true })
+const combo = (page: Page, name: string) => /^Antenna [AB]$/.test(name)
+  ? planner(page).locator(`[data-signal-endpoint-config="${name.at(-1)!.toLowerCase()}"]`).getByRole('combobox')
+  : planner(page).getByRole('combobox', { name, exact: true })
 const metric = (page: Page, id: string) => planner(page).getByTestId(id)
 const deployment = (page: Page) => metric(page, 'deployment-diagram')
 const button = (page: Page, name: string) => planner(page).getByRole('button', { name, exact: true })
@@ -15,6 +18,7 @@ test.beforeEach(async ({ page }) => {
   errors = []
   page.on('pageerror', error => errors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
+  await preferAdvancedRelayMode(page)
   await page.goto('./')
   await page.getByRole('button', { name: 'CommNet relay planner', exact: true }).click()
   await expect(planner(page)).toBeVisible()
@@ -154,7 +158,7 @@ test('uses the selected body and retains the Network constellation and carrier m
 test('keeps surface, atmosphere, and clearance violations visible in the calculated deployment geometry', async ({ page }) => {
   await section(page, 'Deployment')
   for (const scenario of [{ altitude: 400, margin: 10 }, { altitude: 600, margin: 10 }, { altitude: 800, margin: 100 }]) {
-    await field(page, 'Orbit altitude').fill(String(scenario.altitude))
+    await field(page, 'Target orbit altitude').fill(String(scenario.altitude))
     await field(page, 'Clearance margin').fill(String(scenario.margin))
     await expectGeometry(deployment(page), inputFor('stock:kerbin', scenario.altitude, 'lower', scenario.margin))
     await expect(deployment(page)).toHaveAttribute('data-deployment-status', 'blocked')
@@ -164,7 +168,7 @@ test('keeps surface, atmosphere, and clearance violations visible in the calcula
 
 test('shows sphere-of-influence failures, unchecked limits, and a marginal clearance without changing the orbit', async ({ page }) => {
   await section(page, 'Deployment')
-  await field(page, 'Orbit altitude').fill('800')
+  await field(page, 'Target orbit altitude').fill('800')
   await button(page, 'Higher carrier').click()
   await section(page, 'Body data')
   await field(page, 'Sphere of influence').fill('1700')

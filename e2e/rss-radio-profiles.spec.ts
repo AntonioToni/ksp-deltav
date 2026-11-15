@@ -1,3 +1,4 @@
+import { preferAdvancedRelayMode } from './helpers/relayMode'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 const rssRadio = 'RSS CommNet (without CBK)'
@@ -13,6 +14,7 @@ test.beforeEach(async ({ page }) => {
   browserErrors = []
   page.on('pageerror', error => browserErrors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()) })
+  await preferAdvancedRelayMode(page)
   await page.goto('./')
   await expect(button(page, 'CommNet relay planner')).toBeVisible()
 })

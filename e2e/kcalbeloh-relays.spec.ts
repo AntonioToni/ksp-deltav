@@ -1,3 +1,4 @@
+import { preferAdvancedRelayMode } from './helpers/relayMode'
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import type { PlanetPack } from '../src/types/planner'
@@ -13,6 +14,7 @@ test.beforeEach(async ({ page }) => {
   browserErrors = []
   page.on('pageerror', error => browserErrors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()) })
+  await preferAdvancedRelayMode(page)
   await page.goto('./')
   await expect(button(page, 'CommNet relay planner')).toBeVisible()
 })
@@ -200,7 +202,7 @@ test('uses effective SOI floors and keeps automatic targets inside edited bounds
   await section(page, 'Deployment')
   await field(page, 'Clearance margin').fill('12')
   await choose(page, 'Relay body', 'Enots')
-  await expect(field(page, 'Orbit altitude')).toHaveValue('17')
+  await expect(field(page, 'Target orbit altitude')).toHaveValue('17')
   await section(page, 'Body data')
   await planner(page).getByRole('button', { name: 'Restore preset', exact: true }).click()
   await expect(field(page, 'Sphere of influence')).toHaveValue('58')

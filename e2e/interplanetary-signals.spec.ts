@@ -1,3 +1,4 @@
+import { preferAdvancedRelayMode } from './helpers/relayMode'
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { missionModeButton } from './helpers/missionMode'
@@ -5,7 +6,9 @@ import { missionModeButton } from './helpers/missionMode'
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const planner = (page: Page) => page.getByRole('dialog', { name: 'CommNet relay planner', exact: true })
 const signal = (page: Page) => planner(page).getByTestId('interplanetary-planner')
-const combo = (page: Page, name: string) => planner(page).getByRole('combobox', { name, exact: true })
+const combo = (page: Page, name: string) => /^Antenna [AB]$/.test(name)
+  ? planner(page).locator(`[data-signal-endpoint-config="${name.at(-1)!.toLowerCase()}"]`).getByRole('combobox')
+  : planner(page).getByRole('combobox', { name, exact: true })
 const field = (page: Page, name: string) => planner(page).getByRole('spinbutton', { name, exact: true })
 const metric = (page: Page, id: string) => planner(page).getByTestId(id)
 // MUI gives group headings the option role too, but only actual choices have a value.
@@ -18,6 +21,7 @@ test.beforeEach(async ({ page }) => {
   browserErrors = []
   page.on('pageerror', error => browserErrors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()) })
+  await preferAdvancedRelayMode(page)
   await page.goto('./')
   await expect(button(page, 'CommNet relay planner')).toBeVisible()
 })

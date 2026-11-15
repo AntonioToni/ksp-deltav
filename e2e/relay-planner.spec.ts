@@ -1,3 +1,4 @@
+import { preferAdvancedRelayMode } from './helpers/relayMode'
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import type { PlanetPack } from '../src/types/planner'
@@ -17,6 +18,7 @@ test.beforeEach(async ({ page }) => {
   browserErrors = []
   page.on('pageerror', error => browserErrors.push(error.message))
   page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()) })
+  await preferAdvancedRelayMode(page)
   await page.goto('./')
   await expect(launcher(page)).toBeVisible()
 })
@@ -66,7 +68,7 @@ test('calculates the independent Kerbin ring example and rotates its equatorial 
   await expect(metric(page, 'relay-period')).toHaveText('1h 32m 18s')
   await expect(metric(page, 'relay-dsn-range')).toHaveText('1.1 Gm')
   await expect(metric(page, 'relay-ring-status')).toContainText('Available')
-  await expect(planner(page).getByText(/Maximum DSN range is a distance limit, not a checked connection home/)).toBeVisible()
+  await expect(planner(page).getByText(/Maximum relay-to-DSN range is a distance limit, not a checked connection home/)).toBeVisible()
   const diagram = planner(page).getByRole('img', { name: 'Kerbin equatorial relay diagram', exact: true })
   await expect(diagram.locator('[data-relay-satellite]')).toHaveCount(3)
   await expect(diagram.locator('[data-relay-link="neighbor"][data-link-status="available"]')).toHaveCount(3)

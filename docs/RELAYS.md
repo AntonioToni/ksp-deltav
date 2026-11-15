@@ -12,36 +12,58 @@ mission endpoints, stops, atmospheric choices, and budget.
 
 Local relay and signal inputs remain available when switching sections or
 closing and reopening the workspace in the same session. Changing planet packs
-resets the workspace; reloading the page resets its inputs.
+resets these inputs; reloading the page resets them too.
+
+## Basic and Advanced views
+
+On first use, the workspace opens in **Basic** mode. Choose **Advanced** for
+body edits, antenna arrays, custom powers, local DSN settings, manual signal
+geometry, and radio calibration controls. The mode applies across Network,
+Deployment, Body data, and Signals. Your browser remembers this view preference when storage is
+available; it does not save the calculation inputs across a reload.
+
+Both views use the same inputs and calculations. Switching views keeps your
+configuration, including settings hidden in Basic. An active custom setup shows
+a notice with **View settings** to reveal its Advanced controls. Invalid hidden
+settings also provide a way to open Advanced and correct them.
+
+Basic shows **Body data** as a read-only reference. Choose
+**Edit in Advanced mode** to change its values or supply missing custom-body
+data. The sections below identify controls that need Advanced; changing the
+view never restores defaults or changes a calculation by itself.
 
 ## Using the workspace
 
 1. Choose a **Relay body**. A recognized reference preset supplies the physical
-   inputs, which remain editable under **Body data**. For an unfamiliar custom
-   body, enter its radius, gravitational parameter (GM, for calculating orbits),
-   and atmosphere height. Supply its sphere of influence—the radius of KSP's
-   gravity region around that body—when known. **Body field guide** explains
-   these fields and their units.
-2. Under **Network**, choose the **Orbit altitude** above the surface and a
-   **Relay count** from 2 to 12. Choose your **Radio setup**, a relay
-   antenna or array, a surface-client antenna or array, and a DSN level.
+   inputs shown under **Body data**. For an unfamiliar custom body, choose
+   **Edit in Advanced mode** and enter its radius, gravitational parameter (GM,
+   for calculating orbits), and atmosphere height. Supply its sphere of
+   influence—the radius of KSP's gravity region around that body—when known.
+   **Body field guide** explains these fields and their units.
+2. Under **Network**, choose the **Orbit altitude** above the surface and
+   a **Relay count** from 2 to 12. Choose your **Radio setup**, a relay antenna,
+   and a surface-client antenna. Advanced adds antenna arrays, custom powers,
+   and the DSN level.
 3. Inspect equatorial coverage, neighboring links, their signal strength, the
-   strongest link from the sample point on the equator, orbital period, and
-   maximum DSN range. DSN means KSP's ground-station network; the range figure
-   does not check an actual connection home. **Rotate relays** moves the
-   satellites around their orbit so you can inspect links from the sample point.
-   Kerbalism profiles show their adjusted signal alongside raw CommNet strength,
-   plus estimated science bitrates for those individual links; see
+   strongest link from the sample point on the equator, and orbital period.
+   Advanced also shows **Maximum relay-to-DSN range**. DSN means KSP's
+   ground-station network; that range does not check an actual connection home.
+   **Rotate relays** moves the satellites around their orbit so you can inspect
+   links from the sample point.
+   Kerbalism profiles show their adjusted signal and estimated science bitrates
+   for those individual links; Advanced also shows raw CommNet strength. See
    [Kerbalism science rates](#kerbalism-science-rates).
-4. Under **Body data**, **Occlusion** chooses how much of the body blocks signals.
-   **Full radius** uses its full size; the other option uses the radio setup's
-   Normal game settings. **Range multiplier** scales maximum antenna link
-   distances: 1 keeps them unchanged, and 2 doubles them.
+4. In Advanced, **Body data → Occlusion** chooses how much of the body blocks
+   signals. **Full radius** uses its full size; the other option uses the radio
+   setup's Normal game settings. **Range multiplier** scales maximum antenna
+   link distances: 1 keeps them unchanged, and 2 doubles them.
 5. Under **Deployment**, compare lower and higher orbits for the carrier—the ship
    releasing the relays. Its dedicated diagram shows the target circle and
    carrier ellipse. Inspect its lowest and highest altitudes, time between
    releases, and the burns to place each relay in the target circular orbit.
-   **Clearance margin** adds your chosen height above the surface or atmosphere.
+   **Target orbit altitude** edits the same circular relay orbit as Network.
+   Advanced's **Clearance margin** adds your chosen height above the surface or
+   atmosphere.
    **Deployment field guide** explains the terms on the result cards.
 
 The automatic starting altitude is the larger of `4R/3` (where `R` is the body
@@ -56,9 +78,9 @@ Only relay-capable stock antennas are offered for the forwarding satellites:
 surface client. Its array editor also accepts relay-capable antennas, which can
 be used as antennas on that surface craft.
 
-Each antenna or DSN list also offers **Custom power**. Enter the single
-craft's or station's final CommNet power rating in meters, not watts. This is
-KSP's range rating, rather than electrical consumption or the actual link
+In Advanced, each antenna or DSN list also offers **Custom power**. Enter the
+single craft's or station's final CommNet power rating in meters, not watts.
+This is KSP's range rating, rather than electrical consumption or the actual link
 distance. For a craft with multiple antennas, this value is already the combined craft power; the planner
 does not apply another count or assume a combinability exponent for custom
 parts. This uses the same stock range formula with your value; it does not
@@ -70,9 +92,10 @@ and coverage calculations remain available.
 
 ## Antenna arrays
 
-Choose **Antenna array…** in the **Relay antenna** or **Surface antenna** list to
-open the matching array editor. Add models from the selected radio catalog, set
-their counts, and inspect their powers before choosing **Apply**.
+In Advanced, choose **Antenna array…** in the **Relay antenna** or
+**Surface antenna** list to open the matching array editor. Add models from the
+selected radio catalog, set their counts, and inspect their powers before
+choosing **Apply**.
 **Cancel** or Escape
 discards the draft. Reopen the same array option to edit it, or choose a single
 antenna preset or **Custom power** to use that mode instead.
@@ -86,7 +109,7 @@ no array count.
 
 Applied arrays remain in the relay workspace during the same session, including
 when the tool is closed and reopened. Changing planet packs or reloading the
-page resets the workspace. Changing radio setup keeps the selected parts and
+page resets the relay configuration. Changing radio setup keeps the selected parts and
 counts, recalculating compatible parts from that setup's catalog. An unavailable
 part stays selected and prevents a result until you edit the loadout or restore
 its radio setup. The resulting powers recalculate neighbor and surface ranges,
@@ -137,11 +160,13 @@ rules with the selected Stock, RSS, or Kerbalism profile, with a separate
 Kerbalism damping calculation when selected. It does not simulate a
 complete network path or place a ground station on the visible side of a planet.
 
-1. Under **Signal geometry**, choose **Reference planets** and select **Planet A**
-   and **Planet B**. Both must orbit the same body—for example, Kerbin and Duna
+1. Select **Planet A** and **Planet B**. In Advanced,
+   **Signal geometry → Reference orbits** selects the built-in reference
+   geometry. Both planets must orbit the same body—for example, Kerbin and Duna
    orbit Kerbol. The model treats their listed orbital distances as circular
    orbits in the same plane. It does not read their positions from your save.
-2. Choose **Antenna A** and **Antenna B**, mixed arrays, or final custom effective
+2. Choose each body's antenna, using selectors such as **Kerbin antenna** and
+   **Duna antenna**. Advanced also offers mixed arrays and final custom effective
    powers in **Power A** and **Power B**. A DSN preset may represent the known
    homeworld endpoint in reference mode.
 3. Choose **Signal receiver** to select which endpoint receives; B is the
@@ -158,21 +183,27 @@ complete network path or place a ground station on the visible side of a planet.
    current positions.
 5. Compare **Separation at selected positions**, maximum antenna range,
    **Estimated signal** (or **Estimated Kerbalism signal**), and signal at the
-   closest and farthest positions on those circles. Those last two values ignore
-   blocking. A Kerbalism profile shows the adjusted percentage and a separate
-   raw CommNet value. Its chart
+   **Closest position** and **Farthest position** on those circles. Those last
+   two values are before blocking. A Kerbalism profile shows the adjusted
+   percentage and a separate raw CommNet value. Its chart
    compares raw CommNet signal with blocking, adjusted signal for a clear path,
    and adjusted signal with blocking. The science rate uses
    the sending craft's loadout and follows the selected receiving direction;
    the full-strength sender rate includes the chosen antenna speed.
-6. Choose **Signal geometry → Manual orbits** for an unknown custom pack or a
-   different reference configuration. Enter **Orbit radius A** and **Orbit radius B**
-   in **Gm**, and **Central radius** in **km**. Manual values are user assumptions;
+6. In Advanced, choose **Signal geometry → Manual orbits** for an unknown custom
+   pack or a different reference configuration. Enter **Orbit radius A** and
+   **Orbit radius B** in **Gm**, and **Central radius** in **km**. Manual values
+   are user assumptions;
    no orbit data is inferred from Delta-V map costs or imported body names.
    Orbit radii are measured from one shared center, rather than above a surface.
    The central radius is the size of the body at that center. Manual orbits still
    uses two circles in one plane; it cannot join different star systems or model
    a wormhole.
+
+Basic keeps an already-selected manual setup active and shows its orbit values
+as a summary. Use **View settings** to edit it in Advanced. The same applies to
+arrays, custom powers, and nondefault technical settings. A custom pack without
+reference orbits provides an action to enter its geometry in Advanced.
 
 **Radio setup**, **Kerbalism damping**, **Antenna speed**, **Minimum science
 rate**, and the **Range multiplier** are shared
@@ -217,7 +248,8 @@ and closest/farthest readouts apply `S^k` to that raw fraction, using the select
 damping exponent. This changes the displayed Kerbalism signal factor without
 changing maximum range, obstruction, or link status.
 
-The closest/farthest cards compare **two circular orbits and ignore blocking**.
+**Closest position** and **Farthest position** compare **two circular orbits and
+ignore blocking**.
 Real orbits can be stretched or tilted, giving different closest and farthest
 approaches. The current strength also checks whether the central body blocks the link.
 At opposite alignment it blocks the signal, making strength **0%** even if the
@@ -281,23 +313,28 @@ how high their circular orbit is.
 
 **Neighbor signal** (**Neighbor Kerbalism signal** with a Kerbalism profile) is
 the strength of a neighboring relay hop at the selected altitude, using the
-same loadout on every satellite. **Best station signal** (**Best station
-Kerbalism signal**) is the strongest currently usable hop from the sample equatorial surface station
-to one of the relays. Rotation changes that sample result. It is not the
+same loadout on every satellite. **Best surface-to-relay signal** is the
+strongest currently usable hop from the sample equatorial surface station to
+one of the relays. Rotation changes that sample result. It is not the
 weakest signal across all covered longitudes, the constellation's worst case,
 or an end-to-end DSN connection. A blocked or out-of-range hop contributes zero;
 a body without a surface has no station signal. Kerbalism profiles display
-`S^k` and retain separate raw CommNet readouts for these hops.
+`S^k`, with separate raw CommNet readouts for these hops in Advanced.
 With Kerbalism selected, **Neighbor science rate** uses the relay sender's
 loadout. **Surface → relay rate** uses the surface client's loadout and its
 best currently usable station hop. These are local hop estimates, before any
 slower relay links farther along the path to the DSN.
 
-**DSN range** is the maximum distance allowed by the selected relay loadout and
-DSN power. It does not check where the homeworld is, other bodies or the Sun
-blocking the path, or whether any relay currently has a usable DSN connection.
+**Maximum relay-to-DSN range**, shown in Advanced, is the maximum distance
+allowed by the selected relay loadout and DSN power. It does not check where
+the homeworld is, other bodies or the Sun blocking the path, or whether any relay
+currently has a usable DSN connection.
 A working local ring and a visible surface receiver do not by themselves
 establish a path to mission control.
+
+**Target orbit** is the circular orbit the deployed relays will occupy.
+**Target orbit altitude** is its height above the body's surface, rather than
+its radius from the center.
 
 Bodies without a landable surface still support orbital relay and deployment
 calculations, but have no surface coverage or surface-station result.
@@ -410,7 +447,7 @@ opposite directions. A lower carrier injection is retrograde and relay
 circularization is prograde; the higher-carrier directions are reversed.
 
 Release one relay per carrier orbit at the same release point. With the first
-release at time zero, the interval is one carrier period and the elapsed time
+release at time zero, the interval is one carrier period and **Total deployment time**
 to release the last of `N` relays is `(N - 1) × carrier period`.
 
 These are ideal instantaneous, two-body burn estimates. Launch, transfer to the
@@ -437,7 +474,7 @@ bodies. The clearance margin is a planning input, not a terrain model.
 
 ## Worked Kerbin example
 
-Choose Kerbin, **800 km** altitude, **3 relays**, **HG-5** relay antennas,
+In Advanced, choose Kerbin, **800 km** altitude, **3 relays**, **HG-5** relay antennas,
 **Communotron 16** for the surface client, **DSN level 3**, range multiplier 1,
 and **Full radius** occlusion. The reference inputs are `R = 600,000 m`,
 `mu = 3.5316e12 m³/s²`, and a 70 km atmosphere.
@@ -469,9 +506,10 @@ Known values remain editable; custom bodies without a matching preset require
 their own physical inputs. No radius or gravity is inferred from a maneuver
 budget or silently substituted from Kerbin.
 
-Under **Body data**, the approximate GM and sphere-of-influence summaries make
-long values easier to read. The editable fields retain the entered precision,
-and calculations use those full values. Expand **Body data and radio sources**
+Under **Body data**, Basic displays read-only radius, atmosphere height, GM,
+and sphere-of-influence cards. **Edit in Advanced mode** opens the full-precision
+fields. The approximate summaries make long values easier to read; calculations
+use the full entered values. Expand **Body data and radio sources**
 for the selected body's reference and any additional radio-configuration
 sources; an unfamiliar custom body identifies its values as user-supplied.
 
@@ -590,9 +628,9 @@ multiplier 1. The HG-5's maximum DSN level 3 range is **5 Gm** without CBK or
 combine to **282.842712 Mm**, exactly 20 times the stock array power. Catalog
 powers are already scaled; the array calculation does not multiply them again.
 
-Choose **Custom power** when you know your installation's final effective craft
-or station power. These values are preserved without profile scaling. Keep the
-range multiplier matched to your game settings; a multiplier of 20 is not an
+In Advanced, choose **Custom power** when you know your installation's final
+effective craft or station power. These values are preserved without profile
+scaling. Keep the range multiplier matched to your game settings; a multiplier of 20 is not an
 equivalent substitute for RSS's separate antenna and DSN changes.
 
 RealAntennas and RemoteTech use different models and remain unsupported. An RSS,
@@ -645,10 +683,12 @@ It does not shorten the antenna's maximum range or remove a geometrically
 available link. A blocked or out-of-range link still has zero effective strength.
 
 With a Kerbalism profile, Network and Signals show the damped percentage as the
-main signal result, alongside raw CommNet strength. The closest/farthest cards in
+main signal result. Network's raw CommNet readouts appear in Advanced; Signals
+also shows its raw percentage. The closest/farthest cards in
 Signals use the same damping for their strengths before blocking, and its chart also shows raw
-CommNet strength. Open **Kerbalism damping** to select **Automatic (3.44)** or
-**Custom exponent**. Mode and custom value remain shared across both tabs and
+CommNet strength. In Advanced, open **Kerbalism damping** to select
+**Automatic (3.44)** or
+**Custom exponent**. Damping mode and custom value remain shared across both tabs and
 closing/reopening the workspace; changing packs resets the session.
 
 Automatic uses the pinned
@@ -733,8 +773,9 @@ specify decimal **MB/s**, converted here using **8,000,000 bits per MB**. These
 known-part science rates are the same for all three Kerbalism radio profiles;
 RSS scales their CommNet powers rather than these hand-picked science rates.
 
-Open **Science rate settings** to edit **Antenna speed** and **Minimum science
-rate**, shared by Network and Signals. Antenna speed starts at **1.5×**, matching the pinned
+In Advanced, open **Science rate settings** to edit **Antenna speed** and
+**Minimum science rate**, shared by Network and Signals. Antenna speed starts
+at **1.5×**, matching the pinned
 [Normal difficulty preset](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/System/Preferences.cs#L105-L133).
 Easy uses 2×, Moderate 1.2×, and Hard 1×; match your actual save settings.
 The minimum starts at the
