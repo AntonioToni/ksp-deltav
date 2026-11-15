@@ -10,7 +10,7 @@ const field = (page: Page, name: string) => planner(page).getByRole('spinbutton'
 const metric = (page: Page, id: string) => planner(page).getByTestId(id)
 // MUI gives group headings the option role too, but only actual choices have a value.
 const selectableOptions = (page: Page) => page.locator('[role="option"][data-value]')
-const phase = (page: Page) => planner(page).getByRole('slider', { name: 'Relative phase', exact: true })
+const phase = (page: Page) => planner(page).getByRole('slider', { name: 'Planet positions', exact: true })
 const arrayEditor = (page: Page, endpoint: 'A' | 'B') => page.getByRole('dialog', { name: `Endpoint ${endpoint} antenna array`, exact: true })
 let browserErrors: string[]
 
@@ -93,7 +93,7 @@ test('separates circular range-only strength from central-body blocking and expo
   await expect(metric(page, 'signal-worst')).toHaveText('72.74%')
   await expect(metric(page, 'signal-link-status')).toHaveText('Link available')
   await expect(signal(page).getByText(/Closest and farthest positions.*before blockage/)).toBeVisible()
-  await expect(signal(page).getByText(/Relative phase is their angle apart/)).toBeVisible()
+  await expect(signal(page).getByText(/Choose planet positions to estimate one direct radio link/)).toBeVisible()
   const orbit = metric(page, 'signals-orbit-diagram')
   const chart = metric(page, 'signals-strength-chart')
   await expect(orbit).toHaveAttribute('role', 'img')
@@ -114,6 +114,7 @@ test('separates circular range-only strength from central-body blocking and expo
   await expect(metric(page, 'signal-worst')).toHaveText('72.74%')
   await expect(orbit.locator('[data-signal-link-status]')).toHaveAttribute('data-signal-link-status', 'blocked')
   await signal(page).getByText('Signal assumptions and sources', { exact: true }).click()
+  await expect(signal(page).getByText(/Relative phase sets their angle apart/)).toBeVisible()
   await expect(planner(page).getByRole('link', { name: 'Stock CommNet signal-strength curve · pinned calculator reference', exact: true }))
     .toHaveAttribute('href', /2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80\/src\/endpoint.rs$/)
   await expect(planner(page).getByRole('link', { name: /KSPTOT Kerbol physical radius/ })).toHaveAttribute('href', /9972b57398742263af12374652799db210395499/)
@@ -395,8 +396,8 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
       // Bring the feedback region into view deliberately: nearest-target scrolling
       // can leave the already-visible slider beside a clipped preceding metric.
       await phase(page).evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest' }))
-      await expect(signal(page).getByText('Current separation', { exact: true })).toBeInViewport({ ratio: .99999 })
-      await expect(signal(page).getByText('Signal now', { exact: true })).toBeInViewport({ ratio: .99999 })
+      await expect(signal(page).getByText('Separation at selected positions', { exact: true })).toBeInViewport({ ratio: .99999 })
+      await expect(signal(page).getByText('Estimated signal', { exact: true })).toBeInViewport({ ratio: .99999 })
       await expect(metric(page, 'signal-distance')).toBeInViewport({ ratio: .99999 })
       await expect(metric(page, 'signal-strength')).toBeInViewport({ ratio: .99999 })
       // MUI clips the native range input; verify the rendered rail/thumb control.

@@ -84,19 +84,20 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
   }[result.linkStatus]
   const currentStrength = kerbalism ? result.dampedStrength : result.signalStrength
   const legend: { color: string; label: string; dashed: boolean }[] = [
-    ...(kerbalism ? [{ color: '#8cbde7', label: 'Raw CommNet', dashed: true }] : []),
-    { color: '#9fb2cd', label: kerbalism ? 'Adjusted, clear path' : 'Clear path', dashed: true },
-    { color: '#92d5c6', label: kerbalism ? 'Adjusted, with blocking' : 'With blocking', dashed: false },
+    ...(kerbalism ? [{ color: '#8cbde7', label: 'Raw CommNet · with blocking', dashed: true }] : []),
+    { color: '#9fb2cd', label: kerbalism ? 'Kerbalism-adjusted · without blocking' : 'CommNet · without blocking', dashed: true },
+    { color: '#92d5c6', label: kerbalism ? 'Kerbalism-adjusted · with blocking' : 'CommNet · with blocking', dashed: false },
   ]
   const card = { minWidth: 0, border: '1px solid', borderColor: 'divider', borderRadius: 1.25, bgcolor: '#080f2145', overflow: 'hidden' } as const
 
   function endpoint(position: { x: number; y: number }, name: string, color: string, letter: string, above: boolean) {
     const right = position.x >= centerX
     const labelSpace = Math.max(24, (right ? width - position.x : position.x) - 14)
+    const label = `${letter} · ${name}`
     return <g data-signal-endpoint={letter.toLowerCase()}>
       <circle cx={position.x} cy={position.y} r={5} fill={color} stroke="#091221" strokeWidth={1.5} />
-      <text x={position.x + (right ? 10 : -10)} y={Math.max(13, Math.min(orbitHeight - 12, position.y + (above ? -10 : 16)))} textAnchor={right ? 'start' : 'end'} fill={color} fontSize={11}
-        textLength={name.length * 6 > labelSpace ? labelSpace : undefined} lengthAdjust="spacingAndGlyphs">{letter} · {name}</text>
+      <text x={position.x + (right ? 10 : -10)} y={Math.max(13, Math.min(orbitHeight - 12, position.y + (above ? -10 : 16)))} textAnchor={right ? 'start' : 'end'} fill={color} fontSize={12}
+        textLength={label.length * 6.5 > labelSpace ? labelSpace : undefined} lengthAdjust="spacingAndGlyphs">{label}</text>
       <title>{`${letter}: vessel near ${name}`}</title>
     </g>
   }
@@ -105,7 +106,7 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
     <Box component="figure" sx={{ m: 0, ...card }}>
       <Box component="svg" role="img" aria-label={`${nameA} and ${nameB} interplanetary reference geometry`} aria-describedby={`${prefix}-orbit-description`}
         data-testid="signals-orbit-diagram" data-signal-phase={result.phaseDeg} data-signal-receiver={receivingEndpoint} viewBox={`0 0 ${width} ${orbitHeight}`} preserveAspectRatio="xMidYMid meet"
-        sx={{ display: 'block', width: '100%', height: compact ? 140 : 180 }}>
+        sx={{ display: 'block', width: '100%', height: orbitHeight }}>
         <title>{`${nameA} ↔ ${nameB} around ${centerName}`}</title>
         <desc id={`${prefix}-orbit-description`}>{`Two circular orbits in the same plane around ${centerName}. The bodies are ${format.format(result.phaseDeg)} degrees apart. The arrow points ${receivingEndpoint === 'a' ? 'from sending craft B to receiving craft A' : 'from sending craft A to receiving craft B'}; the link is ${linkDescription}. Orbit sizes show relative distances; small craft and central-body markers are enlarged for visibility. Blocking uses the radius from your inputs, even when the marker is enlarged. Other planets, moons and the horizon near either craft are not checked.`}</desc>
         <defs><marker id={`${prefix}-receive-arrow`} markerWidth={6} markerHeight={6} refX={8} refY={3} orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 6 3 L 0 6 Z" fill={linkColor} /></marker></defs>
@@ -113,31 +114,31 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
         <circle cx={centerX} cy={centerY} r={Math.max(1.5, input.centralRadiusM * scale)} fill={input.occlusionFactor < 1 ? 'none' : '#102037'} fillOpacity={.95} stroke={centerColor} strokeOpacity={input.occlusionFactor < 1 ? .45 : 1} strokeWidth={1} data-signal-central-radius-m={input.centralRadiusM} />
         <line x1={senderPoint.x} y1={senderPoint.y} x2={receiverPoint.x} y2={receiverPoint.y} stroke={linkColor} strokeWidth={2} markerEnd={`url(#${prefix}-receive-arrow)`} strokeDasharray={result.linkStatus === 'available' ? undefined : '5 4'}
           data-signal-link-status={result.linkStatus} data-signal-clearance-m={result.centralClearanceM}>
-          <title>{`Distance ${format.format(result.distanceM / 1e9)} Gm; ${format.format(currentStrength * 100)}% ${kerbalism ? 'Kerbalism-adjusted' : 'current'} signal.${kerbalism ? ` Raw CommNet ${format.format(result.signalStrength * 100)}%.` : ''}`}</title>
+          <title>{`Distance ${format.format(result.distanceM / 1e9)} Gm; ${format.format(currentStrength * 100)}% ${kerbalism ? 'Kerbalism-adjusted' : 'estimated'} signal.${kerbalism ? ` Raw CommNet ${format.format(result.signalStrength * 100)}%.` : ''}`}</title>
         </line>
         <circle cx={centerX} cy={centerY} r={Math.max(input.occlusionFactor < 1 ? 1 : 1.5, input.centralRadiusM * input.occlusionFactor * scale)} fill="#102037" fillOpacity={.95} />
         <circle cx={centerX} cy={centerY} r={Math.max(input.occlusionFactor < 1 ? 1 : 1.5, input.centralRadiusM * input.occlusionFactor * scale)} fill={centerColor} fillOpacity={.24} stroke={centerColor} strokeWidth={1} strokeDasharray={input.occlusionFactor < 1 ? '2 2' : undefined} data-signal-occlusion-factor={input.occlusionFactor} />
-        <text x={centerX} y={centerY + Math.max(14, input.centralRadiusM * scale + 13)} textAnchor="middle" fill={centerColor} fontSize={11}>{centerName}</text>
+        <text x={centerX} y={centerY + Math.max(14, input.centralRadiusM * scale + 13)} textAnchor="middle" fill={centerColor} fontSize={12}>{centerName}</text>
         {endpoint(pointA, nameA, colorA, 'A', true)}
         {endpoint(pointB, nameB, colorB, 'B', false)}
-        <text x={width / 2} y={orbitHeight - 5} textAnchor="middle" fill="#9db1ca" fontSize={10}>{format.format(result.phaseDeg)}° relative phase</text>
+        <text x={width / 2} y={orbitHeight - 5} textAnchor="middle" fill="#9db1ca" fontSize={12}>{format.format(result.phaseDeg)}° relative phase</text>
       </Box>
-      <Typography component="figcaption" sx={{ px: 1, pb: .75, fontSize: 10, lineHeight: 1.3, color: 'text.secondary' }}>Small markers are enlarged for visibility.</Typography>
+      <Typography component="figcaption" sx={{ px: 1, pb: .75, fontSize: 12, lineHeight: 1.3, color: 'text.secondary' }}>Small markers are enlarged for visibility.</Typography>
     </Box>
 
     <Box component="figure" sx={{ m: 0, ...card }}>
-      <Typography component="figcaption" sx={{ px: 1, pt: .75, fontSize: 11, lineHeight: 1.3, color: 'text.secondary' }}>Signal at each angle between the bodies{kerbalism ? ' · Kerbalism adjustment' : ''}</Typography>
+      <Typography component="figcaption" sx={{ px: 1, pt: .75, fontSize: 12, lineHeight: 1.3, color: 'text.secondary' }}>Signal at each angle between the bodies{kerbalism ? ' · Kerbalism adjustment' : ''}</Typography>
       <Box component="svg" role="img" aria-label="Signal strength by relative phase" aria-describedby={`${prefix}-chart-description`}
         data-testid="signals-strength-chart" data-signal-damping-exponent={kerbalism ? input.dampingExponent : undefined} viewBox={`0 0 ${width} ${chartHeight}`} preserveAspectRatio="xMidYMid meet"
-        sx={{ display: 'block', width: '100%', height: compact ? 92 : 112 }}>
+        sx={{ display: 'block', width: '100%', height: chartHeight }}>
         <title>{kerbalism ? 'Kerbalism-adjusted signal with a clear path and with blocking' : 'Signal with a clear path and with blocking'}</title>
         <desc id={`${prefix}-chart-description`}>{kerbalism ? 'The blue dotted curve shows raw CommNet strength with blocking. The gray dashed curve shows Kerbalism-adjusted strength for a clear path. The green solid curve also includes blocking by the central body. These are signal percentages, not rates in bits per second; the adjustment does not change maximum antenna range. ' : 'The dashed curve shows signal strength for a clear path. The solid curve also includes blocking by the central body. '}The shaded band marks angles where the central body blocks the link. The vertical marker shows the selected angle. Positions are chosen with the slider, not predicted from an in-game date.</desc>
         <defs><clipPath id={`${prefix}-plot-clip`}><rect x={plot.left} y={plot.top} width={plot.right - plot.left} height={plot.bottom - plot.top} /></clipPath></defs>
         {[0, .5, 1].map(value => <g key={value}>
           <line x1={plot.left} x2={plot.right} y1={chartY(value)} y2={chartY(value)} stroke="#677f9e" strokeOpacity={.25} strokeWidth={1} />
-          <text x={plot.left - 5} y={chartY(value) + 3} textAnchor="end" fill="#a8bad0" fontSize={11}>{value * 100}%</text>
+          <text x={plot.left - 5} y={chartY(value) + 3} textAnchor="end" fill="#a8bad0" fontSize={12}>{value * 100}%</text>
         </g>)}
-        {[0, 90, 180, 270, 360].map(phase => <text key={phase} x={chartX(phase)} y={chartHeight - 8} textAnchor="middle" fill="#a8bad0" fontSize={11}>{phase}°</text>)}
+        {[0, 90, 180, 270, 360].map(phase => <text key={phase} x={chartX(phase)} y={chartHeight - 8} textAnchor="middle" fill="#a8bad0" fontSize={12}>{phase}°</text>)}
         <g clipPath={`url(#${prefix}-plot-clip)`}>
           {blockedStart !== undefined && blockedEnd !== undefined && <rect x={chartX(blockedStart)} y={plot.top} width={Math.max(0, chartX(blockedEnd) - chartX(blockedStart))} height={plot.bottom - plot.top} fill="#dd939c" fillOpacity={.12} data-signal-occlusion-band="true" />}
           {kerbalism && <path d={path('signalStrength')} fill="none" stroke="#8cbde7" strokeWidth={1.25} strokeDasharray="1 3" data-signal-curve="raw-commnet" />}
@@ -150,7 +151,7 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
       <Stack direction="row" sx={{ px: 1, pb: .75, flexWrap: 'wrap', columnGap: 1.25, rowGap: .25 }}>
         {legend.map(({ color, label, dashed }) => <Stack key={label} direction="row" sx={{ alignItems: 'center', gap: .5 }}>
           <Box component="span" aria-hidden="true" sx={{ width: 12, borderTop: `2px ${dashed ? 'dashed' : 'solid'} ${color}` }} />
-          <Typography sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1.3 }}>{label}</Typography>
+          <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.3 }}>{label}</Typography>
         </Stack>)}
       </Stack>
     </Box>

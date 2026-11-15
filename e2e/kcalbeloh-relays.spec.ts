@@ -83,6 +83,7 @@ for (const pack of ['Stock + Kcalbeloh', 'OPM + Kcalbeloh']) {
     expect(Number(await field(page, 'Gravitational parameter').inputValue())).toBeCloseTo(2_253_960_436_000, 2)
     await expect(field(page, 'Atmosphere height')).toHaveValue('65')
     expect(Number(await field(page, 'Sphere of influence').inputValue())).toBeCloseTo(31_359.322313602865, 7)
+    await planner(page).getByText('Body data and radio sources', { exact: true }).click()
     await expect(planner(page).getByRole('link', { name: /Kcalbeloh/ })).toHaveAttribute('href', /1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/)
     await section(page, 'Network')
     await field(page, 'Orbit altitude').fill('700')

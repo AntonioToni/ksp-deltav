@@ -125,21 +125,21 @@ export default function RelayDiagram({ input, result, bodyName, bodyColor, onRot
         <text y={.5} dominantBaseline="central" textAnchor="middle" fill="#e9f5ff" fontSize={compact ? 8 : 10} fontWeight={500}>{index + 1}</text>
         <title>{`Relay ${index + 1}`}</title>
       </g>)}
-      {input.occlusionFactor < 1 && <text x={width / 2} y={height - 4} textAnchor="middle" fill="#a3b0c4" fontSize={compact ? 8 : 10}>Dashed boundary: {input.occlusionFactor}× body radius</text>}
     </Box>
     <Box component="figcaption" sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', columnGap: .5, rowGap: .25, minWidth: 0 }}>
-      <Typography sx={{ fontSize: 10, lineHeight: 1.2, color: 'text.secondary', minWidth: 0 }}>View through the equator</Typography>
+      <Typography sx={{ fontSize: 12, lineHeight: 1.35, color: 'text.secondary', minWidth: 0 }}>View through the equator</Typography>
       <Button size="small" aria-label="Rotate relays" onClick={onRotate} startIcon={<RotateRightRounded sx={{ fontSize: '15px !important' }} />}
-        sx={{ minHeight: 26, minWidth: 0, px: .5, py: .25, fontSize: 10, lineHeight: 1.2, whiteSpace: 'nowrap', '& .MuiButton-startIcon': { mr: .25 } }}>Rotate relays</Button>
+        sx={{ minHeight: 32, minWidth: 0, px: .5, py: .25, fontSize: 11, lineHeight: 1.35, whiteSpace: 'nowrap', '& .MuiButton-startIcon': { mr: .25 } }}>Rotate relays</Button>
       <Stack direction="row" sx={{ gridColumn: '1 / -1', flexWrap: 'wrap', gap: { xs: .75, sm: 1.25 }, alignItems: 'center' }}>
         {[
           ['#8fcdbd', 'Available', false], ['#e7bd7b', 'At limit', false], ['#c1808c', 'Blocked / too far', true],
           ...(input.hasSurface ? [['#73c8fa', 'Surface craft', true]] : []),
         ].map(([color, label, dashed]) => <Stack key={String(label)} direction="row" sx={{ alignItems: 'center', gap: .4 }}>
           <Box component="span" aria-hidden="true" sx={{ width: 10, height: 0, borderTop: `2px ${dashed ? 'dashed' : 'solid'} ${String(color)}`, flexShrink: 0 }} />
-          <Typography sx={{ fontSize: { xs: 9, sm: 10 }, lineHeight: 1.2, color: 'text.secondary', whiteSpace: 'nowrap' }}>{label}</Typography>
+          <Typography sx={{ fontSize: 11, lineHeight: 1.35, color: 'text.secondary', whiteSpace: 'nowrap' }}>{label}</Typography>
         </Stack>)}
       </Stack>
+      {input.occlusionFactor < 1 && <Typography sx={{ gridColumn: '1 / -1', mt: .25, fontSize: 11.5, lineHeight: 1.35, color: 'text.secondary' }}>Dashed boundary: {input.occlusionFactor}× body radius</Typography>}
     </Box>
   </Box>
 }

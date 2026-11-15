@@ -38,7 +38,8 @@ resets the workspace; reloading the page resets its inputs.
    Normal game settings. **Range multiplier** scales maximum antenna link
    distances: 1 keeps them unchanged, and 2 doubles them.
 5. Under **Deployment**, compare lower and higher orbits for the carrier—the ship
-   releasing the relays. Inspect its lowest and highest altitudes, time between
+   releasing the relays. Its dedicated diagram shows the target circle and
+   carrier ellipse. Inspect its lowest and highest altitudes, time between
    releases, and the burns to place each relay in the target circular orbit.
    **Clearance margin** adds your chosen height above the surface or atmosphere.
    **Deployment field guide** explains the terms on the result cards.
@@ -143,21 +144,25 @@ complete network path or place a ground station on the visible side of a planet.
 2. Choose **Antenna A** and **Antenna B**, mixed arrays, or final custom effective
    powers in **Power A** and **Power B**. A DSN preset may represent the known
    homeworld endpoint in reference mode.
-3. Choose **Receiving endpoint**: **A · Relay / DSN** or **B · Relay / DSN**
-   (the default). The other endpoint sends. A vessel receiver must have a
-   relay-capable antenna; a direct-only receiver needs another antenna before
-   the planner can report a link. Choosing a DSN power selects that endpoint as
-   the receiver. Swapping endpoints moves the receiving role with its hardware.
-4. Move **Relative phase**, or choose **Closest** or **Opposite**, to change the
-   angle between the bodies: 0° is closest and 180° is farthest. The orbit diagram
-   and strength chart update together. These angles are not dates,
-   transfer-window angles, or the planets' current positions.
-5. Compare the current distance, maximum antenna range, **Signal now** (or
-   **Kerbalism signal**), and signal at the closest and farthest positions on
-   those circles. Those last two values ignore blocking. A Kerbalism profile
-   shows the adjusted percentage and a separate raw CommNet value. Its chart
-   compares raw signal, adjusted signal for a clear path, and adjusted signal
-   with blocking. The science rate uses
+3. Choose **Signal receiver** to select which endpoint receives; B is the
+   default, and the other endpoint sends. The direction readout names the craft
+   or ground station, such as **Kerbin spacecraft → Duna spacecraft**. A vessel
+   receiver must have a relay-capable antenna; a direct-only receiver needs
+   another antenna before the planner can report a link. Choosing a DSN power
+   selects that endpoint as the receiver. Swapping endpoints moves the receiving
+   role with its hardware.
+4. Move **Planet positions**, or choose **Closest** or **Opposite**, to change
+   the angle between the bodies. Its degree readout is their **relative phase**:
+   0° is closest and 180° is farthest. The orbit diagram and strength chart update
+   together. These angles are not dates, transfer-window angles, or the planets'
+   current positions.
+5. Compare **Separation at selected positions**, maximum antenna range,
+   **Estimated signal** (or **Estimated Kerbalism signal**), and signal at the
+   closest and farthest positions on those circles. Those last two values ignore
+   blocking. A Kerbalism profile shows the adjusted percentage and a separate
+   raw CommNet value. Its chart
+   compares raw CommNet signal with blocking, adjusted signal for a clear path,
+   and adjusted signal with blocking. The science rate uses
    the sending craft's loadout and follows the selected receiving direction;
    the full-strength sender rate includes the chosen antenna speed.
 6. Choose **Signal geometry → Manual orbits** for an unknown custom pack or a
@@ -367,8 +372,21 @@ diagram distinguishes the effective occluder when it differs from the body.
 
 The carrier is the ship that releases your relays. Deployment starts with that
 ship in the target circular orbit; its injection burn moves it to an elliptical
-release orbit. Each released relay then burns back into the target circle. A lower carrier returns to the release point sooner than the circular
-relays; a higher carrier returns later. For target period `T`:
+release orbit. Each released relay then burns back into the target circle. A
+lower carrier returns to the release point sooner than the circular relays; a
+higher carrier returns later.
+
+The dedicated Deployment diagram draws the physical body, target circle, and
+selected carrier ellipse at the same distance scale. The body's center sits at
+one focus of the ellipse. Markers identify periapsis, apoapsis, and the shared
+release point where the carrier meets the target circle. Switching
+**Lower carrier** or **Higher carrier** updates the drawing and result cards.
+This is a static orbit diagram; it does not animate a deployment or use an
+in-game date.
+The orbit-limit checks described below still determine whether the selected
+carrier fits the entered bounds.
+
+For target period `T`:
 
 ```text
 lower carrier period = T (N - 1) / N
@@ -450,6 +468,12 @@ and parent context: Eeloo's sphere of influence differs between Stock and OPM.
 Known values remain editable; custom bodies without a matching preset require
 their own physical inputs. No radius or gravity is inferred from a maneuver
 budget or silently substituted from Kerbin.
+
+Under **Body data**, the approximate GM and sphere-of-influence summaries make
+long values easier to read. The editable fields retain the entered precision,
+and calculations use those full values. Expand **Body data and radio sources**
+for the selected body's reference and any additional radio-configuration
+sources; an unfamiliar custom body identifies its values as user-supplied.
 
 The catalog has **89 contextual presets**: 16 nonstellar Stock bodies, 16 OPM
 rows including Eeloo's changed parent, 32 nonstellar RSS bodies, and all 25
@@ -660,7 +684,7 @@ enter your installation's exponent.
 
 Kerbalism presets estimate the science bitrate of the selected outgoing hop.
 Network shows **Neighbor science rate** and **Surface → relay rate**. Signals
-uses the craft opposite the **Receiving endpoint** as the sender; changing the
+uses the craft opposite the **Signal receiver** as the sender; changing the
 receiving direction changes which loadout supplies its base rate. Swapping
 endpoints moves the saved custom rates with their hardware. A DSN preset
 represents a terminal receiver.
