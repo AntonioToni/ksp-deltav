@@ -1,5 +1,7 @@
 import { Box } from '@mui/material'
 
+const warmColors = { yellow: '#f4d88a', orange: '#e9aa78', red: '#d99088' } as const
+
 // Fixed positions and pixel sizes keep the sky quiet and stable at every render.
 const stars = [
   [3.6, 12.4, 1, .28], [8.2, 67.3, 1.5, .3], [14.7, 35.6, 1, .22],
@@ -23,6 +25,9 @@ const stars = [
   [24.2, 64.8, 1, .27], [32.7, 91.1, 1, .23], [42.6, 48.5, 1.5, .28],
   [50.5, 31.7, 1, .25], [60.8, 12.6, 1, .3],
   [73.9, 57.2, 1, .24], [87.6, 45.7, 1, .25], [95.8, 83.1, 1.5, .29],
+  [10.4, 8.7, 2, .55, warmColors.yellow], [22.8, 78.2, 1.5, .52, warmColors.orange],
+  [43.3, 18.5, 2, .48, warmColors.red], [58.6, 54.9, 1.5, .5, warmColors.yellow],
+  [75.3, 70.4, 2, .52, warmColors.red], [91.2, 11.8, 1.5, .54, warmColors.orange],
 ] as const
 
 // Varied, quiet + stars, with just two larger diffraction spikes.
@@ -32,6 +37,8 @@ const crossStars = [
   [90.4, 77.6, 8, .34], [96.3, 29.5, 6, .32],
   [10.6, 22.1, 6, .3], [29.6, 55.4, 5, .28], [44.1, 28.3, 9, .34],
   [67.1, 75.2, 7, .32], [81.2, 87.1, 10, .34], [92.5, 7.8, 6, .3],
+  [9.4, 46.8, 7, .5, warmColors.yellow], [56.4, 72.8, 8, .48, warmColors.orange],
+  [85.7, 35.1, 6, .46, warmColors.red],
 ] as const
 
 export default function SpaceBackground() {
@@ -44,29 +51,29 @@ export default function SpaceBackground() {
         backgroundImage: 'radial-gradient(ellipse at 22% 12%, rgba(31,60,104,.32), transparent 65%), radial-gradient(ellipse at 85% 90%, rgba(18,40,79,.3), transparent 60%)',
       }}
     >
-      {stars.map(([left, top, size, opacity]) => (
+      {stars.map(([left, top, size, opacity, color = '#d6e6ff']) => (
         <Box
           key={`${left}-${top}`}
           component="span"
-          sx={{ position: 'absolute', borderRadius: '50%', bgcolor: '#d6e6ff' }}
-          style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, opacity, boxShadow: size === 2 ? '0 0 5px rgba(163,199,255,.25)' : undefined }}
+          sx={{ position: 'absolute', borderRadius: '50%', bgcolor: color }}
+          style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, opacity, boxShadow: size === 2 ? `0 0 5px ${color}40` : undefined }}
         />
       ))}
-      {crossStars.map(([left, top, size, opacity]) => (
+      {crossStars.map(([left, top, size, opacity, color = '#d6e6ff']) => (
         <Box
           key={`cross-${left}-${top}`}
           component="span"
           sx={{
             position: 'absolute',
-            filter: 'drop-shadow(0 0 2px rgba(163,199,255,.3))',
+            filter: `drop-shadow(0 0 2px ${color}4d)`,
             '&::before, &::after': { content: '""', position: 'absolute' },
             '&::before': {
               left: 0, top: '50%', width: '100%', height: '1px', transform: 'translateY(-50%)',
-              backgroundImage: 'linear-gradient(90deg, transparent, #d6e6ff 50%, transparent)',
+              backgroundImage: `linear-gradient(90deg, transparent, ${color} 50%, transparent)`,
             },
             '&::after': {
               left: '50%', top: 0, width: '1px', height: '100%', transform: 'translateX(-50%)',
-              backgroundImage: 'linear-gradient(transparent, #d6e6ff 50%, transparent)',
+              backgroundImage: `linear-gradient(transparent, ${color} 50%, transparent)`,
             },
           }}
           style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, opacity }}
