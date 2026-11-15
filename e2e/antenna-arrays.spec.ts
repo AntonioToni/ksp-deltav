@@ -30,6 +30,9 @@ async function openPlanner(page: Page) {
 
 async function choose(page: Page, label: string, option: string) {
   await combo(page, label).click()
+  const menu = page.getByRole('listbox', { name: label, exact: true })
+  await expect(menu).toBeVisible()
+  await expect(menu.locator('..')).toHaveCSS('opacity', '1')
   await page.getByRole('option', { name: option, exact: true }).click()
 }
 

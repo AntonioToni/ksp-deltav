@@ -311,7 +311,7 @@ line between the satellites and enough antenna range. A line just touching the
 body, or a distance exactly equal to maximum range, is marked at the limit. Two opposite relays cannot see each other through the body, regardless of
 how high their circular orbit is.
 
-**Neighbor signal** (**Neighbor Kerbalism signal** with a Kerbalism profile) is
+**Relay-to-relay signal** (**Relay-to-relay Kerbalism signal** with a Kerbalism profile) is
 the strength of a neighboring relay hop at the selected altitude, using the
 same loadout on every satellite. **Best surface-to-relay signal** is the
 strongest currently usable hop from the sample equatorial surface station to
@@ -320,7 +320,7 @@ weakest signal across all covered longitudes, the constellation's worst case,
 or an end-to-end DSN connection. A blocked or out-of-range hop contributes zero;
 a body without a surface has no station signal. Kerbalism profiles display
 `S^k`, with separate raw CommNet readouts for these hops in Advanced.
-With Kerbalism selected, **Neighbor science rate** uses the relay sender's
+With Kerbalism selected, **Relay-to-relay science rate** uses the relay sender's
 loadout. **Surface → relay rate** uses the surface client's loadout and its
 best currently usable station hop. These are local hop estimates, before any
 slower relay links farther along the path to the DSN.
@@ -723,7 +723,7 @@ enter your installation's exponent.
 ### Kerbalism science rates
 
 Kerbalism presets estimate the science bitrate of the selected outgoing hop.
-Network shows **Neighbor science rate** and **Surface → relay rate**. Signals
+Network shows **Relay-to-relay science rate** and **Surface → relay rate**. Signals
 uses the craft opposite the **Signal receiver** as the sender; changing the
 receiving direction changes which loadout supplies its base rate. Swapping
 endpoints moves the saved custom rates with their hardware. A DSN preset

@@ -95,6 +95,67 @@ test('starts new users in one Basic mode across all four tabs with essential res
   await expect(metric(page, 'signal-strength')).toHaveText('84.61%')
 })
 
+test('uses clear antenna and relay-link labels in both modes without flagging default settings', async ({ page }) => {
+  await openPlanner(page)
+  for (const radio of ['Stock CommNet', 'Kerbalism + CommNet']) {
+    await section(page, 'Network')
+    await choose(page, 'Radio setup', radio)
+    const kerbalism = radio === 'Kerbalism + CommNet'
+    const signal = await metric(page, 'relay-neighbor-signal').textContent()
+    const rate = kerbalism ? await metric(page, 'relay-neighbor-rate').textContent() : null
+    for (const mode of ['Advanced', 'Basic'] as const) {
+      await setMode(page, mode)
+      await expect(combo(page, 'Surface antenna')).toHaveText('Communotron 16')
+      await expect(planner(page).getByText(kerbalism ? 'Relay-to-relay Kerbalism signal' : 'Relay-to-relay signal', { exact: true })).toBeVisible()
+      await expect(metric(page, 'relay-neighbor-signal')).toHaveText(signal!)
+      if (kerbalism) {
+        await expect(planner(page).getByText('Relay-to-relay science rate', { exact: true })).toBeVisible()
+        await expect(metric(page, 'relay-neighbor-rate')).toHaveText(rate!)
+      } else {
+        await expect(metric(page, 'relay-neighbor-rate')).toHaveCount(0)
+      }
+      for (const name of ['Network', 'Deployment', 'Body data', 'Signals'] as const) {
+        await section(page, name)
+        await expect(button(page, 'View settings')).toHaveCount(0)
+        await expect(planner(page).getByRole('note').filter({ hasText: 'Custom advanced settings are active.' })).toHaveCount(0)
+      }
+      await section(page, 'Network')
+    }
+  }
+})
+
+test('shows advanced-setting notices only in affected tabs and clears them when defaults are restored', async ({ page }) => {
+  await openPlanner(page)
+  const defaultSignal = await metric(page, 'relay-neighbor-signal').textContent()
+  await setMode(page, 'Advanced')
+  await section(page, 'Body data')
+  await field(page, 'Range multiplier').fill('2')
+  await section(page, 'Network')
+  const customizedSignal = await metric(page, 'relay-neighbor-signal').textContent()
+  expect(customizedSignal).not.toBe(defaultSignal)
+  await setMode(page, 'Basic')
+  await expect(metric(page, 'relay-neighbor-signal')).toHaveText(customizedSignal!)
+  await expect(button(page, 'View settings')).toBeVisible()
+  await section(page, 'Deployment')
+  await expect(button(page, 'View settings')).toHaveCount(0)
+  await section(page, 'Body data')
+  await expect(button(page, 'View settings')).toBeVisible()
+  await section(page, 'Signals')
+  await expect(button(page, 'View settings')).toBeVisible()
+  const signal = await metric(page, 'signal-strength').textContent()
+  await button(page, 'View settings').click()
+  await expect(modeButton(page, 'Advanced')).toHaveAttribute('aria-pressed', 'true')
+  await expect(field(page, 'Range multiplier')).toHaveValue('2')
+  await expect(metric(page, 'signal-strength')).toHaveText(signal!)
+  await field(page, 'Range multiplier').fill('1')
+  await setMode(page, 'Basic')
+  for (const name of ['Signals', 'Body data', 'Deployment', 'Network'] as const) {
+    await section(page, name)
+    await expect(button(page, 'View settings')).toHaveCount(0)
+  }
+  await expect(metric(page, 'relay-neighbor-signal')).toHaveText(defaultSignal!)
+})
+
 test('remembers the selected mode after reopening, reloading, and changing planet packs', async ({ page }) => {
   await openPlanner(page)
   await setMode(page, 'Advanced')
@@ -179,6 +240,31 @@ test('continues applying a hidden clearance margin and keeps blocked deployment 
   await button(page, 'View settings').click()
   await expect(modeButton(page, 'Advanced')).toHaveAttribute('aria-pressed', 'true')
   await expect(field(page, 'Clearance margin')).toHaveValue('100')
+})
+
+test('makes a hidden Network clearance margin discoverable without resetting its calculation', async ({ page }) => {
+  await openPlanner(page)
+  await section(page, 'Deployment')
+  await setMode(page, 'Advanced')
+  await field(page, 'Clearance margin').fill('20')
+  await expect(metric(page, 'relay-deployment-status')).toHaveText('Orbit fits entered limits')
+  await section(page, 'Network')
+  const altitude = await field(page, 'Orbit altitude').inputValue()
+  const coverage = await metric(page, 'relay-coverage').textContent()
+  const signal = await metric(page, 'relay-neighbor-signal').textContent()
+  await setMode(page, 'Basic')
+  await expect(field(page, 'Orbit altitude')).toHaveValue(altitude)
+  await expect(metric(page, 'relay-coverage')).toHaveText(coverage!)
+  await expect(metric(page, 'relay-neighbor-signal')).toHaveText(signal!)
+  await expect(button(page, 'View settings')).toBeVisible()
+  await button(page, 'View settings').click()
+  await expect(modeButton(page, 'Advanced')).toHaveAttribute('aria-pressed', 'true')
+  await expect(planner(page).getByRole('tab', { name: 'Deployment', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(field(page, 'Clearance margin')).toHaveValue('20')
+  await field(page, 'Clearance margin').fill('10')
+  await section(page, 'Network')
+  await setMode(page, 'Basic')
+  await expect(button(page, 'View settings')).toHaveCount(0)
 })
 
 test('provides an Advanced entry point when a custom body has no required reference physics', async ({ page }) => {
@@ -342,19 +428,43 @@ test('retains receiver validation and lets Basic users correct a direct-only rec
   await expect(metric(page, 'signal-strength')).toHaveText('84.61%')
 })
 
-for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }, { width: 1280, height: 900 }, { width: 3440, height: 1440 }]) {
+for (const viewport of [{ width: 320, height: 568 }, { width: 375, height: 812 }, { width: 667, height: 375 }, { width: 1280, height: 900 }, { width: 3440, height: 1440 }]) {
   test(`keeps both complexity modes and all tabs usable at ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport)
     await openPlanner(page)
     const content = planner(page).locator('.MuiDialogContent-root')
-    for (const mode of ['Basic', 'Advanced'] as const) {
-      await setMode(page, mode)
-      for (const name of ['Network', 'Deployment', 'Body data', 'Signals'] as const) {
-        await section(page, name)
-        await expect(modeButton(page, mode)).toBeInViewport({ ratio: 1 })
-        await expect(button(page, 'Close')).toBeInViewport({ ratio: 1 })
-        expect(await content.evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(await content.evaluate(element => element.clientWidth + 1))
-        expect(await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight }))).toEqual(viewport)
+    for (const radio of ['Stock CommNet', 'Kerbalism + CommNet']) {
+      await section(page, 'Network')
+      await choose(page, 'Radio setup', radio)
+      for (const mode of ['Basic', 'Advanced'] as const) {
+        await setMode(page, mode)
+        for (const name of ['Network', 'Deployment', 'Body data', 'Signals'] as const) {
+          await section(page, name)
+          await expect(modeButton(page, mode)).toBeInViewport({ ratio: 1 })
+          await expect(button(page, 'Close')).toBeInViewport({ ratio: 1 })
+          if (name === 'Network') {
+            await expect(combo(page, 'Surface antenna')).toHaveText('Communotron 16')
+            const antennaText = await combo(page, 'Surface antenna').evaluate(element => {
+              const value = element.querySelector('span[title]')
+              if (!value) throw new Error('Surface antenna must display its selected name')
+              const text = document.createRange()
+              text.selectNodeContents(value)
+              const bounds = text.getBoundingClientRect()
+              const selectBounds = element.getBoundingClientRect()
+              const style = getComputedStyle(element)
+              return {
+                left: bounds.left,
+                right: bounds.right,
+                contentLeft: selectBounds.left + parseFloat(style.paddingLeft),
+                contentRight: selectBounds.right - parseFloat(style.paddingRight),
+              }
+            })
+            expect(antennaText.left, `${radio} ${mode}: antenna text starts inside the select`).toBeGreaterThanOrEqual(antennaText.contentLeft - 1)
+            expect(antennaText.right, `${radio} ${mode}: Communotron 16 fits without truncation`).toBeLessThanOrEqual(antennaText.contentRight + 1)
+          }
+          expect(await content.evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(await content.evaluate(element => element.clientWidth + 1))
+          expect(await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight }))).toEqual(viewport)
+        }
       }
     }
   })

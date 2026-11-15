@@ -271,8 +271,9 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     || numeric(minimumBitsPerSecond) !== DEFAULT_KERBALISM_MINIMUM_BITS_PER_SECOND))
   const advancedAntennaSettingsActive = [relayId, clientId, dsnId].some(id => id === 'array' || id === 'custom')
     || dsnId !== dsnLevels.at(-1)?.id
-  const networkSettingsActive = bodySettingsActive || advancedRadioSettingsActive || advancedAntennaSettingsActive
-  const deploymentSettingsActive = bodyOverrides || numeric(safetyMargin) !== 10
+  const clearanceSettingsActive = numeric(safetyMargin) !== 10
+  const networkSettingsActive = bodySettingsActive || advancedRadioSettingsActive || advancedAntennaSettingsActive || clearanceSettingsActive
+  const deploymentSettingsActive = bodyOverrides || clearanceSettingsActive
   const homeName = bodies.find(candidate => candidate.id === pack.transferHubBodyId)?.name ?? 'home'
 
   function invalidSettingsSection(fallback: RelayTab): RelayTab {
@@ -307,7 +308,8 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     const selectedName = value === 'array' ? `${summary} · Effective power ${range(arrayResult?.status === 'success' ? arrayResult.effectivePower : 0)}`
       : value === 'custom' ? 'Custom power' : unavailable ? `${unavailableName} (unavailable)` : options.find(option => option.id === value)?.name ?? ''
     const compactName = value === 'array' ? `Array (${arrayResult?.status === 'success' ? arrayResult.totalCount : '—'})`
-      : selectedName.replace(/^Communotron\s*/i, '').replace(/^DSN level\s*/i, 'Level ').replace('Custom power', 'Custom')
+      : value === 'communotron-16' ? selectedName
+        : selectedName.replace(/^Communotron\s*/i, '').replace(/^DSN level\s*/i, 'Level ').replace('Custom power', 'Custom')
     return <TextField select fullWidth size="small" label={label} value={value} error={unavailable || unavailableArray} onChange={event => { if (event.target.value !== 'array') setValue(event.target.value) }} helperText={<Box component="span" data-testid={`relay-${role ?? 'dsn'}-power`}>{unavailable ? 'Unavailable in this setup' : unavailableArray ? 'Edit array or restore its radio setup' : Number.isFinite(power) && power > 0 ? range(power) : 'Enter power'}</Box>} slotProps={{ select: { renderValue: () => <Box component="span" title={`${selectedName} · ${Number.isFinite(power) ? range(power) : 'Enter power'}`}>{compactName}</Box> } }} sx={fieldStyles}>
       {unavailable && <MenuItem value={value} disabled sx={{ fontSize: 13 }}>{unavailableName} (unavailable)</MenuItem>}
       {options.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 13 }}>{option.name}</MenuItem>)}
@@ -349,7 +351,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               {radioProfileOptions.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 13 }}>{option.name}</MenuItem>)}
             </TextField>
             <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>{advanced ? radioProfile.description : radioProfile.kerbalism ? 'Includes Kerbalism signal and science estimates.' : radioId === 'stock' ? 'Uses stock antenna ratings.' : 'Uses RSS antenna ratings.'}</Typography>
-            {!advanced && networkSettingsActive && <AdvancedSettingsNotice onOpen={() => openAdvanced(bodySettingsActive ? 'body' : 'network')} />}
+            {!advanced && networkSettingsActive && <AdvancedSettingsNotice onOpen={() => openAdvanced(bodySettingsActive ? 'body' : clearanceSettingsActive ? 'deployment' : 'network')} />}
             {advanced && dampingControls}
             {advanced && rateControls}
             <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, .7fr)', gap: .75 }}>
@@ -358,7 +360,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
                 {Array.from({ length: 11 }, (_, index) => index + 2).map(count => <MenuItem key={count} value={count} sx={{ fontSize: 13 }}>{count} relays</MenuItem>)}
               </TextField>
             </Box>
-            <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))', gap: 1 }}>
+            <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 145px), 1fr))', gap: 1 }}>
               {antennaField('Relay antenna', relayId, setRelayId, relayAntennas, 'relay')}
               {antennaField('Surface antenna', clientId, setClientId, clientAntennas, 'client')}
               {advanced && antennaField('DSN level', dsnId, setDsnId, dsnLevels)}
@@ -381,10 +383,10 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
                 <Metric label="Neighbor distance" value={distance(success.neighborDistanceM)} testId="relay-neighbor-distance" />
                 <Metric label="Orbital period" value={duration(success.orbitalPeriodS)} testId="relay-period" />
                 {advanced && <Metric label="Maximum relay-to-DSN range" value={range(success.dsnRangeM)} testId="relay-dsn-range" />}
-                <Metric label={radioProfile.kerbalism ? 'Neighbor Kerbalism signal' : 'Neighbor signal'} value={signalPercent(radioProfile.kerbalism ? success.neighborDampedStrength : success.neighborSignalStrength)} testId="relay-neighbor-signal" rawValue={advanced && radioProfile.kerbalism ? signalPercent(success.neighborSignalStrength) : undefined} rawTestId="relay-neighbor-raw-signal" />
+                <Metric label={radioProfile.kerbalism ? 'Relay-to-relay Kerbalism signal' : 'Relay-to-relay signal'} value={signalPercent(radioProfile.kerbalism ? success.neighborDampedStrength : success.neighborSignalStrength)} testId="relay-neighbor-signal" rawValue={advanced && radioProfile.kerbalism ? signalPercent(success.neighborSignalStrength) : undefined} rawTestId="relay-neighbor-raw-signal" />
                 <Metric label="Best surface-to-relay signal" value={success.bestStationSignalStrength === null ? 'No surface' : signalPercent((radioProfile.kerbalism ? success.bestStationDampedStrength : success.bestStationSignalStrength)!)} testId="relay-station-signal" rawValue={advanced && radioProfile.kerbalism && success.bestStationSignalStrength !== null ? signalPercent(success.bestStationSignalStrength) : undefined} rawTestId="relay-station-raw-signal" />
                 {radioProfile.kerbalism && <>
-                  <Metric label="Neighbor science rate" value={rateValue(relayBaseRate, neighborRate)} testId="relay-neighbor-rate" color="primary.light" />
+                  <Metric label="Relay-to-relay science rate" value={rateValue(relayBaseRate, neighborRate)} testId="relay-neighbor-rate" color="primary.light" />
                   <Metric label="Surface → relay rate" value={success.bestStationSignalStrength === null ? 'No surface' : rateValue(clientBaseRate, stationRate)} testId="relay-station-rate" color="primary.light" />
                 </>}
               </Box>

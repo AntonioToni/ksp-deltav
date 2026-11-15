@@ -192,6 +192,35 @@ test('stages reference-for-all and Restore recommended defaults separately from 
   await expect(atmosphereButton(page)).toHaveAttribute('data-assistance-state', 'default')
 })
 
+test('keeps narrow-screen footer actions clickable while reset tooltips are visible', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await munRoundTrip(page)
+  let appliedTotal = '6,840 m/s'
+  for (const step of [
+    { action: 'Use map budgets for all', method: 'reference', save: false, total: '6,840 m/s' },
+    { action: 'Use map budgets for all', method: 'reference', save: true, total: '10,240 m/s' },
+    { action: 'Restore recommended defaults', method: 'atmospheric', save: false, total: '10,240 m/s' },
+    { action: 'Restore recommended defaults', method: 'atmospheric', save: true, total: '6,840 m/s' },
+  ] as const) {
+    await openAtmosphere(page, 'Kerbin')
+    await expect(landingMethod(page, appliedTotal === '6,840 m/s' ? 'atmospheric' : 'reference')).toBeChecked()
+    const reset = atmosphereDialog(page).getByRole('button', { name: step.action, exact: true })
+    await reset.hover()
+    const tooltip = page.getByRole('tooltip')
+    await expect(tooltip).toBeVisible()
+    await expect(tooltip).toHaveCSS('pointer-events', 'none')
+    await reset.click()
+    await expect(landingMethod(page, step.method)).toBeChecked()
+    await expect(total(page)).toHaveText(appliedTotal)
+    await expect(tooltip).toBeVisible()
+    await atmosphereDialog(page).getByRole('button', { name: step.save ? 'Apply' : 'Cancel', exact: true }).click()
+    await expect(atmosphereDialog(page)).toBeHidden()
+    await expect(total(page)).toHaveText(step.total)
+    appliedTotal = step.total
+  }
+  await expect(atmosphereButton(page)).toHaveAttribute('data-assistance-state', 'default')
+})
+
 test('restores RSS and imported-pack reference budgets without adding the Kerbin default', async ({ page }) => {
   await button(page, 'RSS').click()
   await plan(page, 'rss:earth:orbit', 'rss:earth:surface')

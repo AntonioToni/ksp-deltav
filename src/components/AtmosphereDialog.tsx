@@ -168,12 +168,12 @@ function AtmosphereContent({ pack, plan, isBuiltIn, initialBodyId, onApply, onCl
         <Button size="small" onClick={() => setBodyId(invalidElsewhere.bodyId)} sx={{ minHeight: 32, fontSize: 11 }}>Review</Button>
       </Box>}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'max-content max-content' }, gap: .5, minWidth: 0, flex: { xs: '1 1 100%', sm: '0 1 auto' } }}>
-        <Tooltip describeChild title={referenceActionDescription}>
+        <Tooltip describeChild disableInteractive title={referenceActionDescription}>
           <Box component="span" sx={{ display: 'flex', minWidth: 0 }}>
             <Button size="small" disabled={!capabilities.length} aria-description={referenceActionDescription} onClick={() => setDraft(choices => choices.map(choice => ({ ...choice, capture: false, landingMethod: 'reference' })))} sx={{ minHeight: 40, minWidth: 0, width: '100%', px: .75, fontSize: 11, lineHeight: 1.3, whiteSpace: 'normal', textTransform: 'none' }}>Use map budgets for all</Button>
           </Box>
         </Tooltip>
-        <Tooltip describeChild title={defaultsActionDescription}>
+        <Tooltip describeChild disableInteractive title={defaultsActionDescription}>
           <Box component="span" sx={{ display: 'flex', minWidth: 0 }}>
             <Button size="small" disabled={!capabilities.length} aria-description={defaultsActionDescription} onClick={restoreDefaults} sx={{ minHeight: 40, minWidth: 0, width: '100%', px: .75, fontSize: 11, lineHeight: 1.3, whiteSpace: 'normal', textTransform: 'none' }}>Restore recommended defaults</Button>
           </Box>

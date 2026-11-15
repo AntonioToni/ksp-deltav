@@ -204,7 +204,7 @@ Damping settings are shared by both tabs. Reach and coverage still use raw
 CommNet geometry; the damped percentage and science bitrate are separate results.
 See [Kerbalism radio configuration](docs/RELAYS.md#kerbalism-radio-configuration).
 
-With a Kerbalism preset, **Neighbor science rate** and **Surface → relay rate**
+With a Kerbalism preset, **Relay-to-relay science rate** and **Surface → relay rate**
 estimate the selected local hops. Signals shows the sending endpoint's rate
 toward the chosen receiver. In Advanced, open **Science rate settings** and set **Antenna
 speed** to your game setting; the default is **1.5× (Normal)**.
