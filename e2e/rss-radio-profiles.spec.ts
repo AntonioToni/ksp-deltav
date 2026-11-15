@@ -67,7 +67,9 @@ test('defaults base RSS to scaled stock parts while keeping the conditional DSN 
   await expect(metric(page, 'relay-relay-power')).toHaveText('100 Mm')
   await expect(metric(page, 'relay-client-power')).toHaveText('10 Mm')
   await expect(metric(page, 'relay-dsn-power')).toHaveText('250 Gm')
+  await planner(page).getByText('Network assumptions', { exact: true }).click()
   await expect(planner(page).getByText(/RealAntennas and RemoteTech use different radio systems/)).toBeVisible()
+  await planner(page).getByText('Network assumptions', { exact: true }).click()
   // sqrt(100,000,000 × 250,000,000,000), with no additional range multiplier.
   await expect(metric(page, 'relay-dsn-range')).toHaveText('5 Gm')
   if (testInfo.project.name === 'desktop') await page.screenshot({ path: '/tmp/rss-radio-desktop.png', animations: 'disabled' })
