@@ -15,7 +15,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Allow dependency setup and the complete production browser suite to finish.
+    timeout-minutes: 25
     permissions:
       contents: read
       pages: read
