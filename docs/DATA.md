@@ -964,6 +964,16 @@ Shared base IDs and costs are preserved; the composer clones records instead of
 changing Stock or OPM. The base pack's direct-transfer estimates are inherited
 alongside its reference branches. All use pack version `1.1.8-map.4`.
 
+The **Kcalbeloh system** map view combines the Kcalbeloh, Maelg, Sunorc, and
+Aralc regions, including all **47 selectable Kcalbeloh states**. Kerbol remains
+available separately, and **All systems** shows the complete composition.
+Individual regional views provide close-ups. These diagrams are schematics;
+changing views does not add connections or alter maneuver costs, and mission
+routes continue to use the complete pack.
+The map shows the main connections by default and draws additional transfer
+lines when the selected route uses them. All priced routes remain available to
+the planner, and **Link allowances** still lists connections that need a budget.
+
 ### Sources, attribution, and supported settings
 
 The reference is Jason Kerman's official **Kcalbeloh System v1.1.8**, pinned to

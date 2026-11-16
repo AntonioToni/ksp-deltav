@@ -15,5 +15,11 @@ export function mapModeForViewport(width: number, height: number, wideLayout: Ma
   const usableWidth = Math.min(width, maximum.width)
   const usableHeight = Math.min(height, maximum.height)
   const ratio = usableWidth / usableHeight
+  const minimumDiameter = wideLayout.presentation === 'system' ? 28 : wideLayout.presentation === 'regional' ? 36 : 0
+  // Reflow the Kcalbeloh schematics before their type gets too small on a
+  // laptop. Larger desktops retain the full stellar branches.
+  if (minimumDiameter && 2 * wideLayout.radius * Math.min(usableWidth / wideLayout.width, usableHeight / wideLayout.height) < minimumDiameter) {
+    return ratio > 1.6 ? 'short' : 'portrait'
+  }
   return ratio > 2.8 ? 'short' : width < 600 || ratio < 1.15 ? 'portrait' : 'wide'
 }

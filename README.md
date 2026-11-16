@@ -151,11 +151,18 @@ remain usable for the session. Use **Export current pack** to save a copy or sta
 editing a new pack. See the [custom pack guide](docs/CUSTOM_PACKS.md) for the format
 and a small working example.
 
-With Kcalbeloh enabled, **Map view** switches between Kerbol, Kcalbeloh, Maelg,
-Sunorc, Aralc, or **All systems**. Routes still use the complete pack. Switching
-between Stock and OPM retains Kcalbeloh and the selected wormhole setting;
-choosing RSS disables the add-on. Use **Disable Kcalbeloh** in the manager to
-return to the base pack.
+With Kcalbeloh enabled, **Map view → Kcalbeloh system** brings Kcalbeloh, Maelg,
+Sunorc, and Aralc together in one continuous map. **Kerbol system** stays separate,
+while **All systems** includes both. Individual regional views remain available
+for a closer look, keeping related planets and moons together. Main connections stay
+visible; additional transfer lines appear when your selected route uses them.
+Changing views keeps your mission selections and budget;
+routes still use the complete pack. Use **System overview** from a close-up to
+return to the combined Kcalbeloh view.
+
+Switching between Stock and OPM retains Kcalbeloh and the selected wormhole
+setting; choosing RSS disables the add-on. Use **Disable Kcalbeloh** in the
+manager to return to the base pack.
 
 With **Wormholes** off, local routes remain available in both systems, but the
 supplied map has no Kerbol–Kcalbeloh connection. Local link allowances cannot

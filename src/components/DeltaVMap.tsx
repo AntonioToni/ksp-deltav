@@ -1,9 +1,9 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { keyframes } from '@emotion/react'
-import { Box, MenuItem, TextField, Typography } from '@mui/material'
+import { Box, Button, ListSubheader, MenuItem, TextField, Typography } from '@mui/material'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import type { ManeuverEdge, NodeKind, PlanetPack, RouteResult } from '../types/planner'
-import { arrowPosition, connectionPoints, createMapLayout, maneuverPoints, packForMapRegion, pathFromPoints } from './mapLayout'
+import { arrowPosition, connectionPoints, createMapLayout, hasKcalbelohSystemView, kcalbelohSystemViewId, maneuverPoints, packForMapRegion, pathFromPoints } from './mapLayout'
 import type { MapMode } from './mapLayout'
 import { mapModeForViewport, maximumMapSize } from './mapViewport'
 import { getAerobrakingEdges } from '../utils/aerobraking'
@@ -29,6 +29,7 @@ const waypointColor = '#8fcdbd'
 const aerobrakingColor = '#c6e8d8'
 const noWaypoints: readonly string[] = []
 const noAdjustments: ReadonlyMap<string, AtmosphericAdjustment> = new Map()
+const connectionKey = (from: string, to: string) => JSON.stringify([from, to].sort())
 const routeTravel = keyframes`
   from { stroke-dashoffset: var(--route-flow-from); }
   to { stroke-dashoffset: var(--route-flow-to); }
@@ -43,17 +44,29 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   const prefix = useId().replace(/:/g, '')
   const nodeById = useMemo(() => new Map(pack.nodes.map(node => [node.id, node])), [pack])
   const regions = pack.mapRegions ?? []
+  const hasSystemOverview = useMemo(() => hasKcalbelohSystemView(pack), [pack])
+  const localRegions = hasSystemOverview ? regions.filter(region => ['kcalbeloh', 'maelg', 'sunorc', 'aralc'].includes(region.id)) : []
   const focusedBodyId = focusNodeId ? nodeById.get(focusNodeId)?.bodyId : undefined
   const focusedRegion = regions.find(region => focusedBodyId && region.bodyIds.includes(focusedBodyId))
+  const focusedView = regionChoice.regionId === kcalbelohSystemViewId && localRegions.some(region => region.id === focusedRegion?.id)
+    ? regionChoice.regionId : focusedRegion?.id
   // The selection key lets a manual view choice survive unrelated renders,
   // while an endpoint/stop selected outside this view can reveal its region.
-  const regionId = regionChoice.packId !== pack.id ? regions[0]?.id ?? 'all'
-    : regionChoice.focusNodeId !== focusNodeId ? focusedRegion?.id ?? regionChoice.regionId
-      : regionChoice.regionId
+  const regionId = String(regionChoice.packId !== pack.id ? regions[0]?.id ?? 'all'
+    : regionChoice.focusNodeId !== focusNodeId ? focusedView ?? regionChoice.regionId
+      : regionChoice.regionId)
+  if (regionChoice.packId === pack.id && regionChoice.focusNodeId !== focusNodeId) {
+    setRegionChoice({ packId: pack.id, focusNodeId, regionId })
+  }
   const visiblePack = useMemo(() => packForMapRegion(pack, regionId), [pack, regionId])
   const wideLayout = useMemo(() => createMapLayout(visiblePack, 'wide'), [visiblePack])
   const layout = useMemo(() => mode === 'wide' ? wideLayout : createMapLayout(visiblePack, mode), [visiblePack, mode, wideLayout])
   const maximumSize = maximumMapSize(layout)
+  const compactLines = layout.presentation === 'overview'
+  const kcalbelohMap = layout.presentation === 'system' || layout.presentation === 'regional'
+  const isSystemOverview = hasSystemOverview && regionId === kcalbelohSystemViewId
+  const isCloseUp = localRegions.some(region => region.id === regionId)
+  const viewLabel = isSystemOverview ? 'Kcalbeloh system' : regions.find(region => region.id === regionId)?.label ?? 'All systems'
   useLayoutEffect(() => {
     const element = container.current
     if (!element) return
@@ -81,14 +94,14 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   const connectionGroups = useMemo(() => {
     const groups = new Map<string, ManeuverEdge[]>()
     for (const edge of visiblePack.maneuvers) {
-      if (edge.directTransfer && !routeEdges.has(edge.id)) continue
-      const pair = JSON.stringify([edge.from, edge.to].sort())
+      const pair = connectionKey(edge.from, edge.to)
+      if ((edge.directTransfer || layout.backgroundPairs && !layout.backgroundPairs.has(pair)) && !routeEdges.has(edge.id)) continue
       const group = groups.get(pair) ?? []
       group.push(edge)
       groups.set(pair, group)
     }
     return [...groups.values()]
-  }, [visiblePack, routeEdges])
+  }, [visiblePack, routeEdges, layout.backgroundPairs])
   // Preserve the flown order and repeated traversals. A set of selected edges
   // cannot distinguish a visit to a stop from the subsequent flight back.
   const routeFlow = useMemo(() => {
@@ -100,15 +113,17 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
     }))
   }, [route, visiblePack, layout])
   const flowKey = JSON.stringify([mode, regionId, routeFlow.period, routeFlow.runs.map(run => [run.startDistance, run.path])])
-  const unpricedConnections = (visiblePack.unpricedConnections ?? []).filter(connection => !visiblePack.maneuvers.some(edge =>
-    edge.id === `allowance:${connection.id}:forward` || edge.id === `allowance:${connection.id}:reverse`))
+  const unpricedConnections = (visiblePack.unpricedConnections ?? []).filter(connection =>
+    (!layout.backgroundPairs || layout.backgroundPairs.has(connectionKey(connection.from, connection.to)))
+    && !visiblePack.maneuvers.some(edge => edge.id === `allowance:${connection.id}:forward` || edge.id === `allowance:${connection.id}:reverse`))
   const routeRegions = route?.status === 'success' ? route.nodeIds.flatMap(id => {
     const bodyId = nodeById.get(id)?.bodyId
     const region = regions.find(candidate => bodyId && candidate.bodyIds.includes(bodyId))
     return region ? [region] : []
   }).filter((region, index, all) => region.id !== all[index - 1]?.id) : []
   const regionSummary = routeRegions.length ? `Route: ${routeRegions.map(region => region.label).join(' → ')}`
-    : regionId === 'all' ? 'All systems · Choose a system for a closer look.' : 'Routes use the whole map, whichever view you choose.'
+    : kcalbelohMap ? 'Select destinations to reveal extra transfer connections.'
+      : regionId === 'all' ? 'All systems · Choose a system for a closer look.' : 'Routes use the whole map, whichever view you choose.'
   const inspected = inspectedId ? visiblePack.nodes.find(node => node.id === inspectedId) : undefined
   const inspectedStops = inspected ? waypointIndexes.get(inspected.id) : undefined
 
@@ -118,6 +133,11 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
       setRegionChoice({ packId: pack.id, focusNodeId: id, regionId })
       onSelect(id)
     }
+  }
+
+  function changeView(next: string) {
+    setRegionChoice({ packId: pack.id, focusNodeId, regionId: next })
+    setInspectedId(null)
   }
 
   function edgeColor(edge: ManeuverEdge) {
@@ -145,22 +165,29 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
 
   return (
     <Box data-map-region={regions.length ? regionId : undefined} sx={{ position: 'relative', display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minWidth: 0, minHeight: 0, overflow: 'hidden' }} onMouseLeave={() => setInspectedId(null)}>
-      {regions.length > 0 && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, pt: .75, pb: .25, width: '100%', maxWidth: 1800, mx: 'auto', minWidth: 0, flexShrink: 0 }}>
-        <TextField select size="small" label="Map view" value={regionId} onChange={event => {
-          setRegionChoice({ packId: pack.id, focusNodeId, regionId: event.target.value })
-          setInspectedId(null)
-        }} sx={{ width: { xs: 152, sm: 190 }, flexShrink: 0, '& .MuiInputBase-root': { fontSize: 12, minHeight: 32, bgcolor: '#101b2fdd' }, '& .MuiInputLabel-root': { fontSize: 11 }, '& .MuiSelect-select': { py: .75 } }}>
-          {regions.map(region => <MenuItem key={region.id} value={region.id} sx={{ fontSize: 12 }}>{region.label}</MenuItem>)}
-          <MenuItem value="all" sx={{ fontSize: 12 }}>All systems</MenuItem>
+      {regions.length > 0 && <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' }, columnGap: 1, rowGap: .5, px: 1, pt: 1.25, pb: .25, width: '100%', maxWidth: 1800, mx: 'auto', minWidth: 0, flexShrink: 0 }}>
+        <TextField select size="small" label="Map view" value={regionId} onChange={event => changeView(event.target.value)} sx={{ width: { xs: 170, sm: 220 }, flexShrink: 0, '& .MuiInputBase-root': { fontSize: 13, minHeight: 36, bgcolor: '#101b2fdd' }, '& .MuiInputLabel-root': { fontSize: 13 }, '& .MuiSelect-select': { py: .75 } }}>
+          {hasSystemOverview ? [
+            <ListSubheader key="overviews" sx={{ fontSize: 12, lineHeight: '28px' }}>Overview</ListSubheader>,
+            ...regions.filter(region => !localRegions.includes(region)).map(region => <MenuItem key={region.id} value={region.id} sx={{ fontSize: 13 }}>{region.label}</MenuItem>),
+            <MenuItem key={kcalbelohSystemViewId} value={kcalbelohSystemViewId} sx={{ fontSize: 13 }}>Kcalbeloh system</MenuItem>,
+            <MenuItem key="all" value="all" sx={{ fontSize: 13 }}>All systems</MenuItem>,
+            <ListSubheader key="close-ups" sx={{ fontSize: 12, lineHeight: '28px' }}>Close-ups</ListSubheader>,
+            ...localRegions.map(region => <MenuItem key={region.id} value={region.id} sx={{ fontSize: 13 }}>{region.label}</MenuItem>),
+          ] : [
+            ...regions.map(region => <MenuItem key={region.id} value={region.id} sx={{ fontSize: 13 }}>{region.label}</MenuItem>),
+            <MenuItem key="all" value="all" sx={{ fontSize: 13 }}>All systems</MenuItem>,
+          ]}
         </TextField>
-        <Typography role="status" title={regionSummary} sx={{ fontSize: 10, lineHeight: 1.35, color: 'text.secondary', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{regionSummary}</Typography>
+        {isCloseUp && <Button size="small" onClick={() => changeView(kcalbelohSystemViewId)} title="Show Kcalbeloh, Maelg, Sunorc and Aralc together" sx={{ flexShrink: 0, minWidth: 0, minHeight: 32, px: .75, fontSize: 12, textTransform: 'none', whiteSpace: 'nowrap' }}>System overview</Button>}
+        <Typography role="status" title={regionSummary} sx={{ flexBasis: { xs: '100%', sm: 'auto' }, fontSize: 12, lineHeight: 1.4, color: 'text.secondary', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{regionSummary}</Typography>
       </Box>}
       <Box ref={container} data-map-viewport="true" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
       <Box
         component="svg"
         role="group"
         data-map-presentation={layout.presentation}
-        aria-label={regions.length ? `${regions.find(region => region.id === regionId)?.label ?? 'All systems'} Delta-V state map` : `${pack.bodies.find(body => body.kind === 'star')?.name ?? pack.name} system Delta-V state map`}
+        aria-label={regions.length ? `${viewLabel} Delta-V state map` : `${pack.bodies.find(body => body.kind === 'star')?.name ?? pack.name} system Delta-V state map`}
         viewBox={`0 0 ${layout.width} ${layout.height}`}
         preserveAspectRatio="xMidYMid meet"
         sx={{
@@ -182,7 +209,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           },
         }}
       >
-        <desc>Select a surface, orbit or flyby point for your origin or destination. Lines show maneuvers between those points. Bright lines mark your route; triangular markers show where an atmosphere may help.</desc>
+        <desc>Select a surface, orbit, reference or flyby point for your origin or destination. Lines show maneuvers between those points. Bright lines mark your route; triangular markers show where an atmosphere may help.</desc>
         <defs>
           <linearGradient id={`${prefix}-node-fill`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#303748" />
@@ -191,7 +218,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           <filter id={`${prefix}-glow`} x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5" /></filter>
         </defs>
 
-        {layout.panels?.map(panel => <g key={panel.id} data-map-panel={panel.id} pointerEvents="none">
+        {layout.presentation !== 'system' && layout.panels?.map(panel => <g key={panel.id} data-map-panel={panel.id} pointerEvents="none">
           <rect x={panel.x} y={panel.y} width={panel.width} height={panel.height} rx={18} fill="#13243a" fillOpacity={.34} stroke="#83aec8" strokeOpacity={.16} strokeWidth={1.5} />
           <rect x={panel.x + 20} y={panel.y + 18} width={4} height={20} rx={2} fill={panel.color} fillOpacity={.9} />
           <text x={panel.x + 36} y={panel.y + 34} fill="#cbddec" fontSize={24} fontWeight={500}>{panel.label}</text>
@@ -200,7 +227,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
         {unpricedConnections.map(connection => {
           const from = nodeById.get(connection.from)
           const to = nodeById.get(connection.to)
-          return from && to ? <path key={`unpriced-${connection.id}`} d={pathFromPoints(connectionPoints(from, to, layout, visiblePack))} fill="none" stroke="#ddbf91" strokeWidth={layout.presentation === 'overview' ? 5 : mode === 'portrait' ? 6 : 10} strokeOpacity={layout.presentation === 'overview' ? .45 : .6} strokeDasharray="14 12" strokeLinejoin="round" strokeLinecap="round" data-unpriced-id={connection.id}>
+          return from && to ? <path key={`unpriced-${connection.id}`} d={pathFromPoints(connectionPoints(from, to, layout, visiblePack))} fill="none" stroke="#ddbf91" strokeWidth={kcalbelohMap ? 6 : compactLines ? 5 : mode === 'portrait' ? 6 : 10} strokeOpacity={kcalbelohMap || compactLines ? .45 : .6} strokeDasharray="14 12" strokeLinejoin="round" strokeLinecap="round" data-unpriced-id={connection.id}>
             <title>{`Delta-V not supplied: ${connection.label}. Open Link allowances to add your estimate.`}</title>
           </path> : null
         })}
@@ -213,7 +240,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
             d={pathFromPoints(pointsFor(edge))}
             fill="none"
             stroke={edgeColor(edge)}
-            strokeWidth={layout.presentation === 'overview' ? 7 : mode === 'portrait' ? 9 : 15}
+            strokeWidth={kcalbelohMap ? 14 : compactLines ? 7 : mode === 'portrait' ? 9 : 15}
             strokeOpacity={routeEdges.size ? 0.25 : 0.46}
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -227,8 +254,8 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           const d = pathFromPoints(points)
           const color = edgeColor(edge)
           return <g key={edge.id}>
-            <path d={d} fill="none" stroke={color} strokeWidth={layout.presentation === 'overview' ? 19 : mode === 'portrait' ? 20 : 29} strokeOpacity={0.1} strokeLinejoin="round" strokeLinecap="round" pointerEvents="none" />
-            <path d={d} fill="none" stroke={color} strokeWidth={layout.presentation === 'overview' ? 11 : mode === 'portrait' ? 12 : 19} strokeOpacity={0.95} strokeLinejoin="round" strokeLinecap="round" data-edge-id={edge.id} data-route-edge="true" data-direct-transfer={edge.directTransfer ? 'true' : undefined} data-assisted={adjustments.has(edge.id) ? 'true' : undefined}><title>{edgeTitle(edge)}</title></path>
+            <path d={d} fill="none" stroke={color} strokeWidth={compactLines ? 19 : mode === 'portrait' ? 20 : 29} strokeOpacity={0.1} strokeLinejoin="round" strokeLinecap="round" pointerEvents="none" />
+            <path d={d} fill="none" stroke={color} strokeWidth={compactLines ? 11 : mode === 'portrait' ? 12 : 19} strokeOpacity={0.95} strokeLinejoin="round" strokeLinecap="round" data-edge-id={edge.id} data-route-edge="true" data-direct-transfer={edge.directTransfer ? 'true' : undefined} data-assisted={adjustments.has(edge.id) ? 'true' : undefined}><title>{edgeTitle(edge)}</title></path>
             <path d={d} fill="none" stroke="#ffffff" strokeWidth={1.5} strokeOpacity={0.16} strokeLinejoin="round" pointerEvents="none" />
           </g>
         })}
@@ -247,11 +274,11 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
             style={{ '--route-flow-from': `${run.startDistance + routeFlow.trailLength}px`, '--route-flow-to': `${run.startDistance + routeFlow.trailLength - routeFlow.period}px` } as CSSProperties}
           >
             <path className="route-flow-trail" d={run.path} data-flow-start={run.startDistance}
-              fill="none" stroke="#c5eaff" strokeWidth={layout.presentation === 'overview' ? 8 : mode === 'portrait' ? 9 : 13}
+              fill="none" stroke="#c5eaff" strokeWidth={compactLines ? 8 : mode === 'portrait' ? 9 : 13}
               strokeOpacity={.3} strokeDasharray={`${routeFlow.trailLength} ${routeFlow.period - routeFlow.trailLength}`}
               strokeLinecap="round" strokeLinejoin="round" />
             <path className="route-flow-trail" d={run.path} data-flow-start={run.startDistance}
-              fill="none" stroke="#f1faff" strokeWidth={layout.presentation === 'overview' ? 3 : mode === 'portrait' ? 3 : 4}
+              fill="none" stroke="#f1faff" strokeWidth={compactLines ? 3 : mode === 'portrait' ? 3 : 4}
               strokeOpacity={.9} strokeDasharray={`${routeFlow.trailLength} ${routeFlow.period - routeFlow.trailLength}`}
               strokeLinecap="round" strokeLinejoin="round" />
           </g>)}
@@ -277,15 +304,15 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           </g>
         })}
 
-        {layout.labels.map(({ body, x, y, anchor, maxWidth }) => <text
+        {layout.labels.map(({ body, x, y, anchor, maxWidth, displayName, fontSize = layout.labelFontSize, fontWeight = 500 }) => <text
           key={body.id} x={x} y={y} textAnchor={anchor}
           data-body-label={body.id}
-          fontSize={layout.labelFontSize}
-          textLength={maxWidth && body.name.length * layout.labelFontSize * 0.6 > maxWidth ? maxWidth : undefined}
+          fontSize={fontSize}
+          textLength={maxWidth && (displayName ?? body.name).length * fontSize * 0.6 > maxWidth ? maxWidth : undefined}
           lengthAdjust="spacingAndGlyphs"
-          fontWeight={500} fill={body.color} fillOpacity={0.93}
+          fontWeight={fontWeight} fill={body.color} fillOpacity={0.93}
           style={{ pointerEvents: 'none' }}
-        >{body.name}<title>{body.name}</title></text>)}
+        >{displayName ?? body.name}<title>{body.name}</title></text>)}
 
         {visiblePack.nodes.map(node => {
           const point = layout.nodePositions.get(node.id)
