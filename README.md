@@ -170,10 +170,10 @@ create that missing interstellar route. Disabling wormholes clears their entered
 allowance; enabling them again starts with that allowance blank. Other compatible
 allowances, endpoints, and stops are retained.
 
-When space allows, the desktop **All systems** overview places the Kerbol system
-above four labeled groups for Kcalbeloh, Maelg, Sunorc, and Aralc. This overview
-uses the screen's width in both combined configurations; regional views remain
-available for a closer look.
+The desktop **All systems** overview combines the familiar Kerbol map with the
+unified Kcalbeloh map. It adjusts their arrangement for the available screen
+shape and shows the actual wormhole connection when enabled. Regional views
+remain available for a closer look.
 
 Some Kcalbeloh connections have no published Delta-V budget. Open
 **Link allowances** from the Add-ons tab, or from the route status when a link is

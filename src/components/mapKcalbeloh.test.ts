@@ -257,6 +257,13 @@ describe.each([stockKcalbelohPack, opmKcalbelohPack, stockKcalbelohNoWormholesPa
     }
     expect(pack).toEqual(before)
   })
+
+  it.each(['wide', 'short'] as const)('fans Noira’s moon branches apart in the %s system view', mode => {
+    const layout = createMapLayout(packForMapRegion(pack, kcalbelohSystemViewId), mode)
+    const noira = layout.nodePositions.get('kcalbeloh:noira:orbit')!
+    expect(layout.nodePositions.get('kcalbeloh:norihc:orbit')!.x).toBeLessThan(noira.x)
+    expect(layout.nodePositions.get('kcalbeloh:noyreg:orbit')!.x).toBeGreaterThan(noira.x)
+  })
 })
 
 it('recognizes compatible renamed compositions without offering the combined view for unrelated or incomplete packs', () => {

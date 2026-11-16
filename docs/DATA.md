@@ -966,7 +966,10 @@ alongside its reference branches. All use pack version `1.1.8-map.4`.
 
 The **Kcalbeloh system** map view combines the Kcalbeloh, Maelg, Sunorc, and
 Aralc regions, including all **47 selectable Kcalbeloh states**. Kerbol remains
-available separately, and **All systems** shows the complete composition.
+available separately, and **All systems** reuses both system schematics in a
+desktop composition with uniform scaling. Shorter desktop viewports retain
+these schematics instead of switching to generic body columns. The only
+connection between them is the existing wormhole link, when enabled.
 Individual regional views provide close-ups. These diagrams are schematics;
 changing views does not add connections or alter maneuver costs, and mission
 routes continue to use the complete pack.

@@ -62,8 +62,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
   const wideLayout = useMemo(() => createMapLayout(visiblePack, 'wide'), [visiblePack])
   const layout = useMemo(() => mode === 'wide' ? wideLayout : createMapLayout(visiblePack, mode), [visiblePack, mode, wideLayout])
   const maximumSize = maximumMapSize(layout)
-  const compactLines = layout.presentation === 'overview'
-  const kcalbelohMap = layout.presentation === 'system' || layout.presentation === 'regional'
+  const kcalbelohMap = layout.presentation === 'system' || layout.presentation === 'regional' || layout.presentation === 'overview'
   const isSystemOverview = hasSystemOverview && regionId === kcalbelohSystemViewId
   const isCloseUp = localRegions.some(region => region.id === regionId)
   const viewLabel = isSystemOverview ? 'Kcalbeloh system' : regions.find(region => region.id === regionId)?.label ?? 'All systems'
@@ -218,16 +217,14 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           <filter id={`${prefix}-glow`} x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5" /></filter>
         </defs>
 
-        {layout.presentation !== 'system' && layout.panels?.map(panel => <g key={panel.id} data-map-panel={panel.id} pointerEvents="none">
-          <rect x={panel.x} y={panel.y} width={panel.width} height={panel.height} rx={18} fill="#13243a" fillOpacity={.34} stroke="#83aec8" strokeOpacity={.16} strokeWidth={1.5} />
-          <rect x={panel.x + 20} y={panel.y + 18} width={4} height={20} rx={2} fill={panel.color} fillOpacity={.9} />
-          <text x={panel.x + 36} y={panel.y + 34} fill="#cbddec" fontSize={24} fontWeight={500}>{panel.label}</text>
+        {layout.presentation === 'overview' && layout.panels?.map(panel => <g key={panel.id} data-map-panel={panel.id} pointerEvents="none">
+          {panel.heading && <text x={panel.heading.x} y={panel.heading.y} fill={panel.color} fontSize={28} fontWeight={600}>{panel.label}</text>}
         </g>)}
 
         {unpricedConnections.map(connection => {
           const from = nodeById.get(connection.from)
           const to = nodeById.get(connection.to)
-          return from && to ? <path key={`unpriced-${connection.id}`} d={pathFromPoints(connectionPoints(from, to, layout, visiblePack))} fill="none" stroke="#ddbf91" strokeWidth={kcalbelohMap ? 6 : compactLines ? 5 : mode === 'portrait' ? 6 : 10} strokeOpacity={kcalbelohMap || compactLines ? .45 : .6} strokeDasharray="14 12" strokeLinejoin="round" strokeLinecap="round" data-unpriced-id={connection.id}>
+          return from && to ? <path key={`unpriced-${connection.id}`} d={pathFromPoints(connectionPoints(from, to, layout, visiblePack))} fill="none" stroke="#ddbf91" strokeWidth={kcalbelohMap ? 6 : mode === 'portrait' ? 6 : 10} strokeOpacity={kcalbelohMap ? .45 : .6} strokeDasharray="14 12" strokeLinejoin="round" strokeLinecap="round" data-unpriced-id={connection.id}>
             <title>{`Delta-V not supplied: ${connection.label}. Open Link allowances to add your estimate.`}</title>
           </path> : null
         })}
@@ -240,7 +237,7 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
             d={pathFromPoints(pointsFor(edge))}
             fill="none"
             stroke={edgeColor(edge)}
-            strokeWidth={kcalbelohMap ? 14 : compactLines ? 7 : mode === 'portrait' ? 9 : 15}
+            strokeWidth={kcalbelohMap ? 14 : mode === 'portrait' ? 9 : 15}
             strokeOpacity={routeEdges.size ? 0.25 : 0.46}
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -254,8 +251,9 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
           const d = pathFromPoints(points)
           const color = edgeColor(edge)
           return <g key={edge.id}>
-            <path d={d} fill="none" stroke={color} strokeWidth={compactLines ? 19 : mode === 'portrait' ? 20 : 29} strokeOpacity={0.1} strokeLinejoin="round" strokeLinecap="round" pointerEvents="none" />
-            <path d={d} fill="none" stroke={color} strokeWidth={compactLines ? 11 : mode === 'portrait' ? 12 : 19} strokeOpacity={0.95} strokeLinejoin="round" strokeLinecap="round" data-edge-id={edge.id} data-route-edge="true" data-direct-transfer={edge.directTransfer ? 'true' : undefined} data-assisted={adjustments.has(edge.id) ? 'true' : undefined}><title>{edgeTitle(edge)}</title></path>
+            {kcalbelohMap && <path d={d} fill="none" stroke="#0c1629" strokeWidth={mode === 'portrait' ? 18 : 27} strokeLinejoin="round" strokeLinecap="round" pointerEvents="none" data-route-separation="true" />}
+            <path d={d} fill="none" stroke={color} strokeWidth={mode === 'portrait' ? 20 : 29} strokeOpacity={0.1} strokeLinejoin="round" strokeLinecap="round" pointerEvents="none" />
+            <path d={d} fill="none" stroke={color} strokeWidth={mode === 'portrait' ? 12 : 19} strokeOpacity={0.95} strokeLinejoin="round" strokeLinecap="round" data-edge-id={edge.id} data-route-edge="true" data-direct-transfer={edge.directTransfer ? 'true' : undefined} data-assisted={adjustments.has(edge.id) ? 'true' : undefined}><title>{edgeTitle(edge)}</title></path>
             <path d={d} fill="none" stroke="#ffffff" strokeWidth={1.5} strokeOpacity={0.16} strokeLinejoin="round" pointerEvents="none" />
           </g>
         })}
@@ -274,11 +272,11 @@ export default function DeltaVMap({ pack, startId, endId, waypointIds = noWaypoi
             style={{ '--route-flow-from': `${run.startDistance + routeFlow.trailLength}px`, '--route-flow-to': `${run.startDistance + routeFlow.trailLength - routeFlow.period}px` } as CSSProperties}
           >
             <path className="route-flow-trail" d={run.path} data-flow-start={run.startDistance}
-              fill="none" stroke="#c5eaff" strokeWidth={compactLines ? 8 : mode === 'portrait' ? 9 : 13}
+              fill="none" stroke="#c5eaff" strokeWidth={mode === 'portrait' ? 9 : 13}
               strokeOpacity={.3} strokeDasharray={`${routeFlow.trailLength} ${routeFlow.period - routeFlow.trailLength}`}
               strokeLinecap="round" strokeLinejoin="round" />
             <path className="route-flow-trail" d={run.path} data-flow-start={run.startDistance}
-              fill="none" stroke="#f1faff" strokeWidth={compactLines ? 3 : mode === 'portrait' ? 3 : 4}
+              fill="none" stroke="#f1faff" strokeWidth={mode === 'portrait' ? 3 : 4}
               strokeOpacity={.9} strokeDasharray={`${routeFlow.trailLength} ${routeFlow.period - routeFlow.trailLength}`}
               strokeLinecap="round" strokeLinejoin="round" />
           </g>)}

@@ -16,10 +16,16 @@ describe('comfortable map sizing', () => {
     }
   })
 
-  it.each([stockPack, opmPack, rssPack, stockKcalbelohPack, opmKcalbelohPack])('retains a wide layout on ultrawide and large desktop screens for $id', pack => {
+  it.each([stockPack, opmPack, rssPack, stockKcalbelohPack, opmKcalbelohPack])('retains designed layouts on ultrawide and large desktop screens for $id', pack => {
     const wide = createMapLayout(pack)
     for (const [width, height] of [[2560, 1220], [3440, 1220], [5120, 1220], [5120, 1940]]) {
-      expect(mapModeForViewport(width!, height!, wide)).toBe('wide')
+      const mode = mapModeForViewport(width!, height!, wide)
+      if (wide.presentation === 'overview') {
+        expect(mode).not.toBe('portrait')
+        expect(createMapLayout(pack, mode).presentation).toBe('overview')
+      } else {
+        expect(mode).toBe('wide')
+      }
     }
   })
 
@@ -57,12 +63,32 @@ describe('comfortable map sizing', () => {
     }
   })
 
-  it.each([stockKcalbelohPack, opmKcalbelohPack])('keeps the original five-panel $id overview mode selection unchanged', pack => {
+  it.each([stockKcalbelohPack, opmKcalbelohPack])('keeps both composed $id systems at desktop aspect ratios', pack => {
     const allSystems = createMapLayout(pack)
-    expect(allSystems.panels).toHaveLength(5)
-    expect(mapModeForViewport(1280, 500, allSystems)).toBe('wide')
-    expect(mapModeForViewport(1920, 840, allSystems)).toBe('wide')
-    expect(mapModeForViewport(3440, 1220, allSystems)).toBe('wide')
+    expect(allSystems.panels?.map(panel => panel.id)).toEqual(['kerbol', kcalbelohSystemViewId])
+    // Approximate the map area after the desktop header, mission controls and
+    // view selector. Mode choice must still compose both real schematics.
+    for (const [width, height] of [[1920, 1080], [1920, 720], [1280, 720], [2560, 1440], [3440, 1440]]) {
+      const mode = mapModeForViewport(width! - 48, height! - 240, allSystems)
+      expect(mode, `${width}×${height}`).not.toBe('portrait')
+      const layout = createMapLayout(pack, mode)
+      expect(layout.presentation, `${width}×${height}`).toBe('overview')
+      expect(layout.panels?.map(panel => panel.id)).toEqual(['kerbol', kcalbelohSystemViewId])
+      expect(layout.panelContents?.get(kcalbelohSystemViewId)?.layout.presentation).toBe('system')
+      expect(layout.nodePositions.size).toBe(pack.nodes.length)
+    }
     expect(mapModeForViewport(375, 500, allSystems)).toBe('portrait')
+  })
+
+  it.each([stockKcalbelohPack, opmKcalbelohPack])('preserves the compact mobile landscape schematic for $id', pack => {
+    const overview = createMapLayout(pack)
+    expect(mapModeForViewport(375, 500, overview)).toBe('portrait')
+    expect(mapModeForViewport(667, 120, overview)).toBe('compact')
+    const compact = createMapLayout(pack, 'compact')
+    expect(compact.presentation).toBe('generated')
+    expect(compact.mode).toBe('short')
+    expect(compact.nodePositions.size).toBe(pack.nodes.length)
+    expect(new Set(compact.nodePositions.keys())).toEqual(new Set(pack.nodes.map(node => node.id)))
+    expect(new Set([...compact.nodePositions.values()].map(point => `${point.x},${point.y}`)).size).toBe(pack.nodes.length)
   })
 })
