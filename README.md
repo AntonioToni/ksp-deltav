@@ -64,6 +64,9 @@ with Stock or OPM.
   it does not connect different star systems or model wormholes.
 - **Mixed antenna arrays** with separate relay, surface-client, and interplanetary
   endpoint loadouts, using stock antenna combining rules.
+- **Probes Before Crew radio profiles** for PBC 3.3.2, with its individual
+  antenna powers and optional Kerbalism support. Set the DSN modifier separately
+  to match your save; PBC's recommended 0.35× is optional.
 - **Kerbalism science-rate estimates** for individual local and interplanetary
   links. See how antenna choices and Kerbalism's transmission efficiency affect
   science transmission, with editable antenna speed and minimum science rate.
@@ -195,7 +198,7 @@ with either base system and wormhole setting. In Advanced, **Restore preset**
 returns edited body data to the reference values. The
 [relay guide](docs/RELAYS.md) explains the calculations and supported data.
 
-**Radio setup** selects Stock CommNet, either RSS configuration, or the explicit
+**Radio setup** selects Stock CommNet, either RSS configuration, PBC, or the explicit
 **Kerbalism + CommNet**, **Kerbalism + RSS**, and **Kerbalism + RSS + CBK** presets
 for Kerbalism 3.44. RSS maps start with RSS antenna powers (20× stock) and stock
 DSN powers; select a CustomBarnKit option if your installation includes its RSS
@@ -211,7 +214,17 @@ Damping settings are shared by both tabs. Reach and coverage still use raw
 CommNet geometry; transmission efficiency and science rate are separate results.
 See [Kerbalism radio configuration](docs/RELAYS.md#kerbalism-radio-configuration).
 
-With a Kerbalism preset, **Relay-to-relay science rate** and **Surface → relay rate**
+Choose **Probes Before Crew + CommNet** or **Probes Before Crew + Kerbalism**
+explicitly for PBC **3.3.2** with Community Tech Tree. PBC changes individual
+antenna powers; it does not apply a universal multiplier or change DSN powers.
+In Advanced, **DSN modifier** starts at **1×**; enter PBC's recommended **0.35×**
+only if that matches your save. The modifier is shared by Network and Signals
+and also updates automatic Kerbalism calibration. Planet-pack selection does
+not enable PBC, and no combined PBC + RSS installation is modeled. See the
+[PBC radio guide](docs/RELAYS.md#probes-before-crew-radio-configuration) for the
+pinned sources, antenna table, and compatibility limits.
+
+With a Kerbalism preset, **Relay-to-relay science rate** and **Surface-to-relay science rate**
 estimate the selected local hops. Signals shows the sending endpoint's rate
 toward the chosen receiver. In Advanced, open **Science rate settings** and set **Antenna
 speed** to your game setting; the default is **1.5× (Normal)**.

@@ -419,6 +419,85 @@ overhauls or an arbitrary RSS/RO/RP-1 installation. RealAntennas and RemoteTech
 remain unsupported. See the [RSS radio note](RELAYS.md#rss-radio-configuration)
 for profile selection and installation assumptions.
 
+### Probes Before Crew radio configuration — 17 November 2026
+
+The PBC radio profiles use the official community-maintained **v3.3.2 stable
+release**, pinned to commit `85eafa7e7b26723cc48d86e53d5d178a3e3d3d99`.
+The source audit includes the
+[core antenna assignments](https://github.com/Moonlington/ProbesBeforeCrew/blob/85eafa7e7b26723cc48d86e53d5d178a3e3d3d99/GameData/ProbesBeforeCrew/_Core/Zs_ProbesBeforeCrew.cfg#L396),
+[Kerbalism compatibility patch](https://github.com/Moonlington/ProbesBeforeCrew/blob/85eafa7e7b26723cc48d86e53d5d178a3e3d3d99/GameData/ProbesBeforeCrew/Mod%20Support/ZsKerbalismPatch.cfg#L50),
+and the actual DSN recommendation in the bundled
+[Readme.txt](https://github.com/Moonlington/ProbesBeforeCrew/blob/85eafa7e7b26723cc48d86e53d5d178a3e3d3d99/GameData/ProbesBeforeCrew/Readme.txt#L22).
+
+The core patches require `CommunityTechTree` and run in
+`FOR[ProbesBeforeCrew]`. They set individual transmitter powers, rather than
+one common multiplier, and leave antenna types, combinability, and exponents
+unchanged. The [antenna comparison table](RELAYS.md#probes-before-crew-radio-configuration)
+records every supported part; the HG-5 identity represents
+`HighGainAntenna5_v2`. Catalog and array fixtures retain stable part identities,
+direct/relay restrictions, and final custom powers across radio-profile changes.
+
+PBC **recommends** a DSN modifier of **0.35** but does not apply it in its
+configuration patches. The planner therefore starts at 1 and applies an
+explicit Advanced setting only to PBC's DSN presets. At 0.35 these become
+**0.7 / 17.5 / 87.5 Gm**. Custom final DSN powers bypass this setting; the
+separate range multiplier still acts once on the geometric-mean link distance.
+The automatic Kerbalism calibration uses this effective maximum DSN reference:
+its pinned `Sim.cs` calls `GetDSNRange(1f)`, whose modifier behavior is
+corroborated by the official
+[CustomBarnKit implementation](https://github.com/sarbian/CustomBarnKit/blob/9ab647be4406dbb5952934ea5162b657688569d5/CustomGameVariables.cs#L612).
+
+Kerbalism's pinned **3.44** science patches run later in the
+`zzzKerbalismDefault` passes. They reset the packet interval to 1 and assign
+the fixed per-part rates already used by the planner. PBC's earlier 16-S
+packet interval/resource-cost edits therefore do not change its effective
+Kerbalism science rate. The PBC Kerbalism patch changes only Communotron 8's
+technology placement; its power stays 250,000 m. Existing raw strength,
+transmission efficiency, byte-rate display, and bit-valued minimum configuration
+retain the same calculation model.
+
+Independent numerical references, with range multiplier 1 and no blocking:
+
+| PBC reference configuration | Expected value |
+| --- | ---: |
+| Four HG-5 antennas on one craft, `20 Mm × 4^0.75` | 56,568,542.494924 m effective power |
+| Two Communotron 16 antennas | 2,000,000 m effective power |
+| Two noncombinable Communotron 16-S antennas | 250,000 m effective power |
+| HG-5 to Communotron 16 | 4,472,135.955 m maximum range |
+| HG-5 to DSN level 3, modifier 1 | 2,236,067,977.499790 m maximum range |
+| HG-5 to DSN level 3, modifier 0.35 | 1,322,875,655.532295 m maximum range |
+| Kerbin, 800 km altitude, 3 HG-5 relays | 2,424,871.130596 m neighbor distance; 95.9464560562% raw strength |
+| Stock home orbit, maximum DSN 250 Gm | Automatic `k = 6.009182065257` |
+| Same home orbit, maximum DSN 87.5 Gm | Automatic `k = 0.770706468870` |
+| Above local HG-5 link, Kerbalism speed 1.5, DSN modifier 1 | 77.9845582425% efficiency; 5,263.957681 B/s |
+| Same local link, DSN modifier 0.35 | 96.8611422535% efficiency; 6,538.127102 B/s |
+
+The two last cases keep raw local signal identical. The changed DSN reference
+affects automatic Kerbalism calibration, rather than local CommNet reach or
+coverage. With automatic `k < 1`, transmission efficiency can exceed the raw
+signal percentage; no clamp is added. A custom damping exponent remains
+independent of that calibration.
+
+`src/data/pbcRadioProfiles.test.ts` covers the pinned catalogs, array rules,
+DSN presets, calibration, directed signal links, and science-rate references.
+`e2e/pbc-radio-profiles.spec.ts` checks those results through the production UI,
+including saved arrays/custom powers, profile switches, unavailable antennas,
+Basic/Advanced state, invalid-setting recovery, and the 375 px layout.
+
+The 17 November validation run passed **1,487 unit tests**, lint, TypeScript,
+and the production build. Browser coverage accounted for all **820 collected
+desktop/mobile cases**: **819 passed**, including all 18 new PBC cases, and one
+existing desktop-artifact case intentionally skipped its mobile run. The mobile
+suite resumed after an environment reconnect stopped the local preview; the
+interrupted connection errors cleared after restarting it. No product failures
+remained.
+
+PBC is explicitly selected and is not inferred from OPM, Kcalbeloh, RSS, or
+custom body data. No compound PBC + RSS profile is supplied. This source audit
+does not establish compatibility with RemoteTech, RealAntennas, later user
+patches, additional part catalogs, or alternative Kerbalism science settings.
+It does not model technology progression, ElectricCharge, or a full path home.
+
 ### Interplanetary signal references — 12 November 2026
 
 The single-link signal model uses the existing pinned Stock, OPM, RSS, and

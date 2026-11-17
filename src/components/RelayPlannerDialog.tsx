@@ -9,7 +9,7 @@ import type { CelestialBody, PlanetPack } from '../types/planner'
 import {
   commNetSources, findRelayBodyPreset,
 } from '../data/commnet'
-import { defaultRadioProfileId, getRadioProfile, radioProfileOptions, type RadioProfileId } from '../data/radioProfiles'
+import { defaultRadioProfileId, getEffectiveDsnLevels, getRadioProfile, radioProfileOptions, type RadioProfileId } from '../data/radioProfiles'
 import { getKerbalismHomeOrbitRadiusM, getKerbalismRadioProfileId } from '../data/kerbalism'
 import { calibrateKerbalismDamping } from '../utils/signalStrength'
 import { calculateAntennaArray, type AntennaArrayEntry, type AntennaArrayRole } from '../utils/antennaArray'
@@ -31,6 +31,7 @@ import KerbalismDampingControls, { type KerbalismDampingMode } from './Kerbalism
 import KerbalismRateControls from './KerbalismRateControls'
 import UnavailableAntennaAlert from './UnavailableAntennaAlert'
 import ScienceRateField from './ScienceRateField'
+import DsnModifierControls, { DsnModifierWarning } from './DsnModifierControls'
 
 interface RelayPlannerDialogProps {
   open: boolean
@@ -140,13 +141,16 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const usesRssBodyData = preset?.sourceId === 'commnet-rss-bodies'
   const [radioId, setRadioId] = useState<RadioProfileId>(() => defaultRadioProfileId(pack.id))
   const radioProfile = getRadioProfile(radioId)
-  const { relayAntennas, clientAntennas, vesselAntennas, dsnLevels } = radioProfile
+  const { relayAntennas, clientAntennas, vesselAntennas } = radioProfile
+  const [dsnModifier, setDsnModifier] = useState('1')
+  const dsnLevels = getEffectiveDsnLevels(radioProfile, numeric(dsnModifier))
+  const dsnSettingsValid = dsnLevels.every(level => Number.isFinite(level.power) && level.power > 0)
   const [dampingMode, setDampingMode] = useState<KerbalismDampingMode>('automatic')
   const [customExponent, setCustomExponent] = useState('6')
   const homeOrbitRadiusM = getKerbalismHomeOrbitRadiusM(pack)
   const maximumDsnPowerM = dsnLevels.at(-1)?.power ?? NaN
   const calibration = calibrateKerbalismDamping(homeOrbitRadiusM, maximumDsnPowerM)
-  const dampingExponent = radioProfile.kerbalism ? dampingMode === 'automatic' ? calibration.exponent : numeric(customExponent) : 1
+  const dampingExponent = radioProfile.kerbalism ? dampingMode === 'automatic' ? dsnSettingsValid ? calibration.exponent : NaN : numeric(customExponent) : 1
   const dampingControls = radioProfile.kerbalism ? <KerbalismDampingControls mode={dampingMode} customExponent={customExponent} onModeChange={setDampingMode} onExponentChange={setCustomExponent} calibration={calibration} homeOrbitRadiusM={homeOrbitRadiusM} maximumDsnPowerM={maximumDsnPowerM} /> : null
   const [antennaSpeed, setAntennaSpeed] = useState(String(DEFAULT_KERBALISM_ANTENNA_SPEED))
   const [minimumBitsPerSecond, setMinimumBitsPerSecond] = useState(String(DEFAULT_KERBALISM_MINIMUM_BITS_PER_SECOND))
@@ -269,8 +273,9 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
   const bodySettingsActive = bodyOverrides || numeric(rangeMultiplier) !== 1 || input.occlusionFactor !== 1
   const advancedRadioSettingsActive = Boolean(radioProfile.kerbalism && (dampingMode !== 'automatic'
     || numeric(antennaSpeed) !== DEFAULT_KERBALISM_ANTENNA_SPEED
-    || numeric(minimumBitsPerSecond) !== DEFAULT_KERBALISM_MINIMUM_BITS_PER_SECOND))
-  const advancedAntennaSettingsActive = [relayId, clientId, dsnId].some(id => id === 'array' || id === 'custom')
+    || numeric(minimumBitsPerSecond) !== DEFAULT_KERBALISM_MINIMUM_BITS_PER_SECOND
+    || radioProfile.pbc && numeric(dsnModifier) !== 1))
+  const advancedAntennaSettingsActive = Boolean(radioProfile.pbc && numeric(dsnModifier) !== 1) || [relayId, clientId, dsnId].some(id => id === 'array' || id === 'custom')
     || dsnId !== dsnLevels.at(-1)?.id
   const clearanceSettingsActive = numeric(safetyMargin) !== 10
   const networkSettingsActive = bodySettingsActive || advancedRadioSettingsActive || advancedAntennaSettingsActive || clearanceSettingsActive
@@ -343,7 +348,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     </Tabs>
     <DialogContent sx={{ p: 1.5, minWidth: 0, minHeight: 0, overflowY: 'auto', [compact]: { pb: 1 } }}>
       <Box role="tabpanel" id="relay-signals-panel" aria-labelledby="relay-signals-tab" hidden={tab !== 'signals'} sx={{ display: tab === 'signals' ? 'block' : 'none', minWidth: 0 }}>
-        {signalsOpened && <InterplanetaryPlanner pack={pack} initialBodyId={initialBodyId} radioId={radioId} onRadioChange={setRadioId} rangeMultiplier={rangeMultiplier} onRangeMultiplierChange={setRangeMultiplier} dampingExponent={dampingExponent} dampingControls={dampingControls} antennaSpeed={numeric(antennaSpeed)} minimumBitsPerSecond={numeric(minimumBitsPerSecond)} rateControls={rateControls} mode={mode} onOpenAdvanced={() => openAdvanced('signals')} advancedRadioSettingsActive={advancedRadioSettingsActive} />}
+        {signalsOpened && <InterplanetaryPlanner pack={pack} initialBodyId={initialBodyId} radioId={radioId} onRadioChange={setRadioId} dsnModifier={dsnModifier} onDsnModifierChange={setDsnModifier} rangeMultiplier={rangeMultiplier} onRangeMultiplierChange={setRangeMultiplier} dampingExponent={dampingExponent} dampingControls={dampingControls} antennaSpeed={numeric(antennaSpeed)} minimumBitsPerSecond={numeric(minimumBitsPerSecond)} rateControls={rateControls} mode={mode} onOpenAdvanced={() => openAdvanced('signals')} advancedRadioSettingsActive={advancedRadioSettingsActive} />}
       </Box>
       <Box sx={{ display: tab === 'signals' || !body ? 'none' : 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1.5, alignItems: 'start', '@media (min-width: 600px)': { gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' } }}>
         <Box role={tab === 'signals' ? undefined : 'tabpanel'} id={tab === 'signals' ? undefined : `relay-${tab}-panel`} aria-labelledby={tab === 'signals' ? undefined : `relay-${tab}-tab`} sx={{ minWidth: 0, containerType: 'inline-size' }}>
@@ -351,8 +356,9 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
             <TextField select fullWidth size="small" label="Radio setup" value={radioId} onChange={event => setRadioId(event.target.value as RadioProfileId)} sx={fieldStyles}>
               {radioProfileOptions.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 13 }}>{option.name}</MenuItem>)}
             </TextField>
-            <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>{advanced ? radioProfile.description : radioProfile.kerbalism ? 'Includes transmission efficiency and science-rate estimates.' : radioId === 'stock' ? 'Uses stock antenna ratings.' : 'Uses RSS antenna ratings.'}</Typography>
+            <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>{advanced || radioProfile.pbc ? radioProfile.description : radioProfile.kerbalism ? 'Includes transmission efficiency and science-rate estimates.' : radioId === 'stock' ? 'Uses stock antenna ratings.' : 'Uses RSS antenna ratings.'}</Typography>
             {!advanced && networkSettingsActive && <AdvancedSettingsNotice onOpen={() => openAdvanced(bodySettingsActive ? 'body' : clearanceSettingsActive ? 'deployment' : 'network')} />}
+            {!dsnSettingsValid && <DsnModifierWarning onEdit={!advanced ? () => openAdvanced('network') : undefined} />}
             {advanced && dampingControls}
             {advanced && rateControls}
             <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, .7fr)', gap: .75 }}>
@@ -366,6 +372,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               {antennaField('Surface antenna', clientId, setClientId, clientAntennas, 'client')}
               {advanced && antennaField('DSN level', dsnId, setDsnId, dsnLevels)}
             </Box>
+            {advanced && radioProfile.pbc && <DsnModifierControls value={dsnModifier} onChange={setDsnModifier} />}
             {advanced && (relayId === 'custom' || clientId === 'custom' || dsnId === 'custom') && <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', columnGap: .75, rowGap: 1.5 }}>
               {relayId === 'custom' && <NumericField label="Relay power" value={relayCustomPower} onChange={setRelayCustomPower} unit="m" min={Number.MIN_VALUE} />}
               {clientId === 'custom' && <NumericField label="Surface power" value={clientCustomPower} onChange={setClientCustomPower} unit="m" min={Number.MIN_VALUE} />}
@@ -482,7 +489,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
               <Box component="summary">Body data and radio sources</Box>
               <Stack spacing={.75} sx={{ mt: .5 }}>
                 {source && <Link href={source.url} target="_blank" rel="noreferrer" sx={{ fontSize: 12, lineHeight: 1.45, overflowWrap: 'anywhere' }}>{source.title}</Link>}
-                {radioProfile.sources.filter(reference => reference.id.startsWith('commnet-rss-') || reference.id.startsWith('commnet-kerbalism-')).map(reference => <Link key={reference.id} href={reference.url} target="_blank" rel="noreferrer" sx={{ fontSize: 12, lineHeight: 1.45, overflowWrap: 'anywhere' }}>{reference.title}</Link>)}
+                {radioProfile.sources.filter(reference => reference.id.startsWith('commnet-rss-') || reference.id.startsWith('commnet-kerbalism-') || reference.id.startsWith('commnet-pbc-')).map(reference => <Link key={reference.id} href={reference.url} target="_blank" rel="noreferrer" sx={{ fontSize: 12, lineHeight: 1.45, overflowWrap: 'anywhere' }}>{reference.title}</Link>)}
                 {!source && <Typography sx={{ fontSize: 12, lineHeight: 1.45 }}>No built-in body source is available. These body values are supplied by you.</Typography>}
               </Stack>
             </Box>

@@ -100,7 +100,7 @@ On Linux CI machines that also need browser system dependencies, use
 | Custom pack import, export, and selection | `src/components/PlanetPacksDialog.tsx` |
 | Per-body atmospheric options and landing inputs | `src/components/AtmosphereDialog.tsx` |
 | CommNet presets and body reference constants | `src/data/commnet.ts` |
-| Stock/RSS/Kerbalism CommNet profiles and conditional CustomBarnKit DSN powers | `src/data/radioProfiles.ts` |
+| Stock/RSS/PBC/Kerbalism CommNet profiles and effective DSN presets | `src/data/radioProfiles.ts` |
 | Raw signal strength, Kerbalism damping, and automatic calibration | `src/utils/signalStrength.ts` |
 | Reviewed Kerbalism home-orbit reference and compatible recovery profile | `src/data/kerbalism.ts` |
 | Pinned Kerbalism science rates and single-hop rate calculation | `src/data/kerbalismRates.ts`, `src/utils/kerbalismBitrate.ts` |
@@ -481,14 +481,25 @@ affect Enceladus and Miranda.
 
 `radioProfiles.ts` keeps radio setup separate from physical body presets. The
 exact built-in `rss` pack defaults to the `rss` profile; other pack IDs default
-to `stock`. Users can select any profile independently. The six immutable
+to `stock`. Users can select any profile independently. The eight immutable
 catalogs are Stock CommNet, RSS without CustomBarnKit, RSS + CustomBarnKit, and
-the corresponding Kerbalism 3.44 variants. RSS profiles multiply vessel powers
+the corresponding Kerbalism 3.44 variants, plus PBC and PBC + Kerbalism.
+RSS profiles multiply vessel powers
 by 20 while preserving antenna IDs and combining metadata. Only CustomBarnKit
 profiles substitute DSN powers of 5e9/5e11/5e13 m; bare RSS retains stock DSN
 powers. Normal occlusion uses the active profile's factors (Stock 0.75/0.9,
 RSS 1/1), while the default
 Full radius option remains 1. The range multiplier starts at 1 independently.
+
+PBC 3.3.2 catalogs use per-part overrides from the pinned
+`CommunityTechTree`-dependent core patch, not a global scale. PBC's DSN modifier
+starts at 1; `getEffectiveDsnLevels` applies the user-selected value once to
+PBC station presets and leaves other profiles unchanged. Network, Signals, and
+automatic Kerbalism calibration use that same effective preset catalog. Custom
+final powers bypass it. The shared modifier draft survives profile changes but
+only affects PBC profiles; non-default and invalid active settings remain
+discoverable from Basic. PBC + Kerbalism preserves the fixed 3.44 science rates.
+See the [pinned PBC source and ordering notes](RELAYS.md#probes-before-crew-radio-configuration).
 
 Kerbalism variants add Communotron 8 as a direct, combinable antenna with
 250,000 m power and exponent 1 (5,000,000 m under RSS). It is excluded from
@@ -509,7 +520,8 @@ selected factor without feeding it into link status, range, coverage, or
 deployment calculations. Exponents below 1 are valid and are not clamped.
 
 The automatic 3.44 calibration uses the reviewed homeworld orbital radius and
-the active radio profile's maximum DSN power, not the selected DSN level or
+the active radio profile's effective maximum DSN power, including PBC's chosen
+DSN modifier, not the selected DSN level or
 pair range. `getKerbalismHomeOrbitRadiusM` obtains a reviewed home reference
 from the built-in signal catalog; an unfamiliar custom pack returns `null`.
 The helper tries `2`, `1.5`, `1`, `0.75`, `0.5`, and `0.25 AU`, accepts raw
@@ -551,7 +563,7 @@ offers a compatible Kerbalism profile plus an available replacement or array
 edit action. An array row is not silently removed when its model is unavailable.
 Changing body within a pack preserves the profile, and the existing pack key
 resets the complete relay session on pack changes. Profile sources pin the
-official RSS range patch, CommNet defaults, and Kerbalism part/adapter sources;
+official RSS and PBC patches, CommNet defaults, and Kerbalism part/adapter sources;
 the [relay guide](RELAYS.md#rss-radio-configuration)
 records the installation assumptions. RealAntennas and RemoteTech remain outside
 this model.

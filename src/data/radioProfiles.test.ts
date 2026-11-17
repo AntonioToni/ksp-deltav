@@ -22,7 +22,7 @@ describe('CommNet installation profiles', () => {
       expect(defaultRadioProfileId(packId)).toBe('stock')
     }
     expect(radioProfileOptions.map(profile => profile.id)).toEqual([
-      'stock', 'rss', 'rss-cbk', 'kerbalism', 'rss-kerbalism', 'rss-cbk-kerbalism',
+      'stock', 'rss', 'rss-cbk', 'kerbalism', 'rss-kerbalism', 'rss-cbk-kerbalism', 'pbc', 'pbc-kerbalism',
     ])
   })
 

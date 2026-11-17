@@ -5,8 +5,8 @@ import {
   type CommNetAntenna, type CommNetPowerPreset,
 } from './commnet'
 
-type KerbalismRadioProfileId = 'kerbalism' | 'rss-kerbalism' | 'rss-cbk-kerbalism'
-export type RadioProfileId = 'stock' | 'rss' | 'rss-cbk' | KerbalismRadioProfileId
+type KerbalismRadioProfileId = 'kerbalism' | 'rss-kerbalism' | 'rss-cbk-kerbalism' | 'pbc-kerbalism'
+export type RadioProfileId = 'stock' | 'rss' | 'rss-cbk' | 'pbc' | KerbalismRadioProfileId
 
 export interface CommNetRadioProfile {
   readonly id: RadioProfileId
@@ -19,6 +19,7 @@ export interface CommNetRadioProfile {
   readonly normalOcclusion: Readonly<{ atmospheric: number; vacuum: number }>
   readonly normalOcclusionLabel: string
   readonly kerbalism?: boolean
+  readonly pbc?: boolean
   readonly sources: readonly DataSource[]
 }
 
@@ -40,6 +41,27 @@ const stockRadioSources = Object.freeze(commNetSources
 const rssRadioSources = Object.freeze([
   ...stockRadioSources.filter(source => source.id !== 'commnet-normal-settings'),
   rssRangesSource, rssOcclusionSource,
+])
+
+const pbcRevision = '85eafa7e7b26723cc48d86e53d5d178a3e3d3d99'
+const pbcSourceBase = `https://github.com/Moonlington/ProbesBeforeCrew/blob/${pbcRevision}/GameData/ProbesBeforeCrew`
+const pbcRadioSources: readonly DataSource[] = Object.freeze([
+  ...stockRadioSources,
+  Object.freeze({
+    id: 'commnet-pbc-antennas',
+    title: 'Official Probes Before Crew 3.3.2 per-part antenna patches · pinned configuration',
+    url: `${pbcSourceBase}/_Core/Zs_ProbesBeforeCrew.cfg`,
+  }),
+  Object.freeze({
+    id: 'commnet-pbc-kerbalism',
+    title: 'Official Probes Before Crew 3.3.2 Kerbalism compatibility patch · pinned configuration',
+    url: `${pbcSourceBase}/Mod%20Support/ZsKerbalismPatch.cfg`,
+  }),
+  Object.freeze({
+    id: 'commnet-pbc-dsn',
+    title: 'Official Probes Before Crew 3.3.2 recommended DSN modifier · pinned readme',
+    url: `${pbcSourceBase}/Readme.txt`,
+  }),
 ])
 
 const kerbalismRevision = '39f9f43afe8b4f77aff0086c3866044287694475'
@@ -84,7 +106,28 @@ const rssClientAntennas = antennaCatalog(clientAntennas, 20)
 const rssVesselAntennas = Object.freeze([...rssClientAntennas, ...rssRelayAntennas])
 const rssNormalOcclusion = Object.freeze({ atmospheric: 1, vacuum: 1 })
 
-const baseProfilesById: Readonly<Record<'stock' | 'rss' | 'rss-cbk', CommNetRadioProfile>> = Object.freeze({
+// PBC's :FOR[ProbesBeforeCrew]:NEEDS[CommunityTechTree] patches individual
+// stock parts. The internal antenna and all role/combining rules are inherited.
+const pbcAntennaPowers: Readonly<Record<string, number>> = Object.freeze({
+  'communotron-16-s': 250_000,
+  'communotron-16': 1_000_000,
+  'hg-5': 20_000_000,
+  'dts-m1': 5_000_000_000,
+  'ra-2': 2_000_000_000,
+  'hg-55': 25_000_000_000,
+  'ra-15': 20_000_000_000,
+  'communotron-88-88': 100_000_000_000,
+  'ra-100': 100_000_000_000,
+})
+function pbcAntennaCatalog(antennas: readonly CommNetAntenna[]): readonly CommNetAntenna[] {
+  return Object.freeze(antennas.map(antenna => Object.freeze({
+    ...antenna, power: pbcAntennaPowers[antenna.id] ?? antenna.power,
+  })))
+}
+const pbcRelayAntennas = pbcAntennaCatalog(relayAntennas)
+const pbcClientAntennas = pbcAntennaCatalog(clientAntennas)
+
+const baseProfilesById: Readonly<Record<'stock' | 'rss' | 'rss-cbk' | 'pbc', CommNetRadioProfile>> = Object.freeze({
   stock: Object.freeze({
     id: 'stock',
     name: 'Stock CommNet',
@@ -125,6 +168,19 @@ const baseProfilesById: Readonly<Record<'stock' | 'rss' | 'rss-cbk', CommNetRadi
     normalOcclusionLabel: 'RSS default (1.0)',
     sources: rssRadioSources,
   }),
+  pbc: Object.freeze({
+    id: 'pbc',
+    name: 'Probes Before Crew + CommNet',
+    description: 'PBC 3.3.2 with Community Tech Tree: individual antenna powers. Stock ground stations use your configured DSN modifier; PBC recommends 0.35 but does not set it automatically.',
+    pbc: true,
+    relayAntennas: pbcRelayAntennas,
+    clientAntennas: pbcClientAntennas,
+    vesselAntennas: Object.freeze([...pbcClientAntennas, ...pbcRelayAntennas]),
+    dsnLevels: stockDsnLevels,
+    normalOcclusion: Object.freeze({ atmospheric: .75, vacuum: .9 }),
+    normalOcclusionLabel: 'KSP normal',
+    sources: pbcRadioSources,
+  }),
 })
 
 function withKerbalism(
@@ -137,7 +193,8 @@ function withKerbalism(
   // Base catalogs already contain final powers; scale only the added antenna.
   const shortAntenna = Object.freeze({ ...kerbalismShortAntenna, power: kerbalismShortAntenna.power * powerScale })
   const clients = Object.freeze([...base.clientAntennas, shortAntenna])
-  const powers = base.id === 'stock' ? 'Stock antenna and ground-station powers'
+  const powers = base.id === 'pbc' ? 'PBC 3.3.2 per-part antenna powers with Community Tech Tree; stock ground stations use your configured DSN modifier (PBC recommends 0.35 but does not set it)'
+    : base.id === 'stock' ? 'Stock antenna and ground-station powers'
     : base.id === 'rss' ? 'RSS 20× antenna powers; stock ground stations' : 'RSS 20× antenna powers; CustomBarnKit ground stations'
   return Object.freeze({
     ...base, id, name, kerbalism: true,
@@ -157,12 +214,28 @@ const profilesById: Readonly<Record<RadioProfileId, CommNetRadioProfile>> = Obje
   kerbalism: withKerbalism(baseProfilesById.stock, 'kerbalism', 'Kerbalism + CommNet', 1),
   'rss-kerbalism': withKerbalism(baseProfilesById.rss, 'rss-kerbalism', 'Kerbalism + RSS', 20),
   'rss-cbk-kerbalism': withKerbalism(baseProfilesById['rss-cbk'], 'rss-cbk-kerbalism', 'Kerbalism + RSS + CBK', 20),
+  'pbc-kerbalism': withKerbalism(baseProfilesById.pbc, 'pbc-kerbalism', 'Probes Before Crew + Kerbalism', 1),
 })
 
 export const radioProfileOptions: readonly CommNetRadioProfile[] = Object.freeze([
   profilesById.stock, profilesById.rss, profilesById['rss-cbk'],
   profilesById.kerbalism, profilesById['rss-kerbalism'], profilesById['rss-cbk-kerbalism'],
+  profilesById.pbc, profilesById['pbc-kerbalism'],
 ])
+
+export const MAX_DSN_MODIFIER = 100
+
+/** PBC's DSN recommendation is a save setting, not an automatic mod patch.
+ * Apply it once to preset ground stations only; custom final powers bypass this
+ * catalog and the independent link range multiplier is applied by the engines.
+ */
+export function getEffectiveDsnLevels(profile: CommNetRadioProfile, dsnModifier = 1): readonly CommNetPowerPreset[] {
+  if (!profile.pbc || dsnModifier === 1) return profile.dsnLevels
+  const valid = Number.isFinite(dsnModifier) && dsnModifier > 0 && dsnModifier <= MAX_DSN_MODIFIER
+  return Object.freeze(profile.dsnLevels.map(level => Object.freeze({
+    ...level, power: valid ? level.power * dsnModifier : NaN,
+  })))
+}
 
 export function getRadioProfile(id: RadioProfileId): CommNetRadioProfile {
   return profilesById[id]

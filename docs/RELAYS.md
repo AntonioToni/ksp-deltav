@@ -157,7 +157,7 @@ ratings and derived ranges, not signal-strength percentages.
 
 Open **Relays → Signals** to compare one antenna link between vessels near two
 planets. The radio model uses stock CommNet range, strength, and antenna-combining
-rules with the selected Stock, RSS, or Kerbalism profile, with a separate
+rules with the selected Stock, RSS, PBC, or Kerbalism profile, with a separate
 Kerbalism damping calculation when selected. It does not simulate a
 complete network path or place a ground station on the visible side of a planet.
 
@@ -346,9 +346,10 @@ Bodies without a landable surface still support orbital relay and deployment
 calculations, but have no surface coverage or surface-station result.
 
 The radio model follows **stock CommNet** range and combining rules. **Radio
-setup** supplies Stock or RSS-adjusted powers, with optional Kerbalism antenna
+setup** supplies Stock, RSS-adjusted, or PBC part powers, with optional Kerbalism antenna
 catalogs, independently of the physical body data; see
-[RSS radio configuration](#rss-radio-configuration) and
+[RSS radio configuration](#rss-radio-configuration),
+[PBC radio configuration](#probes-before-crew-radio-configuration), and
 [Kerbalism radio configuration](#kerbalism-radio-configuration).
 **RealAntennas** and **RemoteTech** use different models and are not simulated
 here. Custom effective powers do not reproduce their behavior.
@@ -402,8 +403,8 @@ equatorial coverage fraction = min(1, N theta / pi)
 The range and limb boundary checks remain separate from the coverage percentage:
 a percentage rounding to 100% is not proof of a robust link at the boundary.
 
-**Full radius**, the default, uses `f = 1`. With **Stock CommNet** or
-**Kerbalism + CommNet**, **KSP normal** uses `f = 0.75` for a body with an
+**Full radius**, the default, uses `f = 1`. With **Stock CommNet**,
+**Kerbalism + CommNet**, or either PBC profile, **KSP normal** uses `f = 0.75` for a body with an
 atmosphere and `f = 0.90` for an airless body.
 All RSS radio setups, including their Kerbalism variants, use normal defaults
 of `f = 1` for either body type.
@@ -644,6 +645,91 @@ RO, or RP-1 installation using either radio overhaul should not use these
 CommNet profiles as a simulation of that overhaul. See the
 [validation record](VALIDATION.md) for the source audit and calculation checks.
 
+### Probes Before Crew radio configuration
+
+Select **Probes Before Crew + CommNet** or **Probes Before Crew + Kerbalism**
+under **Radio setup**. These profiles target the community-maintained
+[PBC 3.3.2 stable release](https://github.com/Moonlington/ProbesBeforeCrew/releases/tag/v3.3.2),
+pinned to commit `85eafa7e7b26723cc48d86e53d5d178a3e3d3d99`.
+They model PBC installed with **Community Tech Tree**. Its pinned
+[dependency metadata](https://github.com/Moonlington/ProbesBeforeCrew/blob/85eafa7e7b26723cc48d86e53d5d178a3e3d3d99/GameData/ProbesBeforeCrew/Versioning/ProbesBeforeCrew.ckan)
+lists ModuleManager, Community Tech Tree, and Kopernicus. Choosing a planetary
+map does not detect or enable PBC; Stock, OPM, Kcalbeloh, and imported maps keep
+their existing radio defaults.
+
+The [core antenna patches](https://github.com/Moonlington/ProbesBeforeCrew/blob/85eafa7e7b26723cc48d86e53d5d178a3e3d3d99/GameData/ProbesBeforeCrew/_Core/Zs_ProbesBeforeCrew.cfg#L396)
+set individual powers in `:NEEDS[CommunityTechTree]:FOR[ProbesBeforeCrew]`.
+These are final KSP power ratings, not maximum link distances:
+
+| Antenna | Role | Stock power | PBC power | Combines / exponent |
+| --- | --- | ---: | ---: | --- |
+| Internal antenna | Internal | 5 km | 5 km | No |
+| Communotron 16-S | Direct | 500 km | 250 km | No |
+| Communotron 16 | Direct | 500 km | 1 Mm | Yes / 1 |
+| HG-5 | Relay | 5 Mm | 20 Mm | Yes / 0.75 |
+| Communotron DTS-M1 | Direct | 2 Gm | 5 Gm | Yes / 0.75 |
+| RA-2 | Relay | 2 Gm | 2 Gm | Yes / 0.75 |
+| Communotron HG-55 | Direct | 15 Gm | 25 Gm | Yes / 0.75 |
+| RA-15 | Relay | 15 Gm | 20 Gm | Yes / 0.75 |
+| Communotron 88-88 | Direct | 100 Gm | 100 Gm | Yes / 0.75 |
+| RA-100 | Relay | 100 Gm | 100 Gm | Yes / 0.75 |
+
+PBC leaves antenna roles, combinability, and exponents unchanged. The HG-5 entry
+represents the current `HighGainAntenna5_v2` part; the deprecated HG-5 is not a
+separate catalog entry. Arrays use these PBC powers once with the existing
+combining rules. For example, four HG-5s on one craft give
+`20 Mm × 4^0.75 = 56.568542 Mm`. Two Communotron 16s give **2 Mm**; extra
+noncombinable 16-S antennas still give **250 km**. Switching profiles keeps
+selected parts and counts. Custom effective craft and station powers remain
+as entered.
+
+**DSN modifier is a save setting.** PBC does not patch the stock DSN powers of
+**2 / 50 / 250 Gm**. Its
+[player instructions](https://github.com/Moonlington/ProbesBeforeCrew/blob/85eafa7e7b26723cc48d86e53d5d178a3e3d3d99/GameData/ProbesBeforeCrew/Readme.txt#L22)
+recommend **0.35**, but the planner starts at **1×**. In Advanced, set
+**DSN modifier** to match your save. At 0.35× the effective presets are
+**0.7 / 17.5 / 87.5 Gm**. This setting is shared by Network and Signals,
+preserved when changing radio profiles, and active only with a PBC profile.
+It scales station preset power once; **Range multiplier** separately scales
+the resulting link distance. A custom final DSN power bypasses the modifier.
+For one PBC HG-5 and DSN level 3, range is **2.236068 Gm** at 1× or
+**1.322876 Gm** at 0.35×, before body blocking. It does not change local relay
+coverage or raw relay-to-relay strength.
+
+The Kerbalism variant targets the existing **Kerbalism 3.44 default science
+configuration**, pinned to `39f9f43afe8b4f77aff0086c3866044287694475`.
+PBC's [Kerbalism patch](https://github.com/Moonlington/ProbesBeforeCrew/blob/85eafa7e7b26723cc48d86e53d5d178a3e3d3d99/GameData/ProbesBeforeCrew/Mod%20Support/ZsKerbalismPatch.cfg#L50)
+uses `:AFTER[Kerbalism]:NEEDS[CommunityTechTree]` and changes only Communotron 8's
+technology placement. Communotron 8 remains a **250 km**, direct, combinable
+antenna with exponent **1**. Kerbalism's later
+[science patches](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/GameData/KerbalismConfig/System/ScienceRework/Patches-Antennas.cfg#L47)
+run before/in `zzzKerbalismDefault`: the catch-all forces packet interval to 1,
+then per-part patches assign the existing fixed science rates. Thus PBC's
+16-S packet interval of 0.8 and resource cost of 14 do not redefine its
+Kerbalism science rate. The planner retains all existing known-part rates;
+PBC antenna power changes do not multiply them. Stock packet timing and
+ElectricCharge use are not simulated.
+
+Automatic Kerbalism damping uses the **effective maximum DSN preset**, including
+your chosen modifier. Kerbalism calls `GetDSNRange(1f)`; that API includes the
+save's DSN modifier, as also shown by the official
+[CustomBarnKit implementation](https://github.com/sarbian/CustomBarnKit/blob/9ab647be4406dbb5952934ea5162b657688569d5/CustomGameVariables.cs#L612).
+For the stock home orbit, 0.35× changes automatic `k` from **6.009182** to
+**0.770706**. Raw local signal remains unchanged; transmission efficiency and
+science rate use the newly calibrated exponent. An exponent below 1 can give
+an efficiency percentage above the raw signal percentage; this follows the
+same Kerbalism calculation and is not clamped. Custom exponents, antenna
+speed, the minimum-rate setting, and byte-based science results work as before.
+
+These profiles do not model a combined **PBC + RSS** installation, RemoteTech,
+RealAntennas, Near Future Exploration's custom power system, or additional
+antennas from optional PBC-supported part packs. Final custom powers can
+describe known CommNet hardware values; they do not implement another radio
+model. Later ModuleManager/user overrides, deprecated parts, alternative
+Kerbalism configurations, and disabled `FeatureScience` may differ from this
+pinned configuration. Technology unlocks and science rewards are outside this
+planner's scope.
+
 ### Kerbalism radio configuration
 
 Select Kerbalism explicitly; the planet pack does not identify installed mods.
@@ -655,6 +741,7 @@ configuration:
 | Kerbalism + CommNet | Stock CommNet |
 | Kerbalism + RSS | RSS CommNet without CBK |
 | Kerbalism + RSS + CBK | RSS + CustomBarnKit |
+| Probes Before Crew + Kerbalism | [PBC 3.3.2 part powers and configured DSN modifier](#probes-before-crew-radio-configuration) |
 
 Each keeps the baseline's range formula, combination rules, DSN powers, and
 Normal occlusion factors. The added **Communotron 8** has power **250 km**, is
@@ -704,7 +791,7 @@ closing/reopening the workspace; changing packs resets the session.
 Automatic uses the pinned
 [system-calibrated damping exponent](https://github.com/Kerbalism/Kerbalism/blob/39f9f43afe8b4f77aff0086c3866044287694475/src/Kerbalism/Sim.cs).
 Its reference inputs are the homeworld's orbital radius (`AU`) and the radio
-profile's **maximum DSN power**, rather than the currently selected DSN level,
+profile's **effective maximum DSN power** (including a configured PBC DSN modifier), rather than the currently selected DSN level,
 the two endpoint powers, or their geometric-mean link range. Choosing a
 different target planet or local Kcalbeloh center does not change the
 installation's homeworld reference. The shared range multiplier changes link
@@ -733,7 +820,7 @@ enter your installation's exponent.
 ### Kerbalism science rates
 
 Kerbalism presets estimate the science rate of the selected outgoing hop.
-Network shows **Relay-to-relay science rate** and **Surface → relay rate**. Signals
+Network shows **Relay-to-relay science rate** and **Surface-to-relay science rate**. Signals
 uses the craft opposite the **Signal receiver** as the sender; changing the
 receiving direction changes which loadout supplies its base rate. Swapping
 endpoints moves the saved custom rates with their hardware. A DSN preset

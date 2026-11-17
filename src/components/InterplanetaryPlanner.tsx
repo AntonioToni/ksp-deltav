@@ -6,7 +6,7 @@ import {
 import SwapHorizRounded from '@mui/icons-material/SwapHorizRounded'
 import type { PlanetPack } from '../types/planner'
 import { getInterplanetaryPresets, interplanetarySources } from '../data/interplanetary'
-import { getRadioProfile, radioProfileOptions, type RadioProfileId } from '../data/radioProfiles'
+import { getEffectiveDsnLevels, getRadioProfile, radioProfileOptions, type RadioProfileId } from '../data/radioProfiles'
 import { getKerbalismRadioProfileId } from '../data/kerbalism'
 import { calculateAntennaArray, type AntennaArrayEntry } from '../utils/antennaArray'
 import { calculateInterplanetarySignal } from '../utils/interplanetary'
@@ -19,6 +19,7 @@ import AntennaArrayDialog from './AntennaArrayDialog'
 import InterplanetaryDiagram from './InterplanetaryDiagram'
 import ScienceRateField from './ScienceRateField'
 import UnavailableAntennaAlert from './UnavailableAntennaAlert'
+import DsnModifierControls, { DsnModifierWarning } from './DsnModifierControls'
 
 interface InterplanetaryPlannerProps {
   mode: RelayMode
@@ -28,6 +29,8 @@ interface InterplanetaryPlannerProps {
   initialBodyId: string | null
   radioId: RadioProfileId
   onRadioChange: (id: RadioProfileId) => void
+  dsnModifier: string
+  onDsnModifierChange: (value: string) => void
   rangeMultiplier: string
   onRangeMultiplierChange: (value: string) => void
   dampingExponent: number
@@ -80,7 +83,7 @@ function Metric({ label, value, testId, color, secondary, description }: { label
   </Box>
 }
 
-export default function InterplanetaryPlanner({ mode, onOpenAdvanced, advancedRadioSettingsActive, pack, initialBodyId, radioId, onRadioChange, rangeMultiplier, onRangeMultiplierChange, dampingExponent, dampingControls, antennaSpeed, minimumBitsPerSecond, rateControls }: InterplanetaryPlannerProps) {
+export default function InterplanetaryPlanner({ mode, onOpenAdvanced, advancedRadioSettingsActive, pack, initialBodyId, radioId, onRadioChange, dsnModifier, onDsnModifierChange, rangeMultiplier, onRangeMultiplierChange, dampingExponent, dampingControls, antennaSpeed, minimumBitsPerSecond, rateControls }: InterplanetaryPlannerProps) {
   const advanced = mode === 'advanced'
   const presets = useMemo(() => getInterplanetaryPresets(pack), [pack])
   const firstA = presets.orbits.find(orbit => orbit.id === pack.transferHubBodyId) ?? presets.orbits[0]
@@ -104,6 +107,8 @@ export default function InterplanetaryPlanner({ mode, onOpenAdvanced, advancedRa
   const [receivingEndpoint, setReceivingEndpoint] = useState<'a' | 'b'>('b')
   const [editingArray, setEditingArray] = useState<'a' | 'b' | null>(null)
   const radio = getRadioProfile(radioId)
+  const dsnLevels = getEffectiveDsnLevels(radio, numeric(dsnModifier))
+  const dsnSettingsValid = dsnLevels.every(level => Number.isFinite(level.power) && level.power > 0)
   const orbitA = presets.orbits.find(orbit => orbit.id === aId) ?? firstA
   const bOptions = presets.orbits.filter(orbit => orbit.id !== orbitA?.id && orbit.parentBodyId === orbitA?.parentBodyId)
   const orbitB = bOptions.find(orbit => orbit.id === bId) ?? bOptions[0]
@@ -111,8 +116,8 @@ export default function InterplanetaryPlanner({ mode, onOpenAdvanced, advancedRa
   const reference = geometry === 'reference'
   const arrayA = aDraft.array ? calculateAntennaArray(aDraft.array, 'client', radio.vesselAntennas) : null
   const arrayB = bDraft.array ? calculateAntennaArray(bDraft.array, 'client', radio.vesselAntennas) : null
-  const endpointA = resolveSignalEndpointPower(aDraft, receivingEndpoint === 'a' ? 'receiver' : 'sender', radio.vesselAntennas, radio.dsnLevels)
-  const endpointB = resolveSignalEndpointPower(bDraft, receivingEndpoint === 'b' ? 'receiver' : 'sender', radio.vesselAntennas, radio.dsnLevels)
+  const endpointA = resolveSignalEndpointPower(aDraft, receivingEndpoint === 'a' ? 'receiver' : 'sender', radio.vesselAntennas, dsnLevels)
+  const endpointB = resolveSignalEndpointPower(bDraft, receivingEndpoint === 'b' ? 'receiver' : 'sender', radio.vesselAntennas, dsnLevels)
   const receiver = receivingEndpoint === 'a' ? endpointA : endpointB
   const receiverNeedsRelay = receiver.status === 'needs-relay'
   const input = {
@@ -161,6 +166,7 @@ export default function InterplanetaryPlanner({ mode, onOpenAdvanced, advancedRa
   const restoreRadio = getRadioProfile(getKerbalismRadioProfileId(radioId))
   const manualRequired = !firstA || !firstB
   const advancedSettingsActive = !reference || numeric(rangeMultiplier) !== 1 || numeric(occlusionFactor) !== 1
+    || radio.pbc === true && numeric(dsnModifier) !== 1 && [aDraft.selection, bDraft.selection].some(selection => selection.startsWith('dsn:'))
     || [aDraft.selection, bDraft.selection].some(selection => selection === 'custom' || selection === 'array')
     || radio.kerbalism === true && advancedRadioSettingsActive
 
@@ -217,12 +223,12 @@ export default function InterplanetaryPlanner({ mode, onOpenAdvanced, advancedRa
         onChange={event => { if (event.target.value !== 'array') setDraft(endpoint, { selection: event.target.value }) }} sx={fieldStyles}
         helperText={<Box component="span" data-testid={`signal-power-${endpoint}`}>{unavailable ? 'Unavailable in this setup' : unavailableArray ? 'Edit array or restore its radio setup' : resolved.status === 'needs-relay' ? 'Relay receiver required' : Number.isFinite(value) && value > 0 ? `Effective power ${distance(value)}` : 'Enter effective power'}</Box>}
         slotProps={{ select: { renderValue: () => unavailable ? `${unavailableName} (unavailable)` : draft.selection === 'array' ? `Array (${array?.status === 'success' ? array.totalCount : '—'})`
-          : draft.selection === 'custom' ? 'Custom power' : draft.selection.startsWith('dsn:') ? radio.dsnLevels.find(level => level.id === draft.selection.slice(4))?.name
+          : draft.selection === 'custom' ? 'Custom power' : draft.selection.startsWith('dsn:') ? dsnLevels.find(level => level.id === draft.selection.slice(4))?.name
             : radio.vesselAntennas.find(antenna => antenna.id === draft.selection)?.name } }}>
         {unavailable && <MenuItem value={draft.selection} disabled sx={{ fontSize: 12 }}>{unavailableName} (unavailable)</MenuItem>}
         {radio.vesselAntennas.map(antenna => <MenuItem key={antenna.id} value={antenna.id} sx={{ fontSize: 12 }}>{antenna.name}</MenuItem>)}
         {allowDsn(endpoint) && <ListSubheader sx={{ fontSize: 12, lineHeight: '24px' }}>DSN station power</ListSubheader>}
-        {allowDsn(endpoint) && radio.dsnLevels.map(level => <MenuItem key={level.id} value={`dsn:${level.id}`} sx={{ fontSize: 12 }}>{level.name}</MenuItem>)}
+        {allowDsn(endpoint) && dsnLevels.map(level => <MenuItem key={level.id} value={`dsn:${level.id}`} sx={{ fontSize: 12 }}>{level.name}</MenuItem>)}
         {(advanced || draft.selection === 'array') && <MenuItem value="array" disabled={!advanced} onClick={advanced ? () => editArray(endpoint) : undefined} sx={{ fontSize: 12 }}>{advanced ? 'Antenna array…' : 'Custom array (Advanced)'}</MenuItem>}
         {(advanced || draft.selection === 'custom') && <MenuItem value="custom" disabled={!advanced} sx={{ fontSize: 12 }}>{advanced ? 'Custom power' : 'Custom power (Advanced)'}</MenuItem>}
       </TextField>
@@ -267,6 +273,8 @@ export default function InterplanetaryPlanner({ mode, onOpenAdvanced, advancedRa
           </TextField>
         </Box>
         <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>{radioId === 'stock' ? 'Uses stock antenna and ground-station power ratings.' : radio.description}</Typography>
+        {!dsnSettingsValid && <DsnModifierWarning onEdit={!advanced ? onOpenAdvanced : undefined} />}
+        {advanced && radio.pbc && <DsnModifierControls value={dsnModifier} onChange={onDsnModifierChange} />}
         {advanced && radio.kerbalism && dampingControls}
         {advanced && radio.kerbalism && rateControls}
         {reference ? <>
