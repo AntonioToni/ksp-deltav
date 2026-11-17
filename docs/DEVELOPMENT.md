@@ -608,10 +608,12 @@ Its optional damping exponent adds `dampedStrength`, `dampedRangeStrength`,
 `bestDampedStrength`, and `worstDampedStrength` alongside the raw fields. Main
 signal metrics and closest/farthest strengths always use the raw fields.
 Kerbalism profiles show the damped fields separately as **Transmission
-efficiency**. The chart has signal-strength curves with and without blocking,
-plus distinct Kerbalism-only transmission-efficiency curves with and without
-blocking. Neither dimensionless percentage establishes a complete communication
-path; the separate science-rate result estimates only the selected outgoing hop.
+efficiency** inside the signal-strength card. The chart has one raw
+signal-strength curve and a separate Kerbalism-only transmission-efficiency
+curve; both include central-body blocking. Closest/farthest summaries still use
+the unblocked fields. Neither dimensionless percentage establishes a complete
+communication path; the separate science-rate result estimates only the selected
+outgoing hop.
 
 The strength function is `3x² − 2x³` for `x = clamp(1 − d/R, 0, 1)`, where
 `R = sqrt(PA × PB) × rangeMultiplier`. Occluded segments have zero effective

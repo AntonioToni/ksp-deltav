@@ -76,7 +76,7 @@ function Metric({ label, value, testId, color, secondary, description }: { label
   return <Box title={description} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, px: 1, py: .75, minWidth: 0, bgcolor: '#080f2145' }}>
     <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.3 }}>{label}</Typography>
     <Typography component="output" data-testid={testId} aria-description={description} sx={{ display: 'block', mt: .25, fontSize: 16, lineHeight: 1.3, fontWeight: 500, fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere', color: color ?? 'text.primary' }}>{value}</Typography>
-    {secondary && <Typography title="Kerbalism transmission efficiency is S^k for the same positions and blocking assumptions as the raw signal value." sx={{ mt: .5, fontSize: 12, color: 'text.secondary', lineHeight: 1.3 }}>{secondary.label} <Box component="output" data-testid={secondary.testId} sx={{ color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>{secondary.value}</Box></Typography>}
+    {secondary && <Typography title="Kerbalism transmission efficiency is S^k for the same positions and blocking assumptions as the raw signal value." sx={{ mt: .5, fontSize: 12, color: 'text.secondary', lineHeight: 1.3 }}>{secondary.label} <Box component="output" data-testid={secondary.testId} aria-description="Kerbalism factor applied to science rate, separate from raw CommNet signal strength." sx={{ color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>{secondary.value}</Box></Typography>}
   </Box>
 }
 
@@ -324,10 +324,10 @@ export default function InterplanetaryPlanner({ mode, onOpenAdvanced, advancedRa
           <Typography role="status" data-testid="signal-link-status" sx={{ fontSize: 12, fontWeight: 500, color: colors[success.linkStatus] }}>{status}</Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
             <Metric label="Separation at selected positions" value={distance(success.distanceM)} testId="signal-distance" />
-            <Metric label="Signal strength" value={strength(success.signalStrength)} testId="signal-strength" color={colors[success.linkStatus]} description="Raw CommNet signal strength for the selected positions, including central-body blocking. Kerbalism damping does not change this value." />
+            <Metric label="Signal strength" value={strength(success.signalStrength)} testId="signal-strength" color={colors[success.linkStatus]} description="Raw CommNet signal strength for the selected positions, including central-body blocking. Kerbalism damping does not change this value."
+              secondary={radio.kerbalism ? { label: 'Transmission efficiency', value: strength(success.dampedStrength), testId: 'signal-transmission-efficiency' } : undefined} />
           </Box>
           {radio.kerbalism && <>
-            <Typography title="Kerbalism transmission efficiency is S^k. It scales science transmission rate without changing raw CommNet signal strength." sx={{ fontSize: 12, color: 'text.secondary' }}>Transmission efficiency <Box component="output" data-testid="signal-transmission-efficiency" aria-description="Kerbalism factor applied to science rate, separate from raw CommNet signal strength." sx={{ color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>{strength(success.dampedStrength)}</Box></Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
               <Metric label={`Science rate · ${scienceDirection}`} value={rate ? formatScienceRateBitsPerSecond(rate.rateBitsPerSecond) : ratePlaceholder} testId="signal-science-rate" description="Science transmitted per second on this hop, after Antenna speed, transmission efficiency, and any configured minimum. Displayed in decimal bytes per second." />
               <Metric label="Full-strength sender rate" value={rate ? formatScienceRateBitsPerSecond(rate.fullStrengthBitsPerSecond) : ratePlaceholder} testId="signal-full-strength-rate" description="Sender rate after Antenna speed, before transmission efficiency reduces it. Displayed in decimal bytes per second." />

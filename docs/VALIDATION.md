@@ -530,8 +530,9 @@ Damping does not change geometric coverage, antenna range, or reach status.
 Basic and Advanced display raw CommNet strength as signal strength and show
 transmission efficiency separately for Kerbalism profiles. Closest/farthest
 signal percentages remain raw strength before blocking; Kerbalism efficiency is
-separate there too. The chart distinguishes raw signal from efficiency with
-separate curves with and without blocking for each.
+separate there too. The chart shows one raw signal-strength curve and, with
+Kerbalism, one transmission-efficiency curve. Both include central-body blocking;
+unblocked curves are not displayed.
 
 Automatic calibration follows the pinned 3.44 `Sim.cs` calculation using the
 physical home orbit and maximum DSN preset, independently of the selected pair,

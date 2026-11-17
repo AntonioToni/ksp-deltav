@@ -92,37 +92,69 @@ test('shows calibrated Kerbalism damping separately from raw strength, range, an
   await expect(dampingSummary(page)).toContainText('k = 6.00918')
   await expect(metric(page, 'signal-range')).toHaveText('100 Gm')
   await expect(metric(page, 'signal-strength')).toHaveText('84.61%')
-  await expect(planner(page).getByText('Signal strength', { exact: true })).toBeVisible()
+  await expect(metric(page, 'signal-strength').locator('..').getByText('Signal strength', { exact: true })).toBeVisible()
   await expect(metric(page, 'signal-transmission-efficiency')).toHaveText('36.63%')
+  await expect(metric(page, 'signal-strength').locator('..').getByTestId('signal-transmission-efficiency')).toHaveText('36.63%')
   await expect(metric(page, 'signal-best')).toHaveText('98.55%')
   await expect(metric(page, 'signal-worst')).toHaveText('72.74%')
   await expect(metric(page, 'signal-best-transmission-efficiency')).toHaveText('91.59%')
   await expect(metric(page, 'signal-worst-transmission-efficiency')).toHaveText('14.77%')
   const chart = metric(page, 'signals-strength-chart')
-  await expect(chart.locator('[data-signal-curve]')).toHaveCount(4)
+  await expect(chart.locator('[data-signal-curve]')).toHaveCount(2)
   const rawCurve = chart.locator('[data-signal-curve="with-occlusion"]')
   const rawPath = await rawCurve.getAttribute('d')
   const efficiencyCurve = chart.locator('[data-signal-curve="transmission-efficiency"]')
   expect(rawPath).not.toBe(await efficiencyCurve.getAttribute('d'))
   await expect(rawCurve.locator('title')).toHaveText('Raw CommNet signal strength (S) with central-body blocking')
   await expect(efficiencyCurve.locator('title')).toHaveText('Transmission efficiency (S^k) with central-body blocking')
-  await expect(chart.locator('[data-signal-curve="range-only"] title')).toHaveText('Raw CommNet signal strength (S) without blocking')
-  await expect(chart.locator('[data-signal-curve="transmission-efficiency-range-only"] title')).toHaveText('Transmission efficiency (S^k) without blocking')
+  await expect(chart.locator('[data-signal-curve="range-only"], [data-signal-curve="transmission-efficiency-range-only"]')).toHaveCount(0)
+  await expect(chart.locator('..').getByText(/without blocking/)).toHaveCount(0)
+  // Read the actual rendered paths at the selected angle, rather than merely
+  // checking that a curve exists. Both curves must follow their blocked result.
+  const curvePointsAtSelection = () => chart.evaluate(element => {
+    const point = (marker: string, curve: string) => {
+      const circle = element.querySelector(marker)!
+      const x = Number(circle.getAttribute('cx'))
+      const y = Number(circle.getAttribute('cy'))
+      const path = element.querySelector(curve)!.getAttribute('d')!
+      const values = [...path.matchAll(/[ML]\s+([\d.e+-]+)\s+([\d.e+-]+)/gi)]
+        .map(match => ({ x: Number(match[1]), y: Number(match[2]) }))
+      return { markerY: y, curveY: values.find(value => Math.abs(value.x - x) < 1e-6)?.y }
+    }
+    return {
+      signal: point('[data-signal-current-strength]', '[data-signal-curve="with-occlusion"]'),
+      efficiency: point('[data-signal-current-transmission-efficiency]', '[data-signal-curve="transmission-efficiency"]'),
+    }
+  })
+  const selected = await curvePointsAtSelection()
+  expect(selected.signal.curveY).toBeCloseTo(selected.signal.markerY, 8)
+  expect(selected.efficiency.curveY).toBeCloseTo(selected.efficiency.markerY, 8)
   await customExponent(page, '6')
   await expect(metric(page, 'signal-transmission-efficiency')).toHaveText('36.69%')
   await expect(metric(page, 'signal-strength')).toHaveText('84.61%')
   await expect(rawCurve).toHaveAttribute('d', rawPath!)
+  const closestEfficiency = await metric(page, 'signal-best-transmission-efficiency').textContent()
   await planner(page).getByRole('button', { name: 'Opposite', exact: true }).click()
   await expect(metric(page, 'signal-strength')).toHaveText('0%')
   await expect(metric(page, 'signal-transmission-efficiency')).toHaveText('0%')
   await expect(metric(page, 'signal-link-status')).toHaveText('Blocked by Kerbol')
+  await expect(chart.locator('[data-signal-current-strength]')).toHaveAttribute('data-signal-current-strength', '0')
+  await expect(chart.locator('[data-signal-current-transmission-efficiency]')).toHaveAttribute('data-signal-current-transmission-efficiency', '0')
+  const blocked = await curvePointsAtSelection()
+  expect(blocked.signal.markerY).toBeGreaterThan(selected.signal.markerY)
+  expect(blocked.efficiency.markerY).toBeGreaterThan(selected.efficiency.markerY)
+  expect(blocked.signal.curveY).toBeCloseTo(blocked.signal.markerY, 8)
+  expect(blocked.efficiency.curveY).toBeCloseTo(blocked.efficiency.markerY, 8)
+  await expect(metric(page, 'signal-best')).toHaveText('98.55%')
   await expect(metric(page, 'signal-worst')).toHaveText('72.74%')
+  await expect(metric(page, 'signal-best-transmission-efficiency')).toHaveText(closestEfficiency!)
   await expect(metric(page, 'signal-worst-transmission-efficiency')).toHaveText('14.81%')
   await choose(page, 'Radio setup', 'Stock CommNet')
   await expect(metric(page, 'signal-worst')).toHaveText('72.74%')
   await expect(metric(page, 'signal-transmission-efficiency')).toHaveCount(0)
   await expect(metric(page, 'signal-worst-transmission-efficiency')).toHaveCount(0)
-  await expect(chart.locator('[data-signal-curve]')).toHaveCount(2)
+  await expect(chart.locator('[data-signal-curve]')).toHaveCount(1)
+  await expect(chart.locator('[data-signal-curve="transmission-efficiency"]')).toHaveCount(0)
 })
 
 test('calculates local neighbor and sample-station strengths and masks blocked links', async ({ page }) => {

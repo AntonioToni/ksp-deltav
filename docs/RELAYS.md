@@ -187,9 +187,10 @@ complete network path or place a ground station on the visible side of a planet.
    **Closest position** and **Farthest position** on those circles. Those last
    two values are before blocking. All signal percentages are raw CommNet
    strength. A Kerbalism profile separately shows **Transmission efficiency**,
-   the `S^k` percentage used for science transmission. Its chart has separate
-   curves with and without blocking for signal strength and for transmission
-   efficiency.
+   the `S^k` percentage used for science transmission, inside the signal-strength
+   card. The chart shows signal strength and, with Kerbalism, transmission
+   efficiency. Both curves include blocking by the central body; closest and
+   farthest position summaries still show their values before blocking.
    The science rate uses
    the sending craft's loadout and follows the selected receiving direction;
    the full-strength sender rate includes the chosen antenna speed.
@@ -689,10 +690,12 @@ available link. A blocked or out-of-range link still has zero effective strength
 
 Network and Signals keep raw CommNet strength as the main signal result in both
 Basic and Advanced. With a Kerbalism profile, transmission efficiency appears as
-a separate percentage. The closest/farthest signal cards in Signals also keep
-raw CommNet strength before blocking and show transmission efficiency separately.
-The chart uses four distinct curves: signal strength with and without blocking,
-and transmission efficiency with and without blocking. In Advanced, open
+a separate percentage inside the signal-strength card. The closest/farthest
+signal cards in Signals also keep raw CommNet strength before blocking and show
+transmission efficiency separately.
+The chart shows raw signal strength and, only with Kerbalism, transmission
+efficiency. Both curves account for central-body blocking and fall to zero when
+the body blocks the link. In Advanced, open
 **Kerbalism damping** to select
 **Automatic (3.44)** or
 **Custom exponent**. Damping mode and custom value remain shared across both tabs and

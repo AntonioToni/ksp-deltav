@@ -72,7 +72,7 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
   const plot = { left: 34, right: width - 13, top: 12, bottom: chartHeight - 24 }
   const chartX = (phase: number) => plot.left + phase / 360 * (plot.right - plot.left)
   const chartY = (strength: number) => plot.bottom - strength * (plot.bottom - plot.top)
-  const path = (key: 'rangeStrength' | 'signalStrength' | 'dampedRangeStrength' | 'dampedStrength') => samples.map((sample, index) => `${index ? 'L' : 'M'} ${chartX(sample.samplePhaseDeg)} ${chartY(sample[key])}`).join(' ')
+  const path = (key: 'signalStrength' | 'dampedStrength') => samples.map((sample, index) => `${index ? 'L' : 'M'} ${chartX(sample.samplePhaseDeg)} ${chartY(sample[key])}`).join(' ')
   const currentPhase = input.phaseDeg > 0 && result.phaseDeg === 0 ? 360 : result.phaseDeg
   const blockedSamples = samples.filter(sample => sample.occluded)
   const blockedStart = blockedSamples[0]?.samplePhaseDeg
@@ -86,13 +86,9 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
   }[result.linkStatus]
   const currentStrength = result.signalStrength
   const currentSummary = `Signal strength is ${formatStrength(currentStrength)} (raw CommNet).${kerbalism ? ` Transmission efficiency is ${formatStrength(result.dampedStrength)}.` : ''}`
-  const legend: { color: string; label: string; dashed: boolean }[] = [
-    { color: '#9fb2cd', label: 'Signal strength · without blocking', dashed: true },
-    { color: '#92d5c6', label: 'Signal strength · with blocking', dashed: false },
-    ...(kerbalism ? [
-      { color: '#8cbde7', label: 'Transmission efficiency · without blocking', dashed: true },
-      { color: '#8cbde7', label: 'Transmission efficiency · with blocking', dashed: false },
-    ] : []),
+  const legend = [
+    { color: '#92d5c6', label: 'Signal strength' },
+    ...(kerbalism ? [{ color: '#8cbde7', label: 'Transmission efficiency' }] : []),
   ]
   const card = { minWidth: 0, border: '1px solid', borderColor: 'divider', borderRadius: 1.25, bgcolor: '#080f2145', overflow: 'hidden' } as const
 
@@ -133,12 +129,12 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
     </Box>
 
     <Box component="figure" sx={{ m: 0, ...card }}>
-      <Typography component="figcaption" sx={{ px: 1, pt: .75, fontSize: 12, lineHeight: 1.3, color: 'text.secondary' }}>Signal strength at each angle between the bodies{kerbalism ? ' · transmission efficiency shown separately' : ''}</Typography>
+      <Typography component="figcaption" sx={{ px: 1, pt: .75, fontSize: 12, lineHeight: 1.3, color: 'text.secondary' }}>Signal strength by planet positions · includes blocking by {centerName}</Typography>
       <Box component="svg" role="img" aria-label="Signal strength by relative phase" aria-describedby={`${prefix}-chart-description`}
         data-testid="signals-strength-chart" data-signal-damping-exponent={kerbalism ? input.dampingExponent : undefined} viewBox={`0 0 ${width} ${chartHeight}`} preserveAspectRatio="xMidYMid meet"
         sx={{ display: 'block', width: '100%', height: chartHeight }}>
-        <title>{kerbalism ? 'Raw CommNet signal strength and Kerbalism transmission efficiency, before and after blocking' : 'Raw CommNet signal strength with a clear path and with blocking'}</title>
-        <desc id={`${prefix}-chart-description`}>The gray dashed curve shows raw CommNet signal strength for a clear path. The green solid curve also includes blocking by the central body. {kerbalism ? 'The blue curves separately show Kerbalism transmission efficiency S^k: dashed for a clear path and solid with blocking. These percentages scale science rate; damping does not change raw signal strength or maximum antenna range. ' : ''}The shaded band marks angles where the central body blocks the link. The vertical marker shows the selected angle. {currentSummary} Positions are chosen with the slider, not predicted from an in-game date.</desc>
+        <title>{kerbalism ? 'Raw CommNet signal strength and Kerbalism transmission efficiency, including central-body blocking' : 'Raw CommNet signal strength including central-body blocking'}</title>
+        <desc id={`${prefix}-chart-description`}>The green curve shows raw CommNet signal strength including blocking by the central body. {kerbalism ? 'The blue curve shows Kerbalism transmission efficiency S^k with the same blocking applied. These percentages scale science rate; damping does not change raw signal strength or maximum antenna range. ' : ''}The shaded band marks angles where the central body blocks the link. The vertical marker shows the selected angle. {currentSummary} Positions are chosen with the slider, not predicted from an in-game date.</desc>
         <defs><clipPath id={`${prefix}-plot-clip`}><rect x={plot.left} y={plot.top} width={plot.right - plot.left} height={plot.bottom - plot.top} /></clipPath></defs>
         {[0, .5, 1].map(value => <g key={value}>
           <line x1={plot.left} x2={plot.right} y1={chartY(value)} y2={chartY(value)} stroke="#677f9e" strokeOpacity={.25} strokeWidth={1} />
@@ -147,11 +143,7 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
         {[0, 90, 180, 270, 360].map(phase => <text key={phase} x={chartX(phase)} y={chartHeight - 8} textAnchor="middle" fill="#a8bad0" fontSize={12}>{phase}°</text>)}
         <g clipPath={`url(#${prefix}-plot-clip)`}>
           {blockedStart !== undefined && blockedEnd !== undefined && <rect x={chartX(blockedStart)} y={plot.top} width={Math.max(0, chartX(blockedEnd) - chartX(blockedStart))} height={plot.bottom - plot.top} fill="#dd939c" fillOpacity={.12} data-signal-occlusion-band="true" />}
-          {kerbalism && <>
-            <path d={path('dampedRangeStrength')} fill="none" stroke="#8cbde7" strokeWidth={1.25} strokeDasharray="4 4" data-signal-curve="transmission-efficiency-range-only"><title>Transmission efficiency (S^k) without blocking</title></path>
-            <path d={path('dampedStrength')} fill="none" stroke="#8cbde7" strokeWidth={1.25} strokeLinejoin="round" data-signal-curve="transmission-efficiency"><title>Transmission efficiency (S^k) with central-body blocking</title></path>
-          </>}
-          <path d={path('rangeStrength')} fill="none" stroke="#9fb2cd" strokeWidth={1.5} strokeDasharray="4 4" data-signal-curve="range-only"><title>Raw CommNet signal strength (S) without blocking</title></path>
+          {kerbalism && <path d={path('dampedStrength')} fill="none" stroke="#8cbde7" strokeWidth={1.25} strokeLinejoin="round" data-signal-curve="transmission-efficiency"><title>Transmission efficiency (S^k) with central-body blocking</title></path>}
           <path d={path('signalStrength')} fill="none" stroke="#92d5c6" strokeWidth={2} strokeLinejoin="round" data-signal-curve="with-occlusion"><title>Raw CommNet signal strength (S) with central-body blocking</title></path>
           <line x1={chartX(currentPhase)} x2={chartX(currentPhase)} y1={plot.top} y2={plot.bottom} stroke="#e7bd7b" strokeWidth={1} strokeOpacity={.7} data-signal-phase-marker={currentPhase} />
         </g>
@@ -159,8 +151,8 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
         <circle cx={chartX(currentPhase)} cy={chartY(currentStrength)} r={3} fill={linkColor} stroke="#102037" strokeWidth={1} data-signal-current-strength={currentStrength}><title>{`Signal strength at selected positions: ${formatStrength(currentStrength)} (raw CommNet)`}</title></circle>
       </Box>
       <Stack direction="row" sx={{ px: 1, pb: .75, flexWrap: 'wrap', columnGap: 1.25, rowGap: .25 }}>
-        {legend.map(({ color, label, dashed }) => <Stack key={label} direction="row" sx={{ alignItems: 'center', gap: .5 }}>
-          <Box component="span" aria-hidden="true" sx={{ width: 12, borderTop: `2px ${dashed ? 'dashed' : 'solid'} ${color}` }} />
+        {legend.map(({ color, label }) => <Stack key={label} direction="row" sx={{ alignItems: 'center', gap: .5 }}>
+          <Box component="span" aria-hidden="true" sx={{ width: 12, borderTop: `2px solid ${color}` }} />
           <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.3 }}>{label}</Typography>
         </Stack>)}
       </Stack>
