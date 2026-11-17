@@ -60,7 +60,7 @@ describe('CommNet installation profiles', () => {
     expect(profile.name).toBe(name)
     expect(profile.kerbalism).toBe(true)
     expect(base.kerbalism).toBeUndefined()
-    expect(profile.description).toContain('Kerbalism signal damping')
+    expect(profile.description).toContain('Kerbalism transmission efficiency')
     expect(profile.description).toContain('science-rate estimates')
     expect(profile.clientAntennas).toEqual([...base.clientAntennas, shortAntenna])
     expect(profile.vesselAntennas.filter(antenna => antenna.id !== 'communotron-8')).toEqual(base.vesselAntennas)

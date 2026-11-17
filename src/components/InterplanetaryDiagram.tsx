@@ -19,6 +19,8 @@ interface InterplanetaryDiagramProps {
 
 const colors = { available: '#92d5c6', marginal: '#e7bd7b', blocked: '#dd939c', 'out-of-range': '#dd939c' }
 const format = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
+const percent = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
+const formatStrength = (value: number) => value > 0 && value < .0001 ? '<0.01%' : `${percent.format(value * 100)}%`
 type SignalSample = SuccessfulInterplanetarySignal & { samplePhaseDeg: number }
 
 /** Refine narrow stellar conjunctions so a five-degree sample does not widen
@@ -82,11 +84,15 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
     blocked: `blocked by ${centerName}`,
     'out-of-range': 'out of antenna range',
   }[result.linkStatus]
-  const currentStrength = kerbalism ? result.dampedStrength : result.signalStrength
+  const currentStrength = result.signalStrength
+  const currentSummary = `Signal strength is ${formatStrength(currentStrength)} (raw CommNet).${kerbalism ? ` Transmission efficiency is ${formatStrength(result.dampedStrength)}.` : ''}`
   const legend: { color: string; label: string; dashed: boolean }[] = [
-    ...(kerbalism ? [{ color: '#8cbde7', label: 'Raw CommNet · with blocking', dashed: true }] : []),
-    { color: '#9fb2cd', label: kerbalism ? 'Kerbalism-adjusted · without blocking' : 'CommNet · without blocking', dashed: true },
-    { color: '#92d5c6', label: kerbalism ? 'Kerbalism-adjusted · with blocking' : 'CommNet · with blocking', dashed: false },
+    { color: '#9fb2cd', label: 'Signal strength · without blocking', dashed: true },
+    { color: '#92d5c6', label: 'Signal strength · with blocking', dashed: false },
+    ...(kerbalism ? [
+      { color: '#8cbde7', label: 'Transmission efficiency · without blocking', dashed: true },
+      { color: '#8cbde7', label: 'Transmission efficiency · with blocking', dashed: false },
+    ] : []),
   ]
   const card = { minWidth: 0, border: '1px solid', borderColor: 'divider', borderRadius: 1.25, bgcolor: '#080f2145', overflow: 'hidden' } as const
 
@@ -108,13 +114,13 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
         data-testid="signals-orbit-diagram" data-signal-phase={result.phaseDeg} data-signal-receiver={receivingEndpoint} viewBox={`0 0 ${width} ${orbitHeight}`} preserveAspectRatio="xMidYMid meet"
         sx={{ display: 'block', width: '100%', height: orbitHeight }}>
         <title>{`${nameA} ↔ ${nameB} around ${centerName}`}</title>
-        <desc id={`${prefix}-orbit-description`}>{`Two circular orbits in the same plane around ${centerName}. The bodies are ${format.format(result.phaseDeg)} degrees apart. The arrow points ${receivingEndpoint === 'a' ? 'from sending craft B to receiving craft A' : 'from sending craft A to receiving craft B'}; the link is ${linkDescription}. Orbit sizes show relative distances; small craft and central-body markers are enlarged for visibility. Blocking uses the radius from your inputs, even when the marker is enlarged. Other planets, moons and the horizon near either craft are not checked.`}</desc>
+        <desc id={`${prefix}-orbit-description`}>{`Two circular orbits in the same plane around ${centerName}. The bodies are ${format.format(result.phaseDeg)} degrees apart. The arrow points ${receivingEndpoint === 'a' ? 'from sending craft B to receiving craft A' : 'from sending craft A to receiving craft B'}; the link is ${linkDescription}. ${currentSummary} Orbit sizes show relative distances; small craft and central-body markers are enlarged for visibility. Blocking uses the radius from your inputs, even when the marker is enlarged. Other planets, moons and the horizon near either craft are not checked.`}</desc>
         <defs><marker id={`${prefix}-receive-arrow`} markerWidth={6} markerHeight={6} refX={8} refY={3} orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 6 3 L 0 6 Z" fill={linkColor} /></marker></defs>
         {[{ radius: input.orbitRadiusAM, color: colorA }, { radius: input.orbitRadiusBM, color: colorB }].map((orbit, index) => <circle key={index} cx={centerX} cy={centerY} r={orbit.radius * scale} fill="none" stroke={orbit.color} strokeOpacity={.38} strokeWidth={1} strokeDasharray={index ? '3 4' : undefined} />)}
         <circle cx={centerX} cy={centerY} r={Math.max(1.5, input.centralRadiusM * scale)} fill={input.occlusionFactor < 1 ? 'none' : '#102037'} fillOpacity={.95} stroke={centerColor} strokeOpacity={input.occlusionFactor < 1 ? .45 : 1} strokeWidth={1} data-signal-central-radius-m={input.centralRadiusM} />
         <line x1={senderPoint.x} y1={senderPoint.y} x2={receiverPoint.x} y2={receiverPoint.y} stroke={linkColor} strokeWidth={2} markerEnd={`url(#${prefix}-receive-arrow)`} strokeDasharray={result.linkStatus === 'available' ? undefined : '5 4'}
           data-signal-link-status={result.linkStatus} data-signal-clearance-m={result.centralClearanceM}>
-          <title>{`Distance ${format.format(result.distanceM / 1e9)} Gm; ${format.format(currentStrength * 100)}% ${kerbalism ? 'Kerbalism-adjusted' : 'estimated'} signal.${kerbalism ? ` Raw CommNet ${format.format(result.signalStrength * 100)}%.` : ''}`}</title>
+          <title>{`Distance ${format.format(result.distanceM / 1e9)} Gm. ${currentSummary}`}</title>
         </line>
         <circle cx={centerX} cy={centerY} r={Math.max(input.occlusionFactor < 1 ? 1 : 1.5, input.centralRadiusM * input.occlusionFactor * scale)} fill="#102037" fillOpacity={.95} />
         <circle cx={centerX} cy={centerY} r={Math.max(input.occlusionFactor < 1 ? 1 : 1.5, input.centralRadiusM * input.occlusionFactor * scale)} fill={centerColor} fillOpacity={.24} stroke={centerColor} strokeWidth={1} strokeDasharray={input.occlusionFactor < 1 ? '2 2' : undefined} data-signal-occlusion-factor={input.occlusionFactor} />
@@ -127,12 +133,12 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
     </Box>
 
     <Box component="figure" sx={{ m: 0, ...card }}>
-      <Typography component="figcaption" sx={{ px: 1, pt: .75, fontSize: 12, lineHeight: 1.3, color: 'text.secondary' }}>Signal at each angle between the bodies{kerbalism ? ' · Kerbalism adjustment' : ''}</Typography>
+      <Typography component="figcaption" sx={{ px: 1, pt: .75, fontSize: 12, lineHeight: 1.3, color: 'text.secondary' }}>Signal strength at each angle between the bodies{kerbalism ? ' · transmission efficiency shown separately' : ''}</Typography>
       <Box component="svg" role="img" aria-label="Signal strength by relative phase" aria-describedby={`${prefix}-chart-description`}
         data-testid="signals-strength-chart" data-signal-damping-exponent={kerbalism ? input.dampingExponent : undefined} viewBox={`0 0 ${width} ${chartHeight}`} preserveAspectRatio="xMidYMid meet"
         sx={{ display: 'block', width: '100%', height: chartHeight }}>
-        <title>{kerbalism ? 'Kerbalism-adjusted signal with a clear path and with blocking' : 'Signal with a clear path and with blocking'}</title>
-        <desc id={`${prefix}-chart-description`}>{kerbalism ? 'The blue dotted curve shows raw CommNet strength with blocking. The gray dashed curve shows Kerbalism-adjusted strength for a clear path. The green solid curve also includes blocking by the central body. These are signal percentages, not rates in bits per second; the adjustment does not change maximum antenna range. ' : 'The dashed curve shows signal strength for a clear path. The solid curve also includes blocking by the central body. '}The shaded band marks angles where the central body blocks the link. The vertical marker shows the selected angle. Positions are chosen with the slider, not predicted from an in-game date.</desc>
+        <title>{kerbalism ? 'Raw CommNet signal strength and Kerbalism transmission efficiency, before and after blocking' : 'Raw CommNet signal strength with a clear path and with blocking'}</title>
+        <desc id={`${prefix}-chart-description`}>The gray dashed curve shows raw CommNet signal strength for a clear path. The green solid curve also includes blocking by the central body. {kerbalism ? 'The blue curves separately show Kerbalism transmission efficiency S^k: dashed for a clear path and solid with blocking. These percentages scale science rate; damping does not change raw signal strength or maximum antenna range. ' : ''}The shaded band marks angles where the central body blocks the link. The vertical marker shows the selected angle. {currentSummary} Positions are chosen with the slider, not predicted from an in-game date.</desc>
         <defs><clipPath id={`${prefix}-plot-clip`}><rect x={plot.left} y={plot.top} width={plot.right - plot.left} height={plot.bottom - plot.top} /></clipPath></defs>
         {[0, .5, 1].map(value => <g key={value}>
           <line x1={plot.left} x2={plot.right} y1={chartY(value)} y2={chartY(value)} stroke="#677f9e" strokeOpacity={.25} strokeWidth={1} />
@@ -141,12 +147,16 @@ export default function InterplanetaryDiagram({ input, result, nameA, nameB, cen
         {[0, 90, 180, 270, 360].map(phase => <text key={phase} x={chartX(phase)} y={chartHeight - 8} textAnchor="middle" fill="#a8bad0" fontSize={12}>{phase}°</text>)}
         <g clipPath={`url(#${prefix}-plot-clip)`}>
           {blockedStart !== undefined && blockedEnd !== undefined && <rect x={chartX(blockedStart)} y={plot.top} width={Math.max(0, chartX(blockedEnd) - chartX(blockedStart))} height={plot.bottom - plot.top} fill="#dd939c" fillOpacity={.12} data-signal-occlusion-band="true" />}
-          {kerbalism && <path d={path('signalStrength')} fill="none" stroke="#8cbde7" strokeWidth={1.25} strokeDasharray="1 3" data-signal-curve="raw-commnet" />}
-          <path d={path(kerbalism ? 'dampedRangeStrength' : 'rangeStrength')} fill="none" stroke="#9fb2cd" strokeWidth={1.5} strokeDasharray="4 4" data-signal-curve="range-only" />
-          <path d={path(kerbalism ? 'dampedStrength' : 'signalStrength')} fill="none" stroke="#92d5c6" strokeWidth={2} strokeLinejoin="round" data-signal-curve="with-occlusion" />
+          {kerbalism && <>
+            <path d={path('dampedRangeStrength')} fill="none" stroke="#8cbde7" strokeWidth={1.25} strokeDasharray="4 4" data-signal-curve="transmission-efficiency-range-only"><title>Transmission efficiency (S^k) without blocking</title></path>
+            <path d={path('dampedStrength')} fill="none" stroke="#8cbde7" strokeWidth={1.25} strokeLinejoin="round" data-signal-curve="transmission-efficiency"><title>Transmission efficiency (S^k) with central-body blocking</title></path>
+          </>}
+          <path d={path('rangeStrength')} fill="none" stroke="#9fb2cd" strokeWidth={1.5} strokeDasharray="4 4" data-signal-curve="range-only"><title>Raw CommNet signal strength (S) without blocking</title></path>
+          <path d={path('signalStrength')} fill="none" stroke="#92d5c6" strokeWidth={2} strokeLinejoin="round" data-signal-curve="with-occlusion"><title>Raw CommNet signal strength (S) with central-body blocking</title></path>
           <line x1={chartX(currentPhase)} x2={chartX(currentPhase)} y1={plot.top} y2={plot.bottom} stroke="#e7bd7b" strokeWidth={1} strokeOpacity={.7} data-signal-phase-marker={currentPhase} />
         </g>
-        <circle cx={chartX(currentPhase)} cy={chartY(currentStrength)} r={3} fill={linkColor} stroke="#102037" strokeWidth={1} />
+        {kerbalism && <circle cx={chartX(currentPhase)} cy={chartY(result.dampedStrength)} r={2.5} fill="#8cbde7" stroke="#102037" strokeWidth={1} data-signal-current-transmission-efficiency={result.dampedStrength}><title>{`Transmission efficiency at selected positions: ${formatStrength(result.dampedStrength)}`}</title></circle>}
+        <circle cx={chartX(currentPhase)} cy={chartY(currentStrength)} r={3} fill={linkColor} stroke="#102037" strokeWidth={1} data-signal-current-strength={currentStrength}><title>{`Signal strength at selected positions: ${formatStrength(currentStrength)} (raw CommNet)`}</title></circle>
       </Box>
       <Stack direction="row" sx={{ px: 1, pb: .75, flexWrap: 'wrap', columnGap: 1.25, rowGap: .25 }}>
         {legend.map(({ color, label, dashed }) => <Stack key={label} direction="row" sx={{ alignItems: 'center', gap: .5 }}>

@@ -103,6 +103,8 @@ On Linux CI machines that also need browser system dependencies, use
 | Stock/RSS/Kerbalism CommNet profiles and conditional CustomBarnKit DSN powers | `src/data/radioProfiles.ts` |
 | Raw signal strength, Kerbalism damping, and automatic calibration | `src/utils/signalStrength.ts` |
 | Reviewed Kerbalism home-orbit reference and compatible recovery profile | `src/data/kerbalism.ts` |
+| Pinned Kerbalism science rates and single-hop rate calculation | `src/data/kerbalismRates.ts`, `src/utils/kerbalismBitrate.ts` |
+| Decimal byte-rate presentation and bit/s conversion boundary | `src/utils/formatScienceRate.ts` |
 | Kcalbeloh relay physics and gravity/SOI derivation | `src/data/kcalbelohPhysics.ts` |
 | Automatic relay altitude within clearance and SOI bounds | `src/utils/relayDefaults.ts` |
 | Validated antenna loadouts and effective power | `src/utils/antennaArray.ts` |
@@ -442,8 +444,9 @@ geometry and deployment results. Single antenna presets and applied arrays
 supply effective CommNet powers from the selected radio profile for the relay
 and surface endpoints.
 Equatorial visibility, neighboring relay links, and maximum DSN range are
-separate results. Each neighbor and sample-station link reports raw and damped
-strength, masked to zero when blocked or out of range. Aggregate station
+separate results. Each neighbor and sample-station link reports raw signal
+strength and Kerbalism transmission efficiency, masked to zero when blocked or
+out of range. Aggregate station
 strength is the best currently usable sample-station hop, or `null` for a body
 without a surface; it is not a worst-longitude coverage guarantee. A local
 constellation is not a complete DSN connection.
@@ -489,10 +492,11 @@ Full radius option remains 1. The range multiplier starts at 1 independently.
 
 Kerbalism variants add Communotron 8 as a direct, combinable antenna with
 250,000 m power and exponent 1 (5,000,000 m under RSS). It is excluded from
-relay forwarding catalogs. They retain stock CommNet ranges and strength;
-the main signal readouts additionally apply Kerbalism's `S^k` factor while
-retaining raw CommNet values separately. Absolute science throughput,
-powered/deployed antenna state, ElectricCharge, and storms are not calculated.
+relay forwarding catalogs. They retain stock CommNet ranges and strength.
+Main signal readouts always use raw CommNet `S`; Kerbalism profiles separately
+label `S^k` as **Transmission efficiency**. Science-rate estimates use that
+efficiency for the selected outgoing hop. Powered/deployed antenna state,
+ElectricCharge, and storms are not calculated.
 See the
 [pinned Kerbalism source notes](RELAYS.md#kerbalism-radio-configuration).
 
@@ -520,6 +524,22 @@ The parent relay workspace owns damping mode and override state, shared by
 Network and Signals and preserved while closed. `KerbalismDampingControls`
 exposes the automatic reference/fallback and custom exponent in a compact
 disclosure. Damping changes alone must not affect Delta-V mission state.
+
+`kerbalismRates.ts` converts the pinned source's decimal MB/s antenna rates to
+bit/s using 8,000,000 bits per MB. Canonical rate state and the calculation
+engine remain in bit/s. `formatScienceRateBitsPerSecond` divides by 8 once at
+the presentation boundary and formats decimal B/s, kB/s, MB/s, or GB/s with
+1,000-based scaling. Custom full-strength input fields accept B/s and convert
+to/from canonical bit/s state. The minimum science-rate configuration input and
+settings summary retain bit/s, matching Kerbalism's `Settings.cfg`; science-rate
+results and floor feedback use byte units.
+
+`calculateKerbalismBitrate` takes the sender's count-weighted geometric-mean
+external antenna rate, antenna speed, raw signal, and damping exponent. The
+positive-rate floor applies after `S^k`; blocked, out-of-range, zero, and
+underflowed rates stay zero. The calculation retains Kerbalism's MB/s
+multiplication order. These are selected-hop estimates; downstream relay
+bottlenecks and complete DSN paths remain outside the calculation.
 
 Changing radio profile keeps body/orbit drafts, antenna IDs, array entries, and
 custom power inputs. Compatible presets and arrays recalculate from the selected
@@ -585,11 +605,13 @@ and the circular nearest/farthest distance-strength envelope. It does not fetch
 an ephemeris or infer a date from the phase slider.
 
 Its optional damping exponent adds `dampedStrength`, `dampedRangeStrength`,
-`bestDampedStrength`, and `worstDampedStrength` alongside the raw fields. With a
-Kerbalism profile, the main metrics and the two profile-specific chart curves
-use these damped results; a separate raw readout and curve retain the CommNet
-reference. Stock readouts keep their existing raw values. Neither output is an
-absolute bit rate or a verified full communication path.
+`bestDampedStrength`, and `worstDampedStrength` alongside the raw fields. Main
+signal metrics and closest/farthest strengths always use the raw fields.
+Kerbalism profiles show the damped fields separately as **Transmission
+efficiency**. The chart has signal-strength curves with and without blocking,
+plus distinct Kerbalism-only transmission-efficiency curves with and without
+blocking. Neither dimensionless percentage establishes a complete communication
+path; the separate science-rate result estimates only the selected outgoing hop.
 
 The strength function is `3x² − 2x³` for `x = clamp(1 − d/R, 0, 1)`, where
 `R = sqrt(PA × PB) × rangeMultiplier`. Occluded segments have zero effective

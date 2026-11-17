@@ -19,7 +19,7 @@ import {
   calculateKerbalismBitrate, resolveKerbalismBaseRate,
   DEFAULT_KERBALISM_ANTENNA_SPEED, DEFAULT_KERBALISM_MINIMUM_BITS_PER_SECOND,
 } from '../utils/kerbalismBitrate'
-import { formatBitrate } from '../utils/formatBitrate'
+import { formatScienceRateBitsPerSecond } from '../utils/formatScienceRate'
 import { readRelayModePreference, writeRelayModePreference, type RelayMode } from '../utils/relayMode'
 import AdvancedSettingsNotice from './AdvancedSettingsNotice'
 import RelayBodyReference from './RelayBodyReference'
@@ -30,6 +30,7 @@ import InterplanetaryPlanner from './InterplanetaryPlanner'
 import KerbalismDampingControls, { type KerbalismDampingMode } from './KerbalismDampingControls'
 import KerbalismRateControls from './KerbalismRateControls'
 import UnavailableAntennaAlert from './UnavailableAntennaAlert'
+import ScienceRateField from './ScienceRateField'
 
 interface RelayPlannerDialogProps {
   open: boolean
@@ -112,11 +113,11 @@ function bodyValueDisplay(value: string, scientific = false): string | null {
   return scientificNumber.format(parsed).replace(/E([+-]?\d+)/, (_, exponent: string) => ` × 10${[...exponent].map(character => superscript[character]).join('')}`)
 }
 
-function Metric({ label, value, testId, color, rawValue, rawTestId }: { label: string; value: string; testId?: string; color?: string; rawValue?: string; rawTestId?: string }) {
-  return <Box sx={{ px: 1, py: .75, minWidth: 0, border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: '#080f2145', [compact]: { py: .5 } }}>
+function Metric({ label, value, testId, color, efficiencyValue, efficiencyTestId, description }: { label: string; value: string; testId?: string; color?: string; efficiencyValue?: string; efficiencyTestId?: string; description?: string }) {
+  return <Box title={description} sx={{ px: 1, py: .75, minWidth: 0, border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: '#080f2145', [compact]: { py: .5 } }}>
     <Typography sx={{ fontSize: 11, lineHeight: 1.35, color: 'text.secondary' }}>{label}</Typography>
-    <Typography component="output" data-testid={testId} sx={{ display: 'block', mt: { xs: .125, sm: .25 }, fontSize: { xs: 14, sm: 15 }, lineHeight: 1.25, fontWeight: 500, fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere', color: color ?? 'text.primary', [compact]: { fontSize: 13, mt: 0 } }}>{value}</Typography>
-    {rawValue !== undefined && <Typography sx={{ mt: .25, fontSize: 11, lineHeight: 1.4, color: 'text.secondary' }}>Raw CommNet <Box component="output" data-testid={rawTestId} sx={{ fontVariantNumeric: 'tabular-nums' }}>{rawValue}</Box></Typography>}
+    <Typography component="output" data-testid={testId} aria-description={description} sx={{ display: 'block', mt: { xs: .125, sm: .25 }, fontSize: { xs: 14, sm: 15 }, lineHeight: 1.25, fontWeight: 500, fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere', color: color ?? 'text.primary', [compact]: { fontSize: 13, mt: 0 } }}>{value}</Typography>
+    {efficiencyValue !== undefined && <Typography title="Kerbalism transmission efficiency is S^k. It scales science rate without changing raw CommNet signal strength." sx={{ mt: .25, fontSize: 11, lineHeight: 1.4, color: 'text.secondary' }}>Transmission efficiency <Box component="output" data-testid={efficiencyTestId} aria-description="Kerbalism factor applied to the science rate, separate from raw CommNet signal strength." sx={{ fontVariantNumeric: 'tabular-nums' }}>{efficiencyValue}</Box></Typography>}
   </Box>
 }
 
@@ -290,7 +291,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
     ? calculateKerbalismBitrate({ baseRateBitsPerSecond: base.baseRateBitsPerSecond, rawStrength, dampingExponent, antennaSpeed: numeric(antennaSpeed), minimumBitsPerSecond: numeric(minimumBitsPerSecond), linkAvailable }) : null
   const neighborRate = success ? rateFor(relayBaseRate, success.neighborSignalStrength, success.ringLinkStatus === 'available' || success.ringLinkStatus === 'marginal') : null
   const stationRate = success ? rateFor(clientBaseRate, success.bestStationSignalStrength, success.stationLinks.some(link => link.status === 'available' || link.status === 'marginal')) : null
-  const rateValue = (base: typeof relayBaseRate, rate: typeof neighborRate) => rate?.status === 'success' ? formatBitrate(rate.rateBitsPerSecond)
+  const rateValue = (base: typeof relayBaseRate, rate: typeof neighborRate) => rate?.status === 'success' ? formatScienceRateBitsPerSecond(rate.rateBitsPerSecond)
     : base?.status === 'needs-rate' ? 'Enter full-strength rate' : base?.status === 'success' ? 'Check rate settings' : 'Check antenna rate'
   const rateFloorApplied = neighborRate?.status === 'success' && neighborRate.floorApplied || stationRate?.status === 'success' && stationRate.floorApplied
   const ringLabel = success ? ({ available: 'Available', marginal: 'At limit', blocked: 'Body blocks links', 'out-of-range': 'Out of range' } as const)[success.ringLinkStatus] : '—'
@@ -350,7 +351,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
             <TextField select fullWidth size="small" label="Radio setup" value={radioId} onChange={event => setRadioId(event.target.value as RadioProfileId)} sx={fieldStyles}>
               {radioProfileOptions.map(option => <MenuItem key={option.id} value={option.id} sx={{ fontSize: 13 }}>{option.name}</MenuItem>)}
             </TextField>
-            <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>{advanced ? radioProfile.description : radioProfile.kerbalism ? 'Includes Kerbalism signal and science estimates.' : radioId === 'stock' ? 'Uses stock antenna ratings.' : 'Uses RSS antenna ratings.'}</Typography>
+            <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>{advanced ? radioProfile.description : radioProfile.kerbalism ? 'Includes transmission efficiency and science-rate estimates.' : radioId === 'stock' ? 'Uses stock antenna ratings.' : 'Uses RSS antenna ratings.'}</Typography>
             {!advanced && networkSettingsActive && <AdvancedSettingsNotice onOpen={() => openAdvanced(bodySettingsActive ? 'body' : clearanceSettingsActive ? 'deployment' : 'network')} />}
             {advanced && dampingControls}
             {advanced && rateControls}
@@ -372,10 +373,10 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
             </Box>}
             {advanced && (relayId === 'custom' || clientId === 'custom' || dsnId === 'custom') && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Enter the antenna's final KSP power rating in metres. The radio setup does not multiply custom values again.</Typography>}
             {advanced && radioProfile.kerbalism && (relayId === 'custom' || clientId === 'custom') && <Box sx={{ pt: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', columnGap: .75, rowGap: 1.5 }}>
-              {relayId === 'custom' && <NumericField label="Relay full-strength rate" value={relayCustomRate} onChange={setRelayCustomRate} unit="bit/s" max={1e18} optional />}
-              {clientId === 'custom' && <NumericField label="Surface full-strength rate" value={clientCustomRate} onChange={setClientCustomRate} unit="bit/s" max={1e18} optional />}
+              {relayId === 'custom' && <ScienceRateField label="Relay full-strength rate" valueBitsPerSecond={relayCustomRate} onChangeBitsPerSecond={setRelayCustomRate} />}
+              {clientId === 'custom' && <ScienceRateField label="Surface full-strength rate" valueBitsPerSecond={clientCustomRate} onChangeBitsPerSecond={setClientCustomRate} />}
             </Box>}
-            {advanced && radioProfile.kerbalism && (relayId === 'custom' || clientId === 'custom') && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Enter the science rate from your antenna configuration, before speed or signal adjustments. Leave it blank to calculate signal and coverage without a bitrate.</Typography>}
+            {advanced && radioProfile.kerbalism && (relayId === 'custom' || clientId === 'custom') && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Enter the full-strength science rate in B/s, before Antenna speed or transmission efficiency. Leave it blank to calculate signal and coverage without a science rate.</Typography>}
             {success ? <>
               <Typography role="status" data-testid="relay-ring-status" sx={{ fontSize: 12, color: statusColor, lineHeight: 1.3 }}>Neighbor links · {ringLabel}<Box component="span" data-testid="relay-coverage-status" sx={{ color: 'text.secondary' }}> · {success.coverageStatus === null ? 'No surface' : ({ full: 'Full equator', partial: 'Partial equator', marginal: 'Coverage at boundary', none: 'No surface links' } as const)[success.coverageStatus]}</Box></Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
@@ -383,17 +384,17 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
                 <Metric label="Neighbor distance" value={distance(success.neighborDistanceM)} testId="relay-neighbor-distance" />
                 <Metric label="Orbital period" value={duration(success.orbitalPeriodS)} testId="relay-period" />
                 {advanced && <Metric label="Maximum relay-to-DSN range" value={range(success.dsnRangeM)} testId="relay-dsn-range" />}
-                <Metric label={radioProfile.kerbalism ? 'Relay-to-relay Kerbalism signal' : 'Relay-to-relay signal'} value={signalPercent(radioProfile.kerbalism ? success.neighborDampedStrength : success.neighborSignalStrength)} testId="relay-neighbor-signal" rawValue={advanced && radioProfile.kerbalism ? signalPercent(success.neighborSignalStrength) : undefined} rawTestId="relay-neighbor-raw-signal" />
-                <Metric label="Best surface-to-relay signal" value={success.bestStationSignalStrength === null ? 'No surface' : signalPercent((radioProfile.kerbalism ? success.bestStationDampedStrength : success.bestStationSignalStrength)!)} testId="relay-station-signal" rawValue={advanced && radioProfile.kerbalism && success.bestStationSignalStrength !== null ? signalPercent(success.bestStationSignalStrength) : undefined} rawTestId="relay-station-raw-signal" />
+                <Metric label="Relay-to-relay signal" value={signalPercent(success.neighborSignalStrength)} testId="relay-neighbor-signal" efficiencyValue={radioProfile.kerbalism ? signalPercent(success.neighborDampedStrength) : undefined} efficiencyTestId="relay-neighbor-transmission-efficiency" description="Raw CommNet signal strength between neighboring relays. Kerbalism damping changes transmission efficiency, not this signal strength." />
+                <Metric label="Best surface-to-relay signal" value={success.bestStationSignalStrength === null ? 'No surface' : signalPercent(success.bestStationSignalStrength)} testId="relay-station-signal" efficiencyValue={radioProfile.kerbalism && success.bestStationDampedStrength !== null ? signalPercent(success.bestStationDampedStrength) : undefined} efficiencyTestId="relay-station-transmission-efficiency" description="Raw CommNet signal strength of the strongest link from the blue surface point at the selected relay positions." />
                 {radioProfile.kerbalism && <>
-                  <Metric label="Relay-to-relay science rate" value={rateValue(relayBaseRate, neighborRate)} testId="relay-neighbor-rate" color="primary.light" />
-                  <Metric label="Surface → relay rate" value={success.bestStationSignalStrength === null ? 'No surface' : rateValue(clientBaseRate, stationRate)} testId="relay-station-rate" color="primary.light" />
+                  <Metric label="Relay-to-relay science rate" value={rateValue(relayBaseRate, neighborRate)} testId="relay-neighbor-rate" color="primary.light" description="Science transmitted per second on this hop, after Antenna speed, Kerbalism transmission efficiency, and any configured minimum. Displayed in decimal bytes per second." />
+                  <Metric label="Surface-to-relay science rate" value={success.bestStationSignalStrength === null ? 'No surface' : rateValue(clientBaseRate, stationRate)} testId="relay-station-rate" color="primary.light" description="Science transmitted per second from the surface craft to its best relay, after Kerbalism transmission efficiency. Displayed in decimal bytes per second." />
                 </>}
               </Box>
               <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Best surface-to-relay signal is the strongest link from the blue surface point at the current relay positions.</Typography>
-              {radioProfile.kerbalism && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Science rates assume active, powered antennas. A relay's next link may be slower; the complete route home is not checked. Coverage still uses raw CommNet signal.</Typography>}
+              {radioProfile.kerbalism && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Signal strength is raw CommNet strength. Kerbalism transmission efficiency (S^k) scales science rate, not signal strength or coverage. Rates assume active, powered antennas; a relay's next link may be slower. The complete route home is not checked.</Typography>}
               {radioProfile.kerbalism && clientBaseRate?.status === 'success' && clientBaseRate.externalCount === 0 && success.bestStationSignalStrength !== null && <Typography sx={{ fontSize: 12, lineHeight: 1.4, color: 'text.secondary' }}>Internal antennas provide control but do not transmit science.</Typography>}
-              {radioProfile.kerbalism && rateFloorApplied && <Typography data-testid="relay-rate-floor" sx={{ fontSize: 12, lineHeight: 1.4, color: 'secondary.main' }}>A positive science rate was raised to the configured minimum of {formatBitrate(numeric(minimumBitsPerSecond))}.</Typography>}
+              {radioProfile.kerbalism && rateFloorApplied && <Typography data-testid="relay-rate-floor" sx={{ fontSize: 12, lineHeight: 1.4, color: 'secondary.main' }}>A positive science rate was raised to the configured minimum of {formatScienceRateBitsPerSecond(numeric(minimumBitsPerSecond))}.</Typography>}
             </> : missingIds.length ? <UnavailableAntennaAlert names={missingNames} restoreLabel={getRadioProfile(restoreProfileId).name} onRestore={() => setRadioId(restoreProfileId)}
               replaceLabel={missingArrayRole ? advanced ? 'Edit antenna array' : 'Edit array in Advanced mode' : missingRelay.length ? 'Use HG-5' : 'Use Communotron 16'} onReplace={() => {
                 if (missingArrayRole) openArray(missingArrayRole)
@@ -491,7 +492,7 @@ function RelayContent({ pack, initialBodyId, onClose }: Omit<RelayPlannerDialogP
         <Box sx={{ minWidth: 0, display: tab === 'body' ? { xs: 'none', sm: 'block' } : 'block' }}>
           {success && body ? tab === 'deployment'
             ? <DeploymentDiagram input={input} result={success} bodyName={body.name} bodyColor={body.color} />
-            : <RelayDiagram input={input} result={success} bodyName={body.name} bodyColor={body.color} onRotate={() => setPhase(value => (value + 15) % 360)} />
+            : <RelayDiagram input={input} result={success} bodyName={body.name} bodyColor={body.color} kerbalism={radioProfile.kerbalism} onRotate={() => setPhase(value => (value + 15) % 360)} />
             : <Box sx={{ minHeight: 130, height: '100%', display: 'flex', flexDirection: 'column', gap: .75, alignItems: 'center', justifyContent: 'center', px: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 1 }}><Typography sx={{ textAlign: 'center', color: 'text.secondary', fontSize: 12 }}>{tab === 'body' && result.status === 'invalid' ? result.errors[0] : tab === 'deployment' ? 'Enter valid body and target-orbit data to preview the carrier orbit.' : 'Enter valid body and orbit data to preview the relay positions.'}</Typography>{!advanced && tab === 'body' && invalidSettingsSection('body') !== 'body' && <Button size="small" onClick={() => openAdvanced(invalidSettingsSection('body'))} sx={{ minHeight: 32, fontSize: 12 }}>Fix radio settings in Advanced mode</Button>}</Box>}
           {tab !== 'deployment' && success && body && !body.hasSurface && <Typography sx={{ mt: .5, fontSize: 12, color: 'text.secondary', lineHeight: 1.45 }}>{advanced ? 'This body has no landable surface, so only relay links and the DSN distance limit are shown.' : 'This body has no landable surface, so only relay links are shown.'}</Typography>}
           {tab !== 'deployment' && success?.warnings.map((warning, index) => <Typography key={index} sx={{ mt: .5, fontSize: 12, lineHeight: 1.45, color: 'secondary.main' }}>{warning}</Typography>)}

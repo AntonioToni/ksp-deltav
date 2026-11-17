@@ -106,7 +106,7 @@ test('exposes distinct Kerbalism presets and sources while preserving the raw st
   const expectedStrength = 100 * normalized ** 2 * (3 - 2 * normalized)
   expect(expectedStrength).toBeCloseTo(84.61, 2)
   await expect(metric(page, 'signal-distance')).toHaveText('24.79 Gm')
-  await expect(metric(page, 'signal-raw-strength')).toHaveText(`${expectedStrength.toFixed(2)}%`)
+  await expect(metric(page, 'signal-strength')).toHaveText(`${expectedStrength.toFixed(2)}%`)
   await choose(page, 'Radio setup', 'Stock CommNet')
   await expect(metric(page, 'signal-range')).toHaveText('100 Gm')
   await expect(metric(page, 'signal-strength')).toHaveText('84.61%')
@@ -191,7 +191,7 @@ test('preserves final custom powers and saved stock array counts across Kerbalis
     await expect(field(page, 'Power A')).toHaveValue('100000000000')
     await expect(field(page, 'Power B')).toHaveValue('100000000000')
     await expect(metric(page, 'signal-range')).toHaveText('100 Gm')
-    await expect(metric(page, 'signal-raw-strength')).toHaveText('84.61%')
+    await expect(metric(page, 'signal-strength')).toHaveText('84.61%')
   }
 })
 

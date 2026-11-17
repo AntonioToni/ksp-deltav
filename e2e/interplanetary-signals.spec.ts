@@ -401,7 +401,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }
       // can leave the already-visible slider beside a clipped preceding metric.
       await phase(page).evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest' }))
       await expect(signal(page).getByText('Separation at selected positions', { exact: true })).toBeInViewport({ ratio: .99999 })
-      await expect(signal(page).getByText('Estimated signal', { exact: true })).toBeInViewport({ ratio: .99999 })
+      await expect(signal(page).getByText('Signal strength', { exact: true })).toBeInViewport({ ratio: .99999 })
       await expect(metric(page, 'signal-distance')).toBeInViewport({ ratio: .99999 })
       await expect(metric(page, 'signal-strength')).toBeInViewport({ ratio: .99999 })
       // MUI clips the native range input; verify the rendered rail/thumb control.

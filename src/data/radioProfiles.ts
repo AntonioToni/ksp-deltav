@@ -141,7 +141,7 @@ function withKerbalism(
     : base.id === 'rss' ? 'RSS 20× antenna powers; stock ground stations' : 'RSS 20× antenna powers; CustomBarnKit ground stations'
   return Object.freeze({
     ...base, id, name, kerbalism: true,
-    description: `${powers}. Adds Communotron 8 and Kerbalism signal damping for science-rate estimates.`,
+    description: `${powers}. Adds Communotron 8 and Kerbalism transmission efficiency for science-rate estimates.`,
     clientAntennas: clients,
     vesselAntennas: Object.freeze([...clients, ...base.relayAntennas]),
     sources: Object.freeze([

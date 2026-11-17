@@ -64,9 +64,9 @@ with Stock or OPM.
   it does not connect different star systems or model wormholes.
 - **Mixed antenna arrays** with separate relay, surface-client, and interplanetary
   endpoint loadouts, using stock antenna combining rules.
-- **Kerbalism science bitrate estimates** for individual local and interplanetary
-  links. See how antenna choices and Kerbalism's signal adjustment affect science
-  transmission, with editable antenna speed and minimum science rate.
+- **Kerbalism science-rate estimates** for individual local and interplanetary
+  links. See how antenna choices and Kerbalism's transmission efficiency affect
+  science transmission, with editable antenna speed and minimum science rate.
 - **A responsive map** with keyboard and touch selection, a deep-blue starfield,
   comfortable sizing on large screens, and no page or map scrolling.
 
@@ -201,14 +201,14 @@ for Kerbalism 3.44. RSS maps start with RSS antenna powers (20× stock) and stoc
 DSN powers; select a CustomBarnKit option if your installation includes its RSS
 DSN patch. Radio setup is shared by Network and Signals and can be changed
 independently of the body map. Kerbalism presets retain CommNet range and signal
-rules, add **Communotron 8**, and show Kerbalism's **damped signal** in Network
-and Signals. Raw CommNet strength is also shown in Advanced Network and in
-Signals. Damping adjusts the strength used
-for science transmission; it does not change maximum antenna range. In Advanced,
+rules and add **Communotron 8**. **Signal strength** always means raw CommNet
+strength in Network and Signals. Kerbalism profiles separately show
+**Transmission efficiency**, the `S^k` factor used for science transmission.
+Damping changes that efficiency; it does not change maximum antenna range. In Advanced,
 open **Kerbalism damping** to use the automatic 3.44 reference exponent or enter your
 installation's exponent.
 Damping settings are shared by both tabs. Reach and coverage still use raw
-CommNet geometry; the damped percentage and science bitrate are separate results.
+CommNet geometry; transmission efficiency and science rate are separate results.
 See [Kerbalism radio configuration](docs/RELAYS.md#kerbalism-radio-configuration).
 
 With a Kerbalism preset, **Relay-to-relay science rate** and **Surface → relay rate**
@@ -216,9 +216,13 @@ estimate the selected local hops. Signals shows the sending endpoint's rate
 toward the chosen receiver. In Advanced, open **Science rate settings** and set **Antenna
 speed** to your game setting; the default is **1.5× (Normal)**.
 **Minimum science rate** defaults to **1 bit/s**;
-set it to zero to remove that minimum. These settings are shared by both tabs.
-For custom power, enter the craft's full-strength rate in **bit/s** before speed
-and damping; leaving it blank keeps the bitrate unknown without hiding signal
+set it to zero to remove that minimum. The field keeps Kerbalism's configuration
+unit, bit/s. A science rate raised to that default minimum appears as **0.125 B/s**.
+Science-rate results use
+decimal **B/s**, **kB/s**, **MB/s**, or **GB/s** (8 bits per byte, 1,000 bytes per
+kB). These settings are shared by both tabs.
+For custom power, enter the craft's full-strength rate in **B/s** before speed
+and damping; leaving it blank keeps the science rate unknown without hiding signal
 results. These are single-hop estimates, before any slower onward relay links.
 
 In Advanced, choose **Antenna array…** under **Relay antenna** or **Surface antenna** to mix
@@ -344,7 +348,7 @@ relays to the DSN are not checked. The radio presets use stock CommNet rules wit
 Stock, RSS, and Kerbalism configurations. Communotron 8 cannot forward relay
 traffic. Signals checks the receiving endpoint's relay capability for one hop;
 it does not establish a complete connection to mission control.
-Kerbalism estimates science bitrates for the selected hops; complete-path
+Kerbalism estimates science rates for the selected hops; complete-path
 throughput and ElectricCharge availability, antenna deployment, breakage,
 plasma, and storms are not modeled. RealAntennas and
 RemoteTech use different models and are not simulated; custom powers do not

@@ -66,7 +66,7 @@ export default function KerbalismDampingControls({ mode, customExponent, onModeC
         Automatic uses the homeworld and strongest DSN preset, so changing this link's antennas or DSN level does not change the exponent. For a custom installation, enter DampingExponentOverride from Kerbalism's settings or DataRateDampingExponent from KSP.log as the Custom exponent.
       </Typography>
       <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>
-        S is raw CommNet strength from 0 to 1; k is the exponent above. Kerbalism signal is S^k. The science-rate cards convert this factor into bit/s; antenna range and body blocking still use raw CommNet rules.
+        S is raw CommNet signal strength from 0 to 1; k is the exponent above. Transmission efficiency is S^k. It scales the science rate without changing signal strength, antenna range or body blocking. Science rates are displayed in bytes per second (B/s).
       </Typography>
     </Stack>
   </Box>

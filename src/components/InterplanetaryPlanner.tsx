@@ -12,11 +12,12 @@ import { calculateAntennaArray, type AntennaArrayEntry } from '../utils/antennaA
 import { calculateInterplanetarySignal } from '../utils/interplanetary'
 import { resolveSignalEndpointPower } from '../utils/signalEndpoint'
 import { calculateKerbalismBitrate, resolveKerbalismBaseRate } from '../utils/kerbalismBitrate'
-import { formatBitrate } from '../utils/formatBitrate'
+import { formatScienceRateBitsPerSecond } from '../utils/formatScienceRate'
 import type { RelayMode } from '../utils/relayMode'
 import AdvancedSettingsNotice from './AdvancedSettingsNotice'
 import AntennaArrayDialog from './AntennaArrayDialog'
 import InterplanetaryDiagram from './InterplanetaryDiagram'
+import ScienceRateField from './ScienceRateField'
 import UnavailableAntennaAlert from './UnavailableAntennaAlert'
 
 interface InterplanetaryPlannerProps {
@@ -71,10 +72,11 @@ function NumberField({ label, value, onChange, unit, min = 0, max, helperText }:
     slotProps={{ htmlInput: { 'aria-label': label, min, max, step: 'any' }, input: unit ? { endAdornment: <InputAdornment position="end"><Typography sx={{ fontSize: 12 }}>{unit}</Typography></InputAdornment> } : undefined }} />
 }
 
-function Metric({ label, value, testId, color }: { label: string; value: string; testId: string; color?: string }) {
-  return <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, px: 1, py: .75, minWidth: 0, bgcolor: '#080f2145' }}>
+function Metric({ label, value, testId, color, secondary, description }: { label: string; value: string; testId: string; color?: string; secondary?: { label: string; value: string; testId: string }; description?: string }) {
+  return <Box title={description} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, px: 1, py: .75, minWidth: 0, bgcolor: '#080f2145' }}>
     <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.3 }}>{label}</Typography>
-    <Typography component="output" data-testid={testId} sx={{ display: 'block', mt: .25, fontSize: 16, lineHeight: 1.3, fontWeight: 500, fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere', color: color ?? 'text.primary' }}>{value}</Typography>
+    <Typography component="output" data-testid={testId} aria-description={description} sx={{ display: 'block', mt: .25, fontSize: 16, lineHeight: 1.3, fontWeight: 500, fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere', color: color ?? 'text.primary' }}>{value}</Typography>
+    {secondary && <Typography title="Kerbalism transmission efficiency is S^k for the same positions and blocking assumptions as the raw signal value." sx={{ mt: .5, fontSize: 12, color: 'text.secondary', lineHeight: 1.3 }}>{secondary.label} <Box component="output" data-testid={secondary.testId} sx={{ color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>{secondary.value}</Box></Typography>}
   </Box>
 }
 
@@ -227,7 +229,7 @@ export default function InterplanetaryPlanner({ mode, onOpenAdvanced, advancedRa
       {isReceiver && resolved.status === 'success' && resolved.ignoredDirectCount > 0 && <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>{resolved.ignoredDirectCount} direct antenna{resolved.ignoredDirectCount === 1 ? '' : 's'} retained for sending; only relay antennas help receive this link.</Typography>}
       {isReceiver && draft.selection === 'custom' && <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>This custom value assumes the receiving craft has a working relay antenna.</Typography>}
       {advanced && draft.selection === 'custom' && <NumberField label={`Power ${label}`} value={draft.customPower} onChange={value => setDraft(endpoint, { customPower: value })} min={Number.MIN_VALUE} max={1e18} unit="m" />}
-      {advanced && radio.kerbalism && draft.selection === 'custom' && <NumberField label={`Full-strength rate ${label}`} value={draft.customRate} onChange={value => setDraft(endpoint, { customRate: value })} max={1e18} unit="bit/s"
+      {advanced && radio.kerbalism && draft.selection === 'custom' && <ScienceRateField label={`Full-strength rate ${label}`} valueBitsPerSecond={draft.customRate} onChangeBitsPerSecond={value => setDraft(endpoint, { customRate: value })}
         helperText="Science rate at full signal, before the Antenna speed multiplier. Needed only when this craft sends science." />}
     </Stack>
   }
@@ -322,15 +324,15 @@ export default function InterplanetaryPlanner({ mode, onOpenAdvanced, advancedRa
           <Typography role="status" data-testid="signal-link-status" sx={{ fontSize: 12, fontWeight: 500, color: colors[success.linkStatus] }}>{status}</Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
             <Metric label="Separation at selected positions" value={distance(success.distanceM)} testId="signal-distance" />
-            <Metric label={radio.kerbalism ? 'Estimated Kerbalism signal' : 'Estimated signal'} value={strength(radio.kerbalism ? success.dampedStrength : success.signalStrength)} testId="signal-strength" color={colors[success.linkStatus]} />
+            <Metric label="Signal strength" value={strength(success.signalStrength)} testId="signal-strength" color={colors[success.linkStatus]} description="Raw CommNet signal strength for the selected positions, including central-body blocking. Kerbalism damping does not change this value." />
           </Box>
           {radio.kerbalism && <>
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Raw CommNet signal <Box component="output" data-testid="signal-raw-strength" sx={{ color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>{strength(success.signalStrength)}</Box></Typography>
+            <Typography title="Kerbalism transmission efficiency is S^k. It scales science transmission rate without changing raw CommNet signal strength." sx={{ fontSize: 12, color: 'text.secondary' }}>Transmission efficiency <Box component="output" data-testid="signal-transmission-efficiency" aria-description="Kerbalism factor applied to science rate, separate from raw CommNet signal strength." sx={{ color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}>{strength(success.dampedStrength)}</Box></Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
-              <Metric label={`Science rate · ${scienceDirection}`} value={rate ? formatBitrate(rate.rateBitsPerSecond) : ratePlaceholder} testId="signal-science-rate" />
-              <Metric label="Full-strength sender rate" value={rate ? formatBitrate(rate.fullStrengthBitsPerSecond) : ratePlaceholder} testId="signal-full-strength-rate" />
+              <Metric label={`Science rate · ${scienceDirection}`} value={rate ? formatScienceRateBitsPerSecond(rate.rateBitsPerSecond) : ratePlaceholder} testId="signal-science-rate" description="Science transmitted per second on this hop, after Antenna speed, transmission efficiency, and any configured minimum. Displayed in decimal bytes per second." />
+              <Metric label="Full-strength sender rate" value={rate ? formatScienceRateBitsPerSecond(rate.fullStrengthBitsPerSecond) : ratePlaceholder} testId="signal-full-strength-rate" description="Sender rate after Antenna speed, before transmission efficiency reduces it. Displayed in decimal bytes per second." />
             </Box>
-            {rate?.floorApplied && <Typography data-testid="signal-rate-floor" sx={{ fontSize: 12, color: 'secondary.main', lineHeight: 1.4 }}>The calculated rate is below your minimum; using {formatBitrate(minimumBitsPerSecond)}. Disconnected links stay at zero.</Typography>}
+            {rate?.floorApplied && <Typography data-testid="signal-rate-floor" sx={{ fontSize: 12, color: 'secondary.main', lineHeight: 1.4 }}>The calculated rate is below your minimum; using {formatScienceRateBitsPerSecond(minimumBitsPerSecond)}. Disconnected links stay at zero.</Typography>}
             <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>
               {senderBaseRate?.status === 'dsn' ? 'A DSN receives science; choose a vessel as the sender to estimate a science rate.'
                 : senderBaseRate?.status === 'success' && senderBaseRate.externalCount === 0 ? 'Internal antennas do not transmit science. Select an external antenna for a science rate.'
@@ -347,18 +349,20 @@ export default function InterplanetaryPlanner({ mode, onOpenAdvanced, advancedRa
       </Stack>
     </Box>
     {success && <Box sx={{ mt: .5 }}>
-      <Typography sx={{ mb: .5, fontSize: 12, color: 'text.secondary' }}>Closest and farthest positions · {radio.kerbalism ? 'Kerbalism signal ' : 'signal '}before blockage</Typography>
+      <Typography sx={{ mb: .5, fontSize: 12, color: 'text.secondary' }}>Closest and farthest positions · signal strength before blockage</Typography>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: .75 }}>
-        <Metric label={`Closest position · ${distance(success.minimumDistanceM)}`} value={strength(radio.kerbalism ? success.bestDampedStrength : success.bestRangeStrength)} testId="signal-best" />
-        <Metric label={`Farthest position · ${distance(success.maximumDistanceM)}`} value={strength(radio.kerbalism ? success.worstDampedStrength : success.worstRangeStrength)} testId="signal-worst" />
+        <Metric label={`Closest position · ${distance(success.minimumDistanceM)}`} value={strength(success.bestRangeStrength)} testId="signal-best"
+          secondary={radio.kerbalism ? { label: 'Transmission efficiency', value: strength(success.bestDampedStrength), testId: 'signal-best-transmission-efficiency' } : undefined} />
+        <Metric label={`Farthest position · ${distance(success.maximumDistanceM)}`} value={strength(success.worstRangeStrength)} testId="signal-worst"
+          secondary={radio.kerbalism ? { label: 'Transmission efficiency', value: strength(success.worstDampedStrength), testId: 'signal-worst-transmission-efficiency' } : undefined} />
       </Box>
     </Box>}
     <Typography sx={{ mt: 1, fontSize: 12, color: 'text.secondary', lineHeight: 1.45 }}>Checks one direct link and blocking by {names.center}. A complete path home, other bodies and terrain near either craft are not checked.</Typography>
     <Box component="details" sx={{ mt: 1, fontSize: 12, color: 'text.secondary', '& summary': { cursor: 'pointer', minHeight: 32, color: 'primary.main' } }}>
       <Box component="summary">Signal assumptions and sources</Box>
       <Typography sx={{ mt: .5, fontSize: 12, lineHeight: 1.45 }}>Both bodies follow circular orbits in the same plane around one central body. Relative phase sets their angle apart; no date or save file is used. Manual orbits changes the two distances from that shared center. It cannot represent bodies orbiting different stars or travel through a wormhole. Closest and farthest values use these circles and ignore blockage; real eccentric or tilted orbits can produce different distances.</Typography>
-      <Typography sx={{ mt: .5, fontSize: 12, lineHeight: 1.45 }}>Stock CommNet: maximum range = √(sender power × receiving relay/DSN power) × Range multiplier. Power values are KSP antenna ratings in metres, not watts. The sender uses its full antenna loadout; only relay antennas count on a receiving craft. Custom receiving power assumes relay hardware. Strength follows stock CommNet's distance curve and becomes zero when the central body blocks the link. A boundary result means the link is at its antenna range or touches the edge of the blocking body. Antennas on separate craft never combine. Only the central body is checked for blocking; other planets, moons and terrain near either craft are not checked. RealAntennas and RemoteTech use different rules and are unsupported.</Typography>
-      {radio.kerbalism && <Typography sx={{ mt: .5, fontSize: 12, lineHeight: 1.45 }}>Raw CommNet strength is S; Kerbalism's adjusted signal is S^k, where k is the damping exponent. Science rate = the sender's geometric-mean external antenna rate × Antenna speed × S^k. The base rate uses all active external antenna rates, counted by quantity; it does not add them. Full-strength sender rate includes Antenna speed before signal loss. Selected antennas are assumed powered, enabled, deployed and working. Internal antennas send no science. A positive calculated rate uses your minimum science-rate setting when needed; blocked, out-of-range or zero rates stay at zero. Each extra relay can lower the final rate. Those extra links, power availability, failures, plasma blackouts and storms are not checked.</Typography>}
+      <Typography sx={{ mt: .5, fontSize: 12, lineHeight: 1.45 }}>Stock CommNet: maximum range = √(sender power × receiving relay/DSN power) × Range multiplier. Power values are KSP antenna ratings in metres, not watts. The sender uses its full antenna loadout; only relay antennas count on a receiving craft. Custom receiving power assumes relay hardware. Signal strength is raw CommNet strength S: it follows stock CommNet's distance curve and becomes zero when the central body blocks the link. A boundary result means the link is at its antenna range or touches the edge of the blocking body. Antennas on separate craft never combine. Only the central body is checked for blocking; other planets, moons and terrain near either craft are not checked. RealAntennas and RemoteTech use different rules and are unsupported.</Typography>
+      {radio.kerbalism && <Typography sx={{ mt: .5, fontSize: 12, lineHeight: 1.45 }}>Kerbalism transmission efficiency is S^k, where S is raw CommNet signal strength and k is the damping exponent. It scales science rate without changing signal strength or maximum antenna range. Science rate = the sender's geometric-mean external antenna rate × Antenna speed × S^k. The base rate uses all active external antenna rates, counted by quantity; it does not add them. Full-strength sender rate includes Antenna speed before signal loss. Selected antennas are assumed powered, enabled, deployed and working. Internal antennas send no science. A positive calculated rate uses your minimum science-rate setting when needed; blocked, out-of-range or zero rates stay at zero. Each extra relay can lower the final rate. Those extra links, power availability, failures, plasma blackouts and storms are not checked.</Typography>}
       <Stack spacing={.5} sx={{ mt: .75 }}>{sources.map(source => <Link key={source.id} href={source.url} target="_blank" rel="noreferrer" sx={{ fontSize: 12, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{source.title}</Link>)}</Stack>
     </Box>
     {editingArray && <AntennaArrayDialog open role="client" title={`Endpoint ${editingArray.toUpperCase()} antenna array`} description={editingArray === receivingEndpoint ? 'Antennas fitted to the receiving craft. Only relay antennas help receive this link. Direct antennas stay in the loadout for sending; the combined power shown here is the sending rating.' : 'Antennas fitted to one sending craft. Direct and relay antennas may work together. Antennas on separate craft do not combine.'}

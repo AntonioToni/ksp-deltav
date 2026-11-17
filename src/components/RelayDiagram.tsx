@@ -8,6 +8,7 @@ interface RelayDiagramProps {
   result: Extract<RelayResult, { status: 'success' }>
   bodyName: string
   bodyColor: string
+  kerbalism?: boolean
   onRotate: () => void
 }
 
@@ -17,6 +18,7 @@ const linkColors: Record<LinkStatus, string> = {
 }
 const format = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
 const signalFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
+const signalPercent = (value: number) => value > 0 && value < .0001 ? '<0.01%' : `${signalFormat.format(value * 100)}%`
 const linkNames: Record<LinkStatus, string> = {
   available: 'available', marginal: 'at a blocking or range limit', blocked: 'blocked by the body', 'out-of-range': 'beyond antenna range',
 }
@@ -44,7 +46,7 @@ function coverageIntervals(angles: readonly number[], halfAngle: number): [numbe
   return merged
 }
 
-export default function RelayDiagram({ input, result, bodyName, bodyColor, onRotate }: RelayDiagramProps) {
+export default function RelayDiagram({ input, result, bodyName, bodyColor, kerbalism = false, onRotate }: RelayDiagramProps) {
   const compact = useMediaQuery('(max-width: 599px), (max-height: 500px)')
   const prefix = useId().replace(/:/g, '')
   const width = compact ? 320 : 480
@@ -73,7 +75,7 @@ export default function RelayDiagram({ input, result, bodyName, bodyColor, onRot
     x: centerX + bodyRadius * Math.cos(angle),
     y: centerY - bodyRadius * Math.sin(angle),
   })
-  const signalDetails = (raw: number, damped: number) => `Raw CommNet signal ${signalFormat.format(raw * 100)}%.${input.dampingExponent !== undefined && input.dampingExponent !== 1 ? ` Kerbalism signal ${signalFormat.format(damped * 100)}%.` : ''}`
+  const signalDetails = (raw: number, damped: number) => `Signal strength ${signalPercent(raw)} (raw CommNet).${kerbalism ? ` Transmission efficiency ${signalPercent(damped)} (Kerbalism science-rate factor).` : ''}`
 
   return <Box component="figure" sx={{ m: 0, minWidth: 0, width: '100%' }}>
     <Box component="svg" role="img" aria-label={`${bodyName} equatorial relay diagram`} aria-describedby={`${prefix}-description`}

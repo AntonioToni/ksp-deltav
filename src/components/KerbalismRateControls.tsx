@@ -35,14 +35,14 @@ export default function KerbalismRateControls({ antennaSpeed, minimumBitsPerSeco
           slotProps={{ htmlInput: { 'aria-label': 'Antenna speed', min: 0, max: MAX_KERBALISM_ANTENNA_SPEED, step: 'any' }, input: { endAdornment: <InputAdornment position="end"><Typography sx={{ fontSize: 13 }}>×</Typography></InputAdornment> } }} />
         <TextField fullWidth size="small" type="number" label="Minimum science rate" value={minimumBitsPerSecond} error={!validMinimum}
           onChange={event => onMinimumChange(event.target.value)} sx={fieldStyles}
-          helperText={!validMinimum ? 'Enter 0–10¹⁸ bit/s.' : undefined}
+          helperText={!validMinimum ? 'Enter 0–10¹⁸ bit/s.' : 'Kerbalism config uses bit/s.'}
           slotProps={{ htmlInput: { 'aria-label': 'Minimum science rate', min: 0, max: MAX_KERBALISM_RATE_BITS_PER_SECOND, step: 'any' }, input: { endAdornment: <InputAdornment position="end"><Typography sx={{ fontSize: 13 }}>bit/s</Typography></InputAdornment> } }} />
       </Box>
       <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>
         Antenna speed multiplies the full-strength science rate. Match your save's Antenna Speed setting: Normal 1.5× (the default here), Easy 2×, Moderate 1.2× or Hard 1×.
       </Typography>
       <Typography sx={{ fontSize: 12, lineHeight: 1.45, color: 'text.secondary' }}>
-        Minimum science rate raises a positive estimate to at least this many bit/s. Kerbalism defaults to 1 bit/s. Set 0 to remove the minimum; a zero rate stays zero, including blocked or out-of-range links. Network and Signals share these settings.
+        Minimum science rate uses bit/s to match Kerbalism's MinimumScienceRate configuration. It raises a positive estimate to at least this value; the default 1 bit/s is 0.125 B/s in science-rate results. Set 0 to remove the minimum. Blocked, out-of-range and zero rates stay zero. Network and Signals share these settings.
       </Typography>
     </Stack>
   </Box>

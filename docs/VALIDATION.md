@@ -521,25 +521,30 @@ limits are documented in the [Kerbalism radio guide](RELAYS.md#kerbalism-radio-c
 
 ### Kerbalism damping and directed receiver checks
 
-The signal engine now keeps raw CommNet strength `S` separate from Kerbalism's
-dimensionless factor `S^k`. Both local neighbor links and sample surface-station
-links receive raw and damped strengths, masked to zero for blocked or
-out-of-range hops. The station summary is the best currently usable sample
-hop at the selected rotation, rather than a worst-case strength over an orbit.
+The signal engine keeps raw CommNet strength `S` separate from Kerbalism's
+dimensionless transmission efficiency `S^k`. Both local neighbor links and sample
+surface-station links receive raw strength and transmission efficiency, masked
+to zero for blocked or out-of-range hops. The station summary is the best
+currently usable sample hop at the selected rotation, rather than a worst-case strength over an orbit.
 Damping does not change geometric coverage, antenna range, or reach status.
+Basic and Advanced display raw CommNet strength as signal strength and show
+transmission efficiency separately for Kerbalism profiles. Closest/farthest
+signal percentages remain raw strength before blocking; Kerbalism efficiency is
+separate there too. The chart distinguishes raw signal from efficiency with
+separate curves with and without blocking for each.
 
 Automatic calibration follows the pinned 3.44 `Sim.cs` calculation using the
 physical home orbit and maximum DSN preset, independently of the selected pair,
 local body, or current DSN level. Independent scalar fixtures include:
 
-| Reference | Exponent or factor |
+| Reference | Exponent or transmission efficiency |
 | --- | ---: |
 | Stock home orbit 13,599,840,256 m; maximum DSN 250 Gm | `k = 6.009182065257` |
 | RSS home orbit 149,598,261,150.4425 m; maximum DSN 250 Gm | `k = 0.04276280180335` |
 | RSS home orbit; maximum DSN 50 Tm | Fallback `k = 6` |
 | Raw strength 80%; custom `k = 6` | 26.2144% |
 | Raw strength 50%; custom `k = 6` | 1.5625% |
-| Kerbin–Duna, 90°, RA-100 pair; automatic Stock calibration | Raw 84.6109236%; damped 36.6346662% |
+| Kerbin–Duna, 90°, RA-100 pair; automatic Stock calibration | Raw 84.6109236%; transmission efficiency 36.6346662% |
 
 The adaptive calibration checks 2, 1.5, 1, 0.75, 0.5, and 0.25 home-orbit
 multiples. Exponents below one are retained when the source calculation yields
@@ -574,20 +579,26 @@ positive-rate floor were checked against the same pinned Kerbalism **3.44**
 revision, `39f9f43afe8b4f77aff0086c3866044287694475`. The
 [relay guide](RELAYS.md#kerbalism-science-rates) links the part patches,
 vessel adapter, rate-floor implementation, unit definitions, and difficulty
-presets. Internal code/config units are decimal MB/s, converted using
-**8,000,000 bits per MB**; the patch's “Mb/s” comment is not used as a unit
-definition. RSS power scaling does not multiply these known-part science rates.
+presets. Kerbalism's source antenna-rate values are decimal MB/s. The planner
+converts them to internal bit/s using **8,000,000 bits per MB**; the patch's
+“Mb/s” comment is not used as a unit definition. Results divide internal bit/s
+by **8** and use decimal **B/s**, **kB/s**, **MB/s**, or **GB/s**. The minimum-rate
+configuration field stays in bit/s, matching `Settings.cfg`; a science result at
+its default **1 bit/s** floor displays as **0.125 B/s**. RSS power scaling does
+not multiply these known-part science rates.
 
-Independent scalar fixtures with Antenna Speed **1×** and exponent **6** include:
+Independent scalar engine fixtures with Antenna Speed **1×** and exponent **6**
+retain bit/s values; their equivalent displayed byte rates are shown alongside:
 
-| Reference | Expected science rate |
-| --- | ---: |
-| HG-5, raw signal 50% | 562.5 bit/s |
-| RA-100, raw signal 80% | 1,006,632.96 bit/s |
-| Communotron 8, raw signal 10% | 0.012 bit/s before the floor; 1 bit/s with its default |
-| Communotron 16 + RA-100, full-strength base | 259,969.228948 bit/s |
-| Two Communotron 16 + RA-100, full-strength base | 105,954.365072 bit/s |
-| Two RA-100, full-strength base | 3,840,000 bit/s; identical rates are not added |
+| Reference | Expected engine rate | Equivalent displayed rate |
+| --- | ---: | ---: |
+| HG-5, raw signal 50% | 562.5 bit/s | 70.313 B/s |
+| RA-100, raw signal 80% | 1,006,632.96 bit/s | 125.829 kB/s |
+| Communotron 8, raw signal 10%, before floor | 0.012 bit/s | 0.0015 B/s |
+| Communotron 8, raw signal 10%, default floor | 1 bit/s | 0.125 B/s |
+| Communotron 16 + RA-100, full-strength base | 259,969.228948 bit/s | 32.496 kB/s |
+| Two Communotron 16 + RA-100, full-strength base | 105,954.365072 bit/s | 13.244 kB/s |
+| Two RA-100, full-strength base | 3,840,000 bit/s; identical rates are not added | 480 kB/s |
 
 The additional unit fixtures check every reference part in all three Kerbalism
 profiles, physical antenna counts, internal-antenna exclusion, noncombinable
