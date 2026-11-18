@@ -388,7 +388,8 @@ npm run preview
 ```
 
 For testing, browser setup, project structure, and deployment instructions, see
-the [developer guide](docs/DEVELOPMENT.md).
+the [developer guide](docs/DEVELOPMENT.md). The [deployment guide](docs/DEPLOYMENT.md)
+explains the shared GitHub Pages production site and trusted pull request previews.
 
 ## Planned additions
 

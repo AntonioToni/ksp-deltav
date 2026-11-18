@@ -1,0 +1,64 @@
+name: Build pull request preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-pages-build-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Shared-origin previews are never built/published for forks.
+    if: github.repository == 'AntonioToni/ksp-deltav' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out PR merge commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test routing and data
+        run: npm test
+      - name: Test deployment reconciliation and archive safety
+        run: npm run test:deployment
+      - name: Install browser for preview checks
+        run: npx playwright install --with-deps chromium
+      - name: Build nested preview
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /ksp-deltav/previews/pr-${{ github.event.pull_request.number }}/
+          VITE_PREVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
+      - name: Test preview paths on desktop and mobile
+        run: npx playwright test --config=playwright.preview.config.ts
+        env:
+          VITE_BASE_PATH: /ksp-deltav/previews/pr-${{ github.event.pull_request.number }}/
+          VITE_PREVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
+      - name: Package validated preview
+        run: node .github/scripts/pages-build.mjs preview
+        env:
+          PAGES_PR_NUMBER: ${{ github.event.pull_request.number }}
+          PAGES_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+      - name: Retain validated preview snapshot
+        uses: actions/upload-artifact@v6
+        with:
+          name: preview-site-pr-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: pages-build-artifact/
+          retention-days: 90
+          if-no-files-found: error

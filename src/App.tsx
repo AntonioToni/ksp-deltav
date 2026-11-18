@@ -40,6 +40,7 @@ import { hasPotentialConnectionRoute } from './utils/connectionAvailability'
 import { describeManeuverBasis, summarizeBudgetBasis } from './utils/estimateBasis'
 import { referenceParkingStops } from './utils/referenceParking'
 import { atmosphericRouteContexts } from './utils/atmosphericContext'
+import { deployment } from './build/runtime'
 
 const format = new Intl.NumberFormat('en-US')
 const compactBreakdown = '@media (max-height: 500px), (max-width: 699px) and (max-height: 650px)'
@@ -342,7 +343,10 @@ export default function App() {
         <Box sx={{ width: '100%', maxWidth: 1800, height: '100%', mx: 'auto', minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: { xs: 1.25, sm: 2.5 }, gap: 1 }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0, flex: '1 1 auto' }}>
           <RocketLaunchRounded sx={{ color: 'primary.main', fontSize: 21, flexShrink: 0 }} />
-          <Typography component="h1" sx={{ minWidth: 0, fontWeight: 700, fontSize: { xs: 14, sm: 16 }, letterSpacing: '-.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>KSP DeltaV Planner</Typography>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography component="h1" sx={{ minWidth: 0, fontWeight: 700, fontSize: { xs: 14, sm: 16 }, letterSpacing: '-.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>KSP DeltaV Planner</Typography>
+            {deployment.isPreview && <Typography component="span" data-testid="preview-build-badge" sx={{ display: 'block', fontSize: 10, lineHeight: 1.1, color: '#e7bd7b', whiteSpace: 'nowrap' }}>Preview · PR #{deployment.previewPRNumber}</Typography>}
+          </Box>
         </Stack>
         <Stack direction="row" spacing={{ xs: .5, sm: 1 }} sx={{ alignItems: 'center', minWidth: 0, flexShrink: 0 }}>
           <Tooltip title={`${assistanceState === 'default' ? 'Using the built-in Kerbin landing default.' : assistanceState === 'custom' ? 'Using your landing or capture choices.' : 'Using reference arrival budgets.'} Choose atmospheric landing, a custom engine-burn budget, or atmospheric orbital capture. Only supported arrival maneuvers change.`}>
