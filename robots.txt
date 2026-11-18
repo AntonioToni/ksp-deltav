@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /ksp-deltav/previews/
+Sitemap: https://antoniotoni.github.io/ksp-deltav/sitemap.xml
