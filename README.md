@@ -2,385 +2,86 @@
 
 # KSP Delta-V Planner
 
-A browser-based Delta-V and CommNet planner for Kerbal Space Program.
-Calculate mission budgets, plan local relay coverage, and compare antenna
-ranges and signal strength between craft and relays.
+A browser-based Delta-V and CommNet planner for **Kerbal Space Program**.
+Plan mission budgets, compare routes, design relay constellations, and estimate
+single-link antenna performance.
 
-Supports Stock, Outer Planets Mod (OPM), Real Solar System (RSS), and Kcalbeloh
-with Stock or OPM.
+Supports **Stock**, **Outer Planets Mod (OPM)**, **Real Solar System (RSS)**,
+**Stock/OPM + Kcalbeloh**, and custom JSON planet packs.
 
-**[Open the planner](https://antoniotoni.github.io/ksp-deltav/)**
+**[Open the planner](https://antoniotoni.github.io/ksp-deltav/)** ·
+[User guide](docs/USER_GUIDE.md) · [Report an issue](https://github.com/AntonioToni/ksp-deltav/issues)
 
-[Changelog](CHANGELOG.md) · [Data and assumptions](docs/DATA.md) · [Relay guide](docs/RELAYS.md) ·
-[Validation record](docs/VALIDATION.md) · [Developer guide](docs/DEVELOPMENT.md)
+## Highlights
 
-## Features
+- **Mission planning:** one-way, round-trip, and return-only routes; up to four
+  ordered stops; mission reserves; optional maneuver breakdowns.
+- **Expanded transfers:** modeled direct routes between supported non-home
+  planets and sibling moons, alongside published Delta-V map references.
+- **Landing & Capture:** choose reference, atmospheric, or custom landing
+  assumptions and supported capture options.
+- **Multiple planetary systems:** Stock, OPM, RSS, Kcalbeloh regional views,
+  wormhole configurations, and importable custom planet packs.
+- **Relay constellations:** estimate equatorial coverage, antenna reach, local
+  signal strength, and resonant deployment burns.
+- **Interplanetary signals:** compare a single communication link using
+  source-backed three-dimensional orbital geometry where available, or
+  explore simplified reference and manual configurations.
+- **Radio setups:** Stock CommNet, RSS configurations, Probes Before Crew
+  (PBC), and optional Kerbalism signal-efficiency and science-rate estimates.
+  Configure antenna arrays or custom powers to match your installation.
+- **Accessible controls:** responsive map, keyboard and touch selection,
+  Basic/Advanced relay views, and reduced-motion support.
 
-- **Stock, OPM, and RSS maps** with selectable points for the surface, low orbit,
-  encounters, and high elliptical orbits. OPM places Eeloo around Sarnus and Tal
-  around Wal.
-- **Calculated OPM estimates** using official 2.2.12 body data and stated parking
-  orbits for transfers, arrival into orbit, and takeoff or landing on airless bodies.
-- **Direct transfers between supported non-home planets in Stock, OPM, and RSS**, with complete
-  departure and capture estimates for low circular and supported high elliptical
-  orbits. Moon journeys can join their parent's high-orbit branch without an
-  unnecessary low-orbit capture. Extra connections appear when selected.
-- **Direct transfers between supported sibling moons**, with departure and
-  capture estimates that avoid an unnecessary parent-planet parking visit.
-  Orbital-plane differences are included under the documented reference model.
-- **Stock + Kcalbeloh and OPM + Kcalbeloh configurations**, with official map
-  budgets, regional views, wormholes on/off, and budgets you enter for links
-  that have no published cost.
-- **Custom planet packs** imported from JSON, stored in your browser, and usable
-  with the same route planner. Export any pack as a starting point for your own.
-- **One-way, round-trip, and return-only planning** with animated route highlights,
-  editable endpoints, swap, and reset. The moving highlight follows stops and
-  return legs in order; reduced-motion settings keep the route static.
-- **Ordered multi-stop missions** with up to four stops between origin and
-  destination. Search for stops or select them on the map, then reorder or remove
-  them in the Stops editor.
-- **Mission reserves** from 0–100%, added to the Delta-V budget without changing
-  the selected route. This adds a percentage of Delta-V, not fuel mass.
-- **Optional maneuver breakdowns**, with one stage at a time for multi-stop
-  missions and separate Outbound and Return tabs for round trips. Long stages
-  have page controls; details stay hidden until you enable them.
-- **Atmospheric-braking markers** showing where atmospheric assistance may be
-  possible in the indicated direction.
-- **Landing & Capture** settings, with a default Kerbin landing assumption of
-  **0 m/s** using atmospheric braking and parachutes. Choose a landing method
-  for each supported body and configure orbital capture separately. Routes
-  recalculate before the mission reserve is added.
-- **CommNet relay planning** for equally spaced satellites in a circular orbit
-  above the equator. Check coverage, antenna ranges, signal strengths, and burns
-  to release the satellites into position. Body presets cover Stock, OPM, RSS,
-  and Kcalbeloh planets and moons.
-- **Basic and Advanced CommNet views**: start with everyday relay and signal
-  controls, then reveal body edits, antenna arrays, and detailed radio settings.
-  Switching views keeps the active setup and uses the same calculations.
-- **Interplanetary signal planning** for one link at a time, using verified
-  elliptical and inclined orbits by default. Explore a relative-phase sweep or
-  enter an in-game date to compare distance, signal strength, and body blocking.
-  Planet and moon presets cover Stock, OPM, RSS, and default Kcalbeloh combinations.
-  Advanced retains circular references and offers exact manual link distances.
-- **Mixed antenna arrays** with separate relay, surface-client, and interplanetary
-  endpoint loadouts, using stock antenna combining rules.
-- **Probes Before Crew radio profiles** for PBC 3.3.2, with its individual
-  antenna powers and optional Kerbalism support. Set the DSN modifier separately
-  to match your save; PBC's recommended 0.35× is optional.
-- **Kerbalism science-rate estimates** for individual local and interplanetary
-  links. See how antenna choices and Kerbalism's transmission efficiency affect
-  science transmission, with editable antenna speed and minimum science rate.
-- **A responsive map** with keyboard and touch selection, a deep-blue starfield,
-  comfortable sizing on large screens, and no page or map scrolling.
+For the full feature list, configuration steps, and worked examples,
+see the **[user guide](docs/USER_GUIDE.md)**.
 
-## How to use it
+## Quick start
 
-1. Choose **Stock**, **OPM**, or **RSS**, or open **Custom planet packs** using the
-   puzzle button beside them. Its **Add-ons** tab offers **Stock + Kcalbeloh**
-   and **OPM + Kcalbeloh**. Set **Wormholes** to match your installation, then
-   choose **Use** to apply the configuration. **Custom packs** imports your own JSON.
-2. Select an origin, then a destination on the map. Use the Origin and
-   Destination controls to edit either endpoint.
-3. Choose a mission mode: **One way** for origin → destination, **Round trip**
-   for both legs, or **Return only** for destination → origin. Changing modes
-   keeps your selected endpoints.
-4. Open **Stops** to add up to four map points in outbound order. Use
-   **Choose a stop** or **Select stop on map**, then reorder or remove entries.
-   Numbered teal badges identify the stops on the map.
-5. Open **Landing & Capture** in the header (the landing icon on phones).
-   Choose an **Atmospheric body**, then select **Atmospheric landing (0 m/s)**,
-   **Custom powered landing**, or **Use reference map budget**. Open
-   **Orbital capture** to configure supported capture burns independently,
-   then choose **Apply**. Built-in Kerbin maps start with the atmospheric
-   landing assumption; capture and other bodies' landing overrides start off.
-6. Adjust **Redundancy** for your reserve and enable **Breakdown** to inspect
-   individual maneuvers. Use the stage arrows to browse a multi-stop journey.
+1. [Open the planner](https://antoniotoni.github.io/ksp-deltav/) and choose
+   Stock, OPM, RSS, or a compatible Kcalbeloh/custom pack.
+2. Select an **origin** and **destination** on the map. Choose **One way**,
+   **Round trip**, or **Return only**, and add **Stops** if needed.
+3. Adjust **Redundancy**, inspect the **Breakdown**, and optionally configure
+   **Landing & Capture** assumptions.
+4. Open **Relays** to plan a local satellite ring, or switch to **Signals**
+   to compare an individual interplanetary link and its antennas.
 
-All budgets are shown in **m/s**. For example, the stock Kerbin surface → Mun
-surface route is **5,120 m/s**, or **6,840 m/s** for a round trip before reserves
-with the default Kerbin landing assumption. Choosing **Use reference map budget**
-for Kerbin restores the map's **10,240 m/s** powered round-trip budget.
-With stops, One way follows origin → stops → destination. Return only reverses
-that itinerary, and Round trip follows it outward and then in reverse. Return
-only starts at the selected destination point without including an outbound
-flight or its arrival conditions. The reserve applies once to the full budget.
+No installation, account, backend, or API credentials are required.
 
-**Landing & Capture** distinguishes default assumptions from custom settings.
-Mission notices describe only supported landing or capture burns whose costs
-changed on the selected route. **Edit** opens that body's settings.
-**Apply** saves a draft; **Cancel** or Escape discards it.
-**Use map budgets for all** turns off every landing override and capture choice.
-**Restore recommended defaults** instead brings back the active pack's starting
-settings, including Kerbin's reentry assumption in supported built-in packs.
-Neither action takes effect until you choose **Apply**. Other bodies can still
-be configured individually, including a custom landing budget of zero.
+## What the estimates mean
 
-The planner first avoids unrequested planet or moon parking visits, then finds
-the lowest Delta-V budget for that itinerary. Necessary parent-system passages
-and available reference-map connections remain usable. Add a map point under
-**Stops** to deliberately compare a detour through another body; a smaller sum
-of reference burns does not establish compatible transfer dates or orbit planes.
+Delta-V totals combine published map budgets, calculated reference estimates,
+and any allowances you enter. They are **planning estimates, not simulated
+flights**: real launch windows, plane-change optimization, gravity assists,
+vehicle performance, and other mission details may change the required budget.
 
-Stock, OPM, and compatible RSS reference orbits automatically consider direct
-transfers between non-home planets' low or supported high elliptical orbits.
-For example, **Duna low orbit → Dres
-low orbit** is a calculated **1,532 m/s** estimate. **Duna low orbit → Gilly low
-orbit** can use Eve's high orbit, avoiding a Kerbin layover. Open **Budget
-assumptions** to distinguish modeled transfers from published map figures.
-RSS coverage includes low and high reference orbits at every supported non-home
-planet. Mercury, Venus, Mars, and Ceres now have explicitly modeled bound high
-orbits, alongside the modern outer-system references. Mars's moon connections
-use the same stated high orbit and encounter speeds. Direct bound-orbit transfers
-and their moon branches avoid an unrequested Earth layover.
+CommNet coverage and signal calculations use explicit assumptions. In
+particular, **Signals models one link at a time**, not a complete route through
+relays to mission control. Actual craft altitude, local horizons, some blocking
+conditions, and hardware state can affect in-game results. Kerbalism science
+rates describe the selected hop, not guaranteed end-to-end throughput.
 
-Supported moons sharing a parent also have direct low-orbit transfers. These
-use the moons' orbital radii and relative orbital planes, together with their
-own departure and capture burns. **Mun low orbit → Minmus low orbit** is a
-**330 m/s** reference estimate without a low Kerbin orbit stop. Existing native
-Kcalbeloh moon pairs retain their published complete-pair budgets.
+Match the radio profile and Advanced settings to your installed mods and game
+difficulty. See [Data and assumptions](docs/DATA.md),
+[Relay and signal planning](docs/RELAYS.md), and
+[Validation](docs/VALIDATION.md) for detailed scope and sources.
 
-**Swap** reverses both the endpoints and the stop order. Changing systems keeps
-map points available in the new pack and removes unsupported stops. **Clear** removes
-the endpoints, stops, and link allowances, restores the active pack's atmospheric
-defaults, resets the reserve to 0%, returns to **One way**, and hides the breakdown.
-Atmospheric choices follow body IDs, so swapping or changing mission modes keeps
-them. Changing systems retains compatible choices, including turning Kerbin's
-landing assumption off. RSS and imported custom packs have no automatic Kerbin
-landing assumption.
+## Documentation
 
-The **Custom planet packs** manager accepts up to five JSON packs and keeps them
-in this browser; files are not uploaded. If browser storage is unavailable, packs
-remain usable for the session. Use **Export current pack** to save a copy or start
-editing a new pack. See the [custom pack guide](docs/CUSTOM_PACKS.md) for the format
-and a small working example.
-
-With Kcalbeloh enabled, **Map view → Kcalbeloh system** brings Kcalbeloh, Maelg,
-Sunorc, and Aralc together in one continuous map. **Kerbol system** stays separate,
-while **All systems** includes both. Individual regional views remain available
-for a closer look, keeping related planets and moons together. Main connections stay
-visible; additional transfer lines appear when your selected route uses them.
-Changing views keeps your mission selections and budget;
-routes still use the complete pack. Use **System overview** from a close-up to
-return to the combined Kcalbeloh view.
-
-Switching between Stock and OPM retains Kcalbeloh and the selected wormhole
-setting; choosing RSS disables the add-on. Use **Disable Kcalbeloh** in the
-manager to return to the base pack.
-
-With **Wormholes** off, local routes remain available in both systems, but the
-supplied map has no Kerbol–Kcalbeloh connection. Local link allowances cannot
-create that missing interstellar route. Disabling wormholes clears their entered
-allowance; enabling them again starts with that allowance blank. Other compatible
-allowances, endpoints, and stops are retained.
-
-The desktop **All systems** overview combines the familiar Kerbol map with the
-unified Kcalbeloh map. It adjusts their arrangement for the available screen
-shape and shows the actual wormhole connection when enabled. Regional views
-remain available for a closer look.
-
-Some Kcalbeloh connections have no published Delta-V budget. Open
-**Link allowances** from the Add-ons tab, or from the route status when a link is
-missing. Enter the complete **Forward** and **Reverse** costs following each
-field's endpoint arrow.
-These link directions stay fixed when you change mission mode. Blank leaves a
-direction unavailable, and zero is an explicit user assumption. Choose **Apply**
-to use the draft. Source data and exported JSON keep those links without a cost.
-
-Open **Relays** in the header (the satellite icon on phones) to plan a local
-CommNet constellation. Choose a body, orbit altitude, relay count, and antennas,
-then inspect **Network**, **Deployment**, and **Body data**. Start in **Basic**
-or choose **Advanced** for body edits and detailed settings. Switching views
-keeps your configuration; **View settings** reveals active Advanced settings
-while in Basic. Your browser can remember the view preference, while relay and
-signal inputs reset on reload. Closing the tool keeps your current Delta-V
-mission intact. Kcalbeloh planets and moons load their body data automatically
-with either base system and wormhole setting. In Advanced, **Restore preset**
-returns edited body data to the reference values. The
-[relay guide](docs/RELAYS.md) explains the calculations and supported data.
-
-**Radio setup** selects Stock CommNet, either RSS configuration, PBC, or the explicit
-**Kerbalism + CommNet**, **Kerbalism + RSS**, and **Kerbalism + RSS + CBK** presets
-for Kerbalism 3.44. RSS maps start with RSS antenna powers (20× stock) and stock
-DSN powers; select a CustomBarnKit option if your installation includes its RSS
-DSN patch. Radio setup is shared by Network and Signals and can be changed
-independently of the body map. Kerbalism presets retain CommNet range and signal
-rules and add **Communotron 8**. **Signal strength** always means raw CommNet
-strength in Network and Signals. Kerbalism profiles separately show
-**Transmission efficiency**, the `S^k` factor used for science transmission.
-Damping changes that efficiency; it does not change maximum antenna range. In Advanced,
-open **Kerbalism damping** to use the automatic 3.44 reference exponent or enter your
-installation's exponent.
-Damping settings are shared by both tabs. Reach and coverage still use raw
-CommNet geometry; transmission efficiency and science rate are separate results.
-See [Kerbalism radio configuration](docs/RELAYS.md#kerbalism-radio-configuration).
-
-Choose **Probes Before Crew + CommNet** or **Probes Before Crew + Kerbalism**
-explicitly for PBC **3.3.2** with Community Tech Tree. PBC changes individual
-antenna powers; it does not apply a universal multiplier or change DSN powers.
-In Advanced, **DSN modifier** starts at **1×**; enter PBC's recommended **0.35×**
-only if that matches your save. The modifier is shared by Network and Signals
-and also updates automatic Kerbalism calibration. Planet-pack selection does
-not enable PBC, and no combined PBC + RSS installation is modeled. See the
-[PBC radio guide](docs/RELAYS.md#probes-before-crew-radio-configuration) for the
-pinned sources, antenna table, and compatibility limits.
-
-With a Kerbalism preset, **Relay-to-relay science rate** and **Surface-to-relay science rate**
-estimate the selected local hops. Signals shows the sending endpoint's rate
-toward the chosen receiver. In Advanced, open **Science rate settings** and set **Antenna
-speed** to your game setting; the default is **1.5× (Normal)**.
-**Minimum science rate** defaults to **1 bit/s**;
-set it to zero to remove that minimum. The field keeps Kerbalism's configuration
-unit, bit/s. A science rate raised to that default minimum appears as **0.125 B/s**.
-Science-rate results use
-decimal **B/s**, **kB/s**, **MB/s**, or **GB/s** (8 bits per byte, 1,000 bytes per
-kB). These settings are shared by both tabs.
-For custom power, enter the craft's full-strength rate in **B/s** before speed
-and damping; leaving it blank keeps the science rate unknown without hiding signal
-results. These are single-hop estimates, before any slower onward relay links.
-
-In Advanced, choose **Antenna array…** under **Relay antenna** or **Surface antenna** to mix
-catalog parts and counts, then choose **Apply**. A relay loadout is fitted to each
-satellite separately; antennas on different satellites do not combine. Arrays
-use the selected radio setup's powers. Custom powers are final effective values
-and are never scaled automatically.
-
-For planet-to-planet or moon links, open **Relays → Signals**. Choose the bodies,
-antenna loadouts, and **Signal receiver**. A receiving vessel needs a relay
-antenna; only relay-capable parts contribute to its receiving array power. A DSN
-preset can represent the homeworld receiver. Actual orbital geometry is the
-default wherever verified elements are available.
-
-Use **Relative phase** to explore a selected configuration without a date: A
-starts at periapsis, while B moves along its own eccentric, inclined orbit.
-The slider compares their true anomalies, not a dated alignment or a transfer
-window. **In-game date** instead advances both bodies from their source epochs.
-The Kerbin calendar uses 6-hour days and 426-day years; RSS uses Gregorian dates,
-24-hour days, and a 1951 start. Advanced also accepts universal game time.
-
-**Closest** and **Farthest** navigate to extrema of the selected sweep or time
-window. The summary cards distinguish signal/rate potential before blocking
-from actual link availability. They are not bounds across every possible
-planetary configuration. Advanced **Signal geometry** also offers **Circular
-reference orbits**, retained **Manual orbits**, and **Manual link distance** for
-an exact separation without inventing orbital positions or blockage. Missing
-orbital facts produce an explicit fallback or correction message. See the
-[signal guide](docs/RELAYS.md#interplanetary-signals) for sources, calendar
-conventions, and known limitations.
-
-## About the estimates
-
-Open **Budget assumptions** beside the total to see the selected mission's
-published map figures, calculated estimates, budgets you entered, atmospheric
-assumptions, and default landing budgets. The dialog lists reserves and final
-rounding separately. **Sources & assumptions** explains the active pack. Imported budgets
-remain author-supplied even when their source metadata names a map or model.
-
-The numbers have three distinct origins: published map budgets, calculated
-reference estimates, and personal allowances or reserves. For example, the
-**1,898 m/s** Duna low orbit → Gilly low orbit estimate combines a **1,428 m/s
-calculated** Duna → Eve high-orbit transfer with **60 + 410 m/s from the Stock
-map**. It is not an in-game measurement or a simulated flight.
-
-These estimates add up the maneuvers available on the map; they do not simulate
-a flight. Stock/OPM retain their Kerbin-centered
-reference branches and RSS its Earth-centered branches, with modeled direct
-bound-orbit links between supported non-home planets.
-The planetary links reach low circular and supported high elliptical orbits used
-by moon branches; sibling-moon links provide supported local alternatives.
-Other reference routes can still include parent-planet parking stops because
-more direct escape or transfer trajectories are absent from the graph. Those
-stops describe the supplied itinerary, not physical requirements for spaceflight.
-Kcalbeloh adds complete reference-pair transfers; custom pack estimates depend
-on their supplied data.
-Flight dates, plane-change optimization, gravity assists, and vehicle performance
-are not modeled.
-
-**Direct planetary transfers use circular, coplanar planetary orbits.** Spacecraft endpoints
-can be low circular or supported high elliptical reference orbits. Stock and RSS
-high-orbit energy at the retained map references is inferred from the rounded
-circularization increment only when it implies a valid bound orbit. OPM and eight
-RSS planets use explicit high-orbit geometry; RSS Vesta and Jupiter retain their
-bound map-inferred references. Each pair includes
-powered departure and arrival capture, rounded separately. Planetary
-eccentricity, inclination, and
-dated encounter geometry are omitted. The same nominal pair reverses its two
-components for the return. These figures are calculated estimates, rather than new
-published map budgets.
-
-**Sibling-moon estimates use circularized reference orbits.** The transfer lies
-in the inner moon's orbital plane and meets the outer moon at an assumed mutual
-node, using their relative inclination and longitude of ascending node. Escape
-and capture at the moons are both charged. Orbital eccentricity, actual phase,
-travel dates, and gravity assists are not solved. Co-orbital rendezvous,
-retrograde pairs, and unsupported binary geometry keep their reference routes
-instead of receiving an ordinary Hohmann estimate.
-
-**Atmospheric choices do not simulate entry.** Ideal capture assumes the
-atmosphere replaces separately listed arrival and circularization burns with
-0 m/s of engine burns; later correction burns are excluded. Built-in Stock,
-OPM, and their Kcalbeloh configurations assume **0 m/s** for Kerbin's landing
-step, using atmospheric braking and parachutes. This leaves ascent, orbital
-capture, and combined transfer costs unchanged. Safe entry and any deorbit or
-correction burns are not calculated. In **Landing & Capture**, choose
-**Custom powered landing** to enter an engine-burn budget, or
-**Use reference map budget** to restore the original landing cost.
-
-Other supported bodies keep their reference landing budgets until you choose a
-different method. **Atmospheric landing (0 m/s)** explicitly assumes no landing
-engine burn; **Custom powered landing** accepts your own amount, including zero.
-Entry heating, guidance, and parachute performance are not modeled.
-The reference option restores the source's original landing budget.
-Built-in atmospheric landing placeholders reuse launch
-budgets; they are not verified landing costs or guaranteed maximums.
-The source data and exported packs retain their original figures.
-See the [data guide](docs/DATA.md) for worked examples and the exact scope of
-the adjustments.
-
-**OPM uses calculated estimates.** Orbital and airless-body budgets use
-pinned official 2.2.12 constants and parking orbits above current atmospheres.
-The original encounter branches use inclination at a nominal orbital-node
-encounter; direct planet-pair links use the coplanar model described above.
-Neither simulates a dated trajectory. Tekto and Thatmo retain historical
-atmospheric ascent allowances, also used as landing placeholders.
-See the [data guide](docs/DATA.md) for the calculations and limitations.
-
-**Kcalbeloh uses its official 1.1.8 reference map.** Missing stellar-connector and
-binary-system costs require user allowances, as does the wormhole link when
-enabled. With wormholes off, no interstellar transfer is supplied. Noi and
-individual Simetra/Simeht low orbits lack priced map states; see the
-[data guide](docs/DATA.md#kcalbeloh-configurations) for exact coverage and supported
-installation settings.
-
-**RSS combines a community Solar System map with calculated estimates** for
-33 base-mod bodies. Saturn, Uranus, Neptune, Pluto, and Triton use selected
-parking altitudes above their modern atmospheres. Mercury, Venus, Mars, and
-Ceres retain their stated low altitudes and use explicit bound high ellipses.
-Affected orbital budgets are recalculated and labeled as models; retained map
-figures and atmospheric surface allowances remain separate. See the
-[inner-system](docs/DATA.md#rss-inner-system-reference-model) and
-[outer-system](docs/DATA.md#rss-outer-system-reference-model) reference models
-for choices and calculation assumptions.
-
-**Relay coverage is equatorial.** A visible surface receiver and a working local
-ring do not establish a connection back to the homeworld's Deep Space Network
-(DSN). **Signals checks one link** using source-backed three-dimensional orbital
-geometry, a selected phase configuration or in-game date, and known intervening
-bodies. Closest/farthest estimates describe only the displayed sweep or time
-window. They do not include spacecraft altitude, local horizons, unknown
-occluders, or complete routes through relays to the DSN. The radio presets use
-stock CommNet rules with explicit Stock, RSS, PBC, and Kerbalism configurations.
-Communotron 8 cannot forward relay
-traffic. Signals checks the receiving endpoint's relay capability for one hop;
-it does not establish a complete connection to mission control.
-Kerbalism estimates science rates for the selected hops; complete-path
-throughput and ElectricCharge availability, antenna deployment, breakage,
-plasma, and storms are not modeled. RealAntennas and
-RemoteTech use different models and are not simulated; custom powers do not
-reproduce those models. The
-[validation record](docs/VALIDATION.md) describes the
-checked data, independent calculation tests, and remaining limits.
+| Guide | Contents |
+| --- | --- |
+| [User guide](docs/USER_GUIDE.md) | Full features, step-by-step usage, and estimate explanations |
+| [Relay and signal planning](docs/RELAYS.md) | CommNet, antennas, PBC/RSS/Kerbalism, signal and science formulas |
+| [Data and assumptions](docs/DATA.md) | Planet-pack sources, Delta-V reference models, and limitations |
+| [Custom planet packs](docs/CUSTOM_PACKS.md) | JSON import/export, format, and examples |
+| [Validation record](docs/VALIDATION.md) | Numerical checks and known accuracy limits |
+| [Developer guide](docs/DEVELOPMENT.md) | Architecture, development, and testing |
+| [Deployment guide](docs/DEPLOYMENT.md) | GitHub Pages and pull request previews |
+| [Changelog](CHANGELOG.md) | Release history |
 
 ## Run locally
+
 
 Built with **React, TypeScript, Vite, and Material UI**. Use **Node.js 24 LTS** and
 npm:
@@ -402,17 +103,19 @@ For testing, browser setup, project structure, and deployment instructions, see
 the [developer guide](docs/DEVELOPMENT.md). The [deployment guide](docs/DEPLOYMENT.md)
 explains the shared GitHub Pages production site and trusted pull request previews.
 
-## Planned additions
+## Roadmap and feedback
 
-- Additional planet packs, rescaled systems, and alternative starting-homeworld
-  configurations.
-- Inclined and polar relay constellations for coverage beyond the equator, and
-  complete communication paths through relays back to the DSN.
+For planned work, browse the
+[GitHub milestones](https://github.com/AntonioToni/ksp-deltav/milestones)
+and [issues](https://github.com/AntonioToni/ksp-deltav/issues).
+Longer-term ideas include additional planet packs and non-equatorial relay
+constellations with complete multi-hop communication paths.
 
 Suggestions, bug reports, and contributions are welcome through
 [GitHub issues](https://github.com/AntonioToni/ksp-deltav/issues) and pull requests.
 
 ## License
+
 
 Copyright © 2026 Antonio Toni. The application is licensed under the
 [GNU General Public License v3.0 only](LICENSE) (`GPL-3.0-only`).
