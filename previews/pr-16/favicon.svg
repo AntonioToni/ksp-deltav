@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <title>KSP DeltaV Planner</title>
+  <rect width="32" height="32" rx="7" fill="#101b2f" />
+  <path d="M8 25 16 7 24 25Z" fill="#19344c" stroke="#b9e4ff" stroke-width="2.4" stroke-linejoin="round" />
+  <circle cx="8" cy="25" r="3" fill="#73c8fa" />
+  <circle cx="16" cy="7" r="3" fill="#e7bd7b" />
+</svg>
