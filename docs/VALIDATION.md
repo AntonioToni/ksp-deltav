@@ -498,7 +498,99 @@ does not establish compatibility with RemoteTech, RealAntennas, later user
 patches, additional part catalogs, or alternative Kerbalism science settings.
 It does not model technology progression, ElectricCharge, or a full path home.
 
+### Keplerian Signals geometry — 17 November 2026
+
+Signals now defaults to **Actual orbits** where source-backed elements are
+available. This changes planetary separation, not the validated CommNet,
+antenna-array, DSN, damping, minimum-rate, or science-throughput formulas.
+The original circular engine and its fixtures remain available through the
+explicit circular reference option.
+
+Source transcription and interpretation are separated from geometry tests:
+
+| Catalog | Pinned source and interpretation |
+| --- | --- |
+| Stock | [KSPTOT bodies.ini](https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini): 16 planets/moons; degree-valued source mean anomalies converted to radians, epoch UT 0. |
+| OPM 2.2.12 | [Official configs](https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs): explicit per-body epochs and radian mean anomalies; Eeloo retains inherited Stock elements not replaced by its Sarnus-orbit patch. |
+| RSS | [Official configs](https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus): complete elements for all 32 supported bodies; degree-valued means and the global B1950 epoch −31,542,641.784 s. |
+| Kcalbeloh 1.1.8 | [Official configs](https://github.com/jcyuan06/Kcalbeloh-System/tree/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem): 31 hierarchy records, 29 complete and two deliberately partial dated records; configured binary periods take precedence. |
+
+Ordinary game-config periods derive from the parent gravitational parameter,
+consistent with the verified default `finalizeOrbit = false`. Explicit source
+periods are retained, including **46,140.9776743941 s** for both Simetra and
+Simeht. This is not a new two-body/barycentric period correction. The default
+Kcalbeloh stellar mass/radius patch applies only to the new Signals catalog;
+existing shared physics and Delta-V budgets are not repriced.
+
+Kcalbeloh's root bridge has no verified epoch, and Efil has conflicting radian
+and degree mean-anomaly keys. Missing values are not synthesized. Common-ancestor
+frames allow local dated links that do not require the unknown bridge. Unknown
+imported configurations do not inherit dated elements by familiar body name.
+
+The selected relative-phase sweep uses `nu_A = reference_A` and
+`nu_B = reference_A + phase`, with each true anomaly measured from its own
+periapsis. Intermediate parents remain at the reference UT. It is a configured
+orbital exploration, not a dated simultaneous alignment. Date mode instead
+propagates all required hierarchy positions at one UT.
+
+Calendar fixtures distinguish the element epoch from the display calendar.
+Kerbin uses 6-hour days, 426-day years, and a 1-based Year 1/Day 1 at UT 0.
+The official [RSS formatter](https://github.com/KSP-RO/RSSTimeFormatter/blob/50ba770ba8a7b5ccd64110b04898e34d30faaaa8/RSSTimeFormatter/DTReplacer.cs#L89)
+starts at **1951-01-01** and formats epoch plus UT seconds, preserving Gregorian
+leap years and 24-hour days. RSS's B1950 orbital reference remains separate.
+
+#### Dres comparison
+
+The reported PBC + Kerbalism configuration uses two HG-55 antennas rated at
+25 Gm each, DSN level 3 at 250 Gm, both modifiers at 1, automatic
+`k = 6.009182065257`, and a full-strength sender rate of 300 kB/s. Source powers
+and the unchanged combining rule give:
+
+```text
+combined power = 25 Gm × 2^0.75 = 42.044820762686 Gm
+maximum range  = sqrt(42.044820762686 × 250) Gm = 102.524168812390 Gm
+```
+
+Independent references use the unchanged cubic strength curve and `S^k`:
+
+| Selected separation/configuration | Raw signal | Transmission efficiency | Science rate |
+| --- | ---: | ---: | ---: |
+| Manual distance exactly 23 Gm, blocking unknown | 87.1598825943% | 43.7876666205% | 131.362999861 kB/s potential |
+| Stock Year 8, Day 214, 01:58; 23.001502114423 Gm | 87.1583528722% | 43.7830487262% | 131.349146179 kB/s |
+| Stock Year 8, Day 214, 02:01; 23.002038412736 Gm | 87.1578066999% | 43.7814000507% | 131.344200152 kB/s |
+
+The two dated cases correspond to **UT 69,019,080** and **69,019,260 s** and
+are independently evaluated from the pinned Stock elements. They explain the
+reported approximately 23 Gm / 87.16% / 131.35 kB/s measurement without a Dres
+special case. The exact manual-distance result differs slightly from a result
+calculated using the already-rounded 87.16% strength. These are planet-center
+references for the stated configuration, not a guarantee for another save,
+calendar, spacecraft altitude, or modded orbit.
+
+Geometry fixtures cover circular compatibility, periapsis/apoapsis, inclined
+positions, source epochs, calendar conversions, parent-relative 3D coordinates,
+segment blocking, extrema, missing data, and manual distance. Graph values and
+metric cards use the same spatial result. The diagram is only a 2D projection;
+a visual overlap does not determine blocking. Curves keep raw signal and
+optional Kerbalism efficiency with modeled blocking, while extrema cards retain
+before-blocking signal/rate potential and explicit actual availability.
+Closest/farthest positions are scoped to the selected sweep or displayed time
+window, not all possible orbital configurations.
+
+Occultation regressions include narrow events between regular samples,
+repeated transits by the same body, different occluders within one coarse
+interval, and exact limb boundaries. A full Stock Kerbin–Duna date window checks
+more than 100 Ike transit spans and compares retained graph samples directly
+with the scalar evaluator. Adaptive refinement uses per-body relative-motion
+bounds; redundant plot points are removed without dropping blocking transitions.
+Dense long windows can exceed the finite refinement budget, in which case the
+graph is explicitly unavailable and the selected-date result remains valid.
+
 ### Interplanetary signal references — 12 November 2026
+
+This section records the original circular implementation and its validation.
+Those fixtures remain the explicit circular-mode baseline; the Keplerian
+extension above supplies the current default geometry.
 
 The single-link signal model uses the existing pinned Stock, OPM, RSS, and
 Kcalbeloh orbit facts. Its common-parent catalog contains **7 Stock**, **10 OPM**,
@@ -754,9 +846,11 @@ not replace an upstream comparison or launch KSP.
 
 Passing checks establishes the stated data transcription and mathematical
 behavior within the supplied models. Map budgets can be historical or rough;
-analytic reference orbits circularize eccentric systems and omit dated encounter
-geometry. Signal-reference phases likewise are not dated ephemerides or complete
-network paths. These models do not validate vehicle losses, terrain clearance, atmospheric entry
+analytic transfer references circularize eccentric systems and omit dated
+encounter geometry. Signals' relative-phase sweeps are selected configurations;
+its date mode propagates fixed game-config Keplerian elements, not live save or
+N-body ephemerides. Neither establishes a complete communication path. These
+models do not validate vehicle losses, terrain clearance, atmospheric entry
 heating/guidance, capture cleanup burns, binary dynamics, or a complete path to
 the home DSN. A reserve does not calculate omitted physics. Imported figures and
 personal allowances remain their authors' planning assumptions.

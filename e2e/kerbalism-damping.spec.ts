@@ -1,4 +1,5 @@
 import { preferAdvancedRelayMode } from './helpers/relayMode'
+import { selectCircularSignalReference } from './helpers/signalGeometry'
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
@@ -35,11 +36,12 @@ async function openPlanner(page: Page) {
 
 async function section(page: Page, name: 'Network' | 'Deployment' | 'Body data' | 'Signals') {
   await planner(page).getByRole('tab', { name, exact: true }).click()
+  if (name === 'Signals') await selectCircularSignalReference(page)
 }
 
 async function choose(page: Page, label: string, option: string) {
   await combo(page, label).click()
-  await page.getByRole('option', { name: option, exact: true }).click()
+  await page.getByRole('option', { name: option, exact: true }).and(page.locator('[data-value]')).click()
 }
 
 async function openDamping(page: Page) {
@@ -105,8 +107,8 @@ test('shows calibrated Kerbalism damping separately from raw strength, range, an
   const rawPath = await rawCurve.getAttribute('d')
   const efficiencyCurve = chart.locator('[data-signal-curve="transmission-efficiency"]')
   expect(rawPath).not.toBe(await efficiencyCurve.getAttribute('d'))
-  await expect(rawCurve.locator('title')).toHaveText('Raw CommNet signal strength (S) with central-body blocking')
-  await expect(efficiencyCurve.locator('title')).toHaveText('Transmission efficiency (S^k) with central-body blocking')
+  await expect(rawCurve.locator('title')).toHaveText('Raw CommNet signal strength (S) with body blocking')
+  await expect(efficiencyCurve.locator('title')).toHaveText('Transmission efficiency (S^k) with body blocking')
   await expect(chart.locator('[data-signal-curve="range-only"], [data-signal-curve="transmission-efficiency-range-only"]')).toHaveCount(0)
   await expect(chart.locator('..').getByText(/without blocking/)).toHaveCount(0)
   // Read the actual rendered paths at the selected angle, rather than merely

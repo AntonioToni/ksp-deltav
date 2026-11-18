@@ -1,4 +1,5 @@
 import { preferAdvancedRelayMode } from './helpers/relayMode'
+import { selectCircularSignalReference } from './helpers/signalGeometry'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 const kerbalism = 'Kerbalism + CommNet'
@@ -38,6 +39,7 @@ async function choose(page: Page, label: string, option: string) {
 
 async function section(page: Page, name: 'Network' | 'Signals') {
   await planner(page).getByRole('tab', { name, exact: true }).click()
+  if (name === 'Signals') await selectCircularSignalReference(page)
 }
 
 async function openRates(page: Page) {

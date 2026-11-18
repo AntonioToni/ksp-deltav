@@ -1,4 +1,5 @@
 import { preferAdvancedRelayMode } from './helpers/relayMode'
+import { selectCircularSignalReference } from './helpers/signalGeometry'
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { missionModeButton } from './helpers/missionMode'
@@ -11,7 +12,7 @@ const combo = (page: Page, name: string) => /^Antenna [AB]$/.test(name)
   : planner(page).getByRole('combobox', { name, exact: true })
 const field = (page: Page, name: string) => planner(page).getByRole('spinbutton', { name, exact: true })
 const metric = (page: Page, id: string) => planner(page).getByTestId(id)
-// MUI gives group headings the option role too, but only actual choices have a value.
+// MUI assigns the option role to group headings too; only choices have values.
 const selectableOptions = (page: Page) => page.locator('[role="option"][data-value]')
 const phase = (page: Page) => planner(page).getByRole('slider', { name: 'Planet positions', exact: true })
 const arrayEditor = (page: Page, endpoint: 'A' | 'B') => page.getByRole('dialog', { name: `Endpoint ${endpoint} antenna array`, exact: true })
@@ -39,11 +40,12 @@ async function openSignals(page: Page) {
 
 async function section(page: Page, name: 'Network' | 'Deployment' | 'Body data' | 'Signals') {
   await planner(page).getByRole('tab', { name, exact: true }).click()
+  if (name === 'Signals') await selectCircularSignalReference(page)
 }
 
 async function choose(page: Page, label: string, option: string) {
   await combo(page, label).click()
-  await page.getByRole('option', { name: option, exact: true }).click()
+  await page.getByRole('option', { name: option, exact: true }).and(selectableOptions(page)).click()
 }
 
 async function setPhase(page: Page, value: number) {
@@ -96,8 +98,9 @@ test('separates circular range-only strength from central-body blocking and expo
   await expect(metric(page, 'signal-best')).toHaveText('98.55%')
   await expect(metric(page, 'signal-worst')).toHaveText('72.74%')
   await expect(metric(page, 'signal-link-status')).toHaveText('Link available')
-  await expect(signal(page).getByText(/Closest and farthest positions.*before blockage/)).toBeVisible()
-  await expect(signal(page).getByText(/Choose planet positions to estimate one direct radio link/)).toBeVisible()
+  await expect(signal(page).getByText('Closest and farthest positions · potential before blockage', { exact: true })).toBeVisible()
+  await expect(signal(page)).toHaveAttribute('data-signal-position-mode', 'phase')
+  await expect(signal(page).getByText('Circular reference positions; no in-game date is implied.', { exact: true })).toBeVisible()
   const orbit = metric(page, 'signals-orbit-diagram')
   const chart = metric(page, 'signals-strength-chart')
   await expect(orbit).toHaveAttribute('role', 'img')
@@ -121,10 +124,10 @@ test('separates circular range-only strength from central-body blocking and expo
   await expect(metric(page, 'signal-worst')).toHaveText('72.74%')
   await expect(orbit.locator('[data-signal-link-status]')).toHaveAttribute('data-signal-link-status', 'blocked')
   await signal(page).getByText('Signal assumptions and sources', { exact: true }).click()
-  await expect(signal(page).getByText(/Relative phase sets their angle apart/)).toBeVisible()
+  await expect(signal(page).getByText(/Circular reference orbits deliberately omit eccentricity and inclination/)).toBeVisible()
   await expect(planner(page).getByRole('link', { name: 'Stock CommNet signal-strength curve · pinned calculator reference', exact: true }))
     .toHaveAttribute('href', /2ee8d9af84f2c0bb9d4287b9d80123dfba2efd80\/src\/endpoint.rs$/)
-  await expect(planner(page).getByRole('link', { name: /KSPTOT Kerbol physical radius/ })).toHaveAttribute('href', /9972b57398742263af12374652799db210395499/)
+  await expect(planner(page).getByRole('link', { name: /KSPTOT Stock orbital elements and UT epochs/ })).toHaveAttribute('href', /9972b57398742263af12374652799db210395499/)
 })
 
 test('supports manual radii, keyboard phase, exact antenna boundaries, and invalid-input recovery', async ({ page }) => {
@@ -272,11 +275,15 @@ test('keeps OPM reparenting correct and starts fresh Signals state after a pack 
   await expect(combo(page, 'Antenna A')).toHaveText('RA-100')
   await expect(metric(page, 'signal-range')).toHaveText('100 Gm')
   await combo(page, 'Planet A').click()
-  await expect(selectableOptions(page)).toHaveCount(10)
-  await expect(page.getByRole('option', { name: 'Eeloo', exact: true })).toHaveCount(0)
-  await page.getByRole('option', { name: 'Sarnus', exact: true }).click()
+  // The expanded catalog now includes moons as selectable endpoints too.
+  await expect(page.getByRole('option', { name: 'Eeloo', exact: true })).toHaveCount(1)
+  await page.getByRole('option', { name: 'Sarnus', exact: true }).and(selectableOptions(page)).click()
   await expect(combo(page, 'Planet A')).toHaveText('Sarnus')
   await expect(metric(page, 'signal-distance')).not.toHaveText('—')
+  await combo(page, 'Planet B').click()
+  // Eeloo is Sarnus's moon, not a sibling planet orbiting Kerbol.
+  await expect(page.getByRole('option', { name: 'Eeloo', exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
 })
 
 for (const pack of ['Stock + Kcalbeloh', 'OPM + Kcalbeloh']) {
@@ -284,9 +291,9 @@ for (const pack of ['Stock + Kcalbeloh', 'OPM + Kcalbeloh']) {
     await configuration(page, pack)
     await openSignals(page)
     await combo(page, 'Planet A').click()
-    await expect(selectableOptions(page)).toHaveCount(pack === 'Stock + Kcalbeloh' ? 20 : 23)
-    for (const excluded of ['Simetra', 'Simeht', 'Noira', 'Arorua', 'Aralc-B', 'WH-3141 A', 'WH-3141 B', 'Tot']) {
-      await expect(page.getByRole('option', { name: excluded, exact: true })).toHaveCount(0)
+    await expect(page.getByRole('option', { name: 'Onrefni', exact: true })).toHaveCount(1)
+    for (const excluded of ['Aralc-B', 'WH-3141 A', 'WH-3141 B']) {
+      await expect(page.getByRole('option', { name: excluded, exact: true }).and(selectableOptions(page))).toHaveCount(0)
     }
     await page.getByRole('option', { name: 'Onrefni', exact: true }).click()
     await combo(page, 'Planet B').click()

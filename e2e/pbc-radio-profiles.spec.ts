@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { preferAdvancedRelayMode } from './helpers/relayMode'
+import { selectCircularSignalReference } from './helpers/signalGeometry'
 
 const pbc = 'Probes Before Crew + CommNet'
 const pbcKerbalism = 'Probes Before Crew + Kerbalism'
@@ -42,6 +43,7 @@ async function choose(page: Page, label: string, option: string) {
 
 async function section(page: Page, name: 'Network' | 'Deployment' | 'Body data' | 'Signals') {
   await planner(page).getByRole('tab', { name, exact: true }).click()
+  if (name === 'Signals') await selectCircularSignalReference(page)
 }
 
 async function setMode(page: Page, mode: 'Basic' | 'Advanced') {
@@ -230,6 +232,9 @@ test('keeps invalid hidden DSN settings actionable and restores default calculat
   await choose(page, 'Radio setup', pbcKerbalism)
   for (const [tab, invalid, resultId] of [['Network', '0', 'relay-coverage'], ['Signals', '', 'signal-strength']] as const) {
     await section(page, tab)
+    // This workflow checks the absence of custom settings, so retain the new
+    // default geometry rather than the circular scalar fixtures used above.
+    if (tab === 'Signals') await choose(page, 'Signal geometry', 'Actual orbits')
     await field(page, 'DSN modifier').fill(invalid)
     const warning = planner(page).getByRole('alert').filter({ hasText: 'Enter a valid DSN modifier' })
     await expect(warning).toBeVisible()

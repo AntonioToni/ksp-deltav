@@ -111,10 +111,12 @@ On Linux CI machines that also need browser system dependencies, use
 | Relay geometry, antenna ranges, and resonant deployment | `src/utils/relay.ts` |
 | Relay workspace and constellation diagram | `src/components/RelayPlannerDialog.tsx`, `src/components/RelayDiagram.tsx` |
 | Staged relay and surface antenna loadout editor | `src/components/AntennaArrayDialog.tsx` |
-| Interplanetary signal input/result types | `src/types/interplanetary.ts` |
-| Common-center signal orbit and central-radius references | `src/data/interplanetary.ts` |
+| Circular compatibility and 3D orbital signal input/result types | `src/types/interplanetary.ts`, `src/types/orbital.ts` |
+| Circular compatibility presets and verified hierarchy-aware orbital catalog | `src/data/interplanetary.ts`, `src/data/signalOrbitalCatalog.ts` |
+| Full source orbital elements and epochs | `src/data/stockOrbitalElements.ts`, `src/data/opmOrbitalElements.ts`, `src/data/rssOrbitalElements.ts`, `src/data/kcalbelohOrbitalElements.ts` |
+| Keplerian positions, hierarchy, sweep extrema, and calendar conversion | `src/utils/orbitalGeometry.ts`, `src/utils/orbitalSignals.ts`, `src/utils/gameTime.ts` |
 | Single-link strength, distance, and central occlusion | `src/utils/interplanetary.ts` |
-| Signals controls and orbital/strength diagrams | `src/components/InterplanetaryPlanner.tsx`, `src/components/InterplanetaryDiagram.tsx` |
+| Signals controls and orbital/strength diagrams | `src/components/InterplanetaryPlanner.tsx`, `src/components/OrbitalSignalDiagram.tsx` |
 | Theme and decorative background | `src/main.tsx`, `src/components/SpaceBackground.tsx` |
 | Browser workflows | `e2e/` |
 
@@ -593,70 +595,99 @@ sources, and scope.
 
 ## Interplanetary signals
 
-The **Signals** section lives inside `RelayPlannerDialog` alongside local
-Network, Deployment, and Body data sections. It uses the same session and
-Delta-V-state separation. Signal inputs survive section changes and closing the
-workspace; a pack change resets them. Radio profile and range multiplier are
-shared with local planning, while central-body occlusion is a signal-model
-input with a full-radius default.
+Signals remains inside `RelayPlannerDialog`, sharing radio profile, range
+multiplier, PBC DSN modifier, damping, and science settings with Network.
+Position/geometry inputs remain a Signals concern. Tab and Basic/Advanced
+switches preserve the current setup; the existing pack key resets the session
+on pack changes. Delta-V mission state is separate.
 
-`getInterplanetaryPresets(pack)` returns reviewed orbit and center records for
-the seven built-in pack IDs. It matches planetary body IDs and actual parents,
-requires a supported star/black-hole center, and retains only groups with at
-least two eligible planets. This excludes moved OPM Eeloo, moons, barycenters,
-wormholes, unsupported cross-star geometry, and unknown custom references from
-automatic planetary pairs. Unknown/rescaled configurations use the manual
-circular-geometry inputs instead of inheriting orbital facts by name.
+`getSignalOrbitalCatalog(pack)` combines the existing physical references with
+new source-backed orbital records for the reviewed built-in configurations.
+Matching requires the expected body identity, parent, and kind. The catalog
+retains planets, moons, stars, and intermediate physical/barycenter nodes;
+only supported selectable bodies appear as endpoints. Familiar IDs in an
+unreviewed imported pack do not borrow orbital elements automatically.
+`getInterplanetaryPresets` and `calculateInterplanetarySignal` retain the old
+common-center circular catalog and numerical compatibility model.
 
-`calculateInterplanetarySignal` consumes explicit SI inputs: two circular orbit
-radii, physical central radius, final effective endpoint powers, range
-multiplier, occlusion factor, and relative phase. It validates inputs and
-returns either errors or normalized phase, endpoint coordinates, distance,
-maximum range, central clearance/status, current range-only/effective strength,
-and the circular nearest/farthest distance-strength envelope. It does not fetch
-an ephemeris or infer a date from the phase slider.
+`src/types/orbital.ts` defines SI-unit orbital elements and 3D vectors.
+`orbitalGeometry.ts` solves Kepler's equation and rotates the resulting position
+using argument of periapsis, inclination, and longitude of ascending node.
+Mean anomaly at epoch is explicitly radians; angles with `Deg` names are
+explicitly degrees. Periods come from source overrides or verified parent GM.
+Parent-relative vectors share the source inertial axes and are added through
+the hierarchy; parent orbital orientation is not applied to a child's axes a
+second time. A common-ancestor frame can avoid requiring an unrelated missing
+orbit above both endpoints.
 
-Its optional damping exponent adds `dampedStrength`, `dampedRangeStrength`,
-`bestDampedStrength`, and `worstDampedStrength` alongside the raw fields. Main
-signal metrics and closest/farthest strengths always use the raw fields.
-Kerbalism profiles show the damped fields separately as **Transmission
-efficiency** inside the signal-strength card. The chart has one raw
-signal-strength curve and a separate Kerbalism-only transmission-efficiency
-curve; both include central-body blocking. Closest/farthest summaries still use
-the unblocked fields. Neither dimensionless percentage establishes a complete
-communication path; the separate science-rate result estimates only the selected
-outgoing hop.
+`orbitalSignals.ts` evaluates the selected configuration and produces sweep
+samples and closest/farthest positions. Its radio calculations reuse
+`commNetSignalStrength` and `kerbalismDampedStrength`; antenna/array power,
+receiver restrictions, DSN modifiers, rate aggregation, minimum-rate behavior,
+and byte formatting remain in their existing modules. No Delta-V, Network,
+Deployment, or Body data formula is replaced by this feature.
 
-The strength function is `3x² − 2x³` for `x = clamp(1 − d/R, 0, 1)`, where
-`R = sqrt(PA × PB) × rangeMultiplier`. Occluded segments have zero effective
-strength; the range-only value remains separate. The nearest/farthest strengths
-ignore occlusion and describe only circularized radii, so they cannot be labeled
-as universal worst-case bounds for eccentric or inclined trajectories. Exact
-limb and range cases remain marginal. Both circular radii must exceed the
-physical central radius even when the effective occlusion factor is smaller.
+Relative-phase mode holds A at its selected true anomaly (default zero,
+periapsis), sets B's anomaly to A's reference plus the slider angle, and holds
+intermediate parent configurations at the reference UT. This is a deterministic
+orbit-shape exploration, not a date or a geometric sky angle. Date mode
+propagates both complete hierarchy paths at the requested UT. `gameTime.ts`
+converts the 6-hour/426-day Kerbin calendar or the Gregorian RSS calendar
+(24-hour days, epoch 1951-01-01). The input's calendar and physical element epoch
+are distinct: RSS elements use B1950 at UT −31,542,641.784 seconds.
 
-Preset powers and array calculations already include the active radio profile's
-catalog scaling. Signals assigns an explicit receiving endpoint, defaulting to
-B. The sending craft's direct and relay antennas retain their combined power;
-a vessel receiver uses only the relay-capable part or relay subset of its
-array. A direct-only receiver produces a contextual correction state, not a
-valid link with a direct-antenna range. Choosing a DSN power sets its endpoint
-as receiver; swapping endpoints moves that role with the hardware.
+Actual geometry requires verified shape/orientation data. Incomplete phase
+geometry may use an explicitly labelled circular fallback when a reference
+radius is known; incomplete dated elements never become invented epoch-zero
+predictions. Missing imported data remain actionable in Advanced or via manual
+distance. **Manual link distance** computes only distance-based radio results;
+it omits orbital paths, blockage claims, position graphs, and sweep extrema.
+The legacy **Manual orbits** setup remains a user-supplied two-circle reference.
 
-Custom power remains a final endpoint value, with receiving custom power
-explicitly assumed to be relay-capable. DSN presets are offered for the known
-homeworld in reference mode; manually entered geometry remains an explicit user
-assumption. This single-hop role check does not establish local visibility or a
-complete forwarding path. The orbital diagram and phase-strength samples use
-the same pure calculation engine as the metrics.
+The sweep engine refines distance extrema and potential narrow occlusion
+intervals. The chart uses phase for an orbital sweep, or UT for a labelled
+synodic/orbital/fixed interval. Extrema describe that chosen sweep/window only.
+Cards preserve distance-based signal/efficiency/science-rate potential before
+blocking and separately describe actual availability at the extremum. Invalid
+or unavailable inputs do not turn into zero-valued successful predictions.
 
-The central radius catalog adds the pinned Kerbol and RSS Sun radii and reuses
-the default-patched Kcalbeloh facts. Do not select solar occlusion multipliers
-from the planner's `hasAtmosphere` flag: stellar technical atmospheres are
-intentionally excluded from its body classification. Keep the scope to one
-central occluder explicit; local endpoint visibility, other planets/stars, hardware
-deployment, and complete DSN/control paths remain separate work. See
-[Interplanetary signals](RELAYS.md#interplanetary-signals) for formulas and scope.
+Adaptive per-occluder refinement uses relative-motion bounds, including repeated
+transits within a coarse interval. It propagates the necessary endpoint and
+occluder hierarchies; final plotted samples use the complete evaluator. Long
+date windows are bounded by 16 periods of the shortest relevant endpoint or
+ancestor orbit. A finite refinement budget prevents unbounded work: when dense
+occultations exceed it, the graph is explicitly unavailable while the scalar
+selected-position result remains valid. Redundant refinement points are removed
+without removing blocking transitions, coarse anchors, or extrema.
+
+`OrbitalSignalDiagram.tsx` renders engine-provided orbit paths, focus/body
+positions, and samples. It uses a consistent tilted orthographic projection,
+with a common spatial scale and explicitly enlarged small markers. Calculations
+remain 3D even where a projected overlap looks blocked. The simplified legend
+contains raw signal strength and an optional Kerbalism efficiency curve, both
+with modeled blocking. The selected phase/date marker follows the same result
+used by the metric cards.
+
+Intervening known bodies are tested against the 3D segment and selected
+occlusion factor. Endpoint bodies are excluded because the approximation uses
+planet/moon centers rather than craft or ground-station locations. Unknown
+occluders are exposed as unchecked. Local horizons, craft altitude/phase,
+terrain, ring geometry, hardware state, and complete forwarding paths remain
+outside this model. Exact range/limb boundaries keep their marginal status.
+
+The default Kcalbeloh stellar patch sets Kerbol's mass/radius. These are
+isolated overrides in the new Signals catalog; ordinary solar-orbit periods
+there are derived from that parent GM, while explicit Simetra/Simeht periods
+are retained. Existing shared relay physics and transfer-budget data stay
+unchanged. The Kcalbeloh root bridge lacks a verified epoch, and Efil has
+conflicting mean-anomaly keys. Keep their records partial and publish the
+limitations; do not select a parser order or zero epoch as an implicit fix.
+
+Sources, user-facing definitions, and configuration limits are recorded in
+[Interplanetary signals](RELAYS.md#interplanetary-signals). The original circular
+numerical fixtures remain meaningful in the explicit circular mode; default
+actual-orbit UI checks should use the verified Keplerian catalog instead of
+changing those fixture values to match a different geometry.
 
 ## GitHub Pages
 
