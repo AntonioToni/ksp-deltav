@@ -60,7 +60,7 @@ export function previewComment(entry, deployment) {
           : 'Preview removal is pending deployment.'].join('\n')
   if (!entry.trusted) return [...lines, 'Not published: previews are restricted to branches in this repository. Fork code is never hosted on the production origin.'].join('\n')
   lines.push(`[Preview · PR #${entry.number}](${url})`, '')
-  if (deployment === 'failure') lines.push('Deployment failed. The live Pages site was not replaced by this run; this URL may still show an earlier build.')
+  if (deployment === 'failure') lines.push('Deployment failed or could not be confirmed. This URL may still show an earlier build.')
   else if (deployment === 'waiting') lines.push('Waiting for the first validated production build. Production must exist before previews can be published.')
   else if (deployment === 'deploying') lines.push('Deploying the consolidated production and preview site…')
   else if (entry.status === 'unavailable') lines.push(`The validated build artifact is unavailable or expired; rerun the preview build.${entry.snapshot ? ' The previous validated preview is retained.' : ' No validated preview is available yet.'}`)
