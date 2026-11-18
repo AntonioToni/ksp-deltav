@@ -155,154 +155,233 @@ ratings and derived ranges, not signal-strength percentages.
 
 ## Interplanetary signals
 
-Open **Relays → Signals** to compare one antenna link between vessels near two
-planets. The radio model uses stock CommNet range, strength, and antenna-combining
-rules with the selected Stock, RSS, PBC, or Kerbalism profile, with a separate
-Kerbalism damping calculation when selected. It does not simulate a
-complete network path or place a ground station on the visible side of a planet.
+Open **Relays → Signals** to compare one direct communication link between
+spacecraft near two selected planets or moons. **Actual orbits** is the default:
+where verified elements are available, the planner uses eccentric, inclined
+Keplerian orbits and three-dimensional positions. It does not read a save file
+or calculate a complete relay path back to mission control.
 
-1. Select **Planet A** and **Planet B**. In Advanced,
-   **Signal geometry → Reference orbits** selects the built-in reference
-   geometry. Both planets must orbit the same body—for example, Kerbin and Duna
-   orbit Kerbol. The model treats their listed orbital distances as circular
-   orbits in the same plane. It does not read their positions from your save.
-2. Choose each body's antenna, using selectors such as **Kerbin antenna** and
-   **Duna antenna**. Advanced also offers mixed arrays and final custom effective
-   powers in **Power A** and **Power B**. A DSN preset may represent the known
-   homeworld endpoint in reference mode.
-3. Choose **Signal receiver** to select which endpoint receives; B is the
-   default, and the other endpoint sends. The direction readout names the craft
-   or ground station, such as **Kerbin spacecraft → Duna spacecraft**. A vessel
-   receiver must have a relay-capable antenna; a direct-only receiver needs
-   another antenna before the planner can report a link. Choosing a DSN power
-   selects that endpoint as the receiver. Swapping endpoints moves the receiving
-   role with its hardware.
-4. Move **Planet positions**, or choose **Closest** or **Opposite**, to change
-   the angle between the bodies. Its degree readout is their **relative phase**:
-   0° is closest and 180° is farthest. The orbit diagram and strength chart update
-   together. These angles are not dates, transfer-window angles, or the planets'
-   current positions.
-5. Compare **Separation at selected positions**, maximum antenna range,
-   **Signal strength**, and signal at the
-   **Closest position** and **Farthest position** on those circles. Those last
-   two values are before blocking. All signal percentages are raw CommNet
-   strength. A Kerbalism profile separately shows **Transmission efficiency**,
-   the `S^k` percentage used for science transmission, inside the signal-strength
-   card. The chart shows signal strength and, with Kerbalism, transmission
-   efficiency. Both curves include blocking by the central body; closest and
-   farthest position summaries still show their values before blocking.
-   The science rate uses
-   the sending craft's loadout and follows the selected receiving direction;
-   the full-strength sender rate includes the chosen antenna speed.
-6. In Advanced, choose **Signal geometry → Manual orbits** for an unknown custom
-   pack or a different reference configuration. Enter **Orbit radius A** and
-   **Orbit radius B** in **Gm**, and **Central radius** in **km**. Manual values
-   are user assumptions;
-   no orbit data is inferred from Delta-V map costs or imported body names.
-   Orbit radii are measured from one shared center, rather than above a surface.
-   The central radius is the size of the body at that center. Manual orbits still
-   uses two circles in one plane; it cannot join different star systems or model
-   a wormhole.
+1. Choose **Planet A**, **Planet B**, and their antennas. The selectors retain
+   the bodies' names, such as **Kerbin antenna**. Moons and bodies with different
+   parents can be compared when their connecting hierarchy has known orbital
+   data. Wormholes do not carry radio signals between systems.
+2. Choose **Signal receiver**. B receives by default; the other endpoint sends.
+   A receiving spacecraft needs a relay-capable antenna. Only relay antennas
+   contribute to a mixed receiver array, while direct and relay antennas can
+   contribute to the sending craft's power. A DSN preset can represent the
+   homeworld's ground stations and selects that endpoint as receiver.
+3. Use **Relative phase** for a quick exploration, or select **In-game date** to
+   propagate both bodies to a game time. These controls are available in Basic
+   and Advanced. Switching modes keeps the selected hardware and radio settings.
+4. Read **Separation at selected positions**, **Signal strength**, maximum range,
+   and link status. Signal strength is always raw CommNet strength. With
+   Kerbalism, the signal card separately shows **Transmission efficiency**, and
+   the science card estimates the selected sender's transmission rate.
+5. Use **Closest** and **Farthest** to navigate to the closest and farthest
+   positions found in the displayed sweep or time interval. On eccentric or
+   inclined orbits, these need not occur at 0° and 180°.
+6. In Advanced, inspect **Signal geometry**, adjust the reference position or
+   orbital elements, or enter a **Manual link distance** for an exact
+   distance-based comparison with an in-game measurement.
 
-Basic keeps an already-selected manual setup active and shows its orbit values
-as a summary. Use **View settings** to edit it in Advanced. The same applies to
-arrays, custom powers, and nondefault technical settings. A custom pack without
-reference orbits provides an action to enter its geometry in Advanced.
+Radio setup, damping, antenna speed, minimum science rate, range multiplier,
+and the PBC DSN modifier retain their existing shared behavior with Network.
+Arrays combine antennas fitted to one craft, never between endpoints. Final
+custom powers are used as entered. Unavailable parts remain selected with an
+action to restore a compatible radio profile or edit their loadout. Basic keeps
+Advanced settings active and offers **View settings** when they affect the
+result; switching views does not reset them.
 
-**Radio setup**, **Kerbalism damping**, **Antenna speed**, **Minimum science
-rate**, and the **Range multiplier** are shared
-with local relay planning. Changing the radio setup preserves part identities and array counts,
-recalculating compatible powers from its catalog. Unavailable choices remain
-visible for correction or restoring their radio setup. Custom powers remain
-already-effective values and are never scaled again. Both direct and relay
-antennas may contribute to the sending craft's combined power. The receiving
-vessel uses only its relay-capable antenna power: direct parts in a mixed
-receiver array do not increase that receiving power. A direct-only receiver
-shows a clear correction message with a **Use RA-100** action rather than an
-available link. Custom power on the receiving endpoint is an explicit user
-assumption that the value describes a relay-capable receiver. Arrays combine
-antennas on one craft, never across the two endpoints.
+### Relative phase: a selected configuration
 
-This receiving-role check covers a single hop. A DSN receiver remains a
-station-power assumption, not proof of local visibility, an unobstructed
-homeworld connection, or a complete relay route back to mission control.
-
-### Circular-reference distance and strength
-
-Let `a` and `b` be the two circular reference radii, `theta` their relative
-angle, and `PA` and `PB` the effective endpoint powers after applying their
-sending/receiving roles:
+An angle alone cannot identify two positions on eccentric orbits. The planner
+therefore holds A at a deterministic reference position, initially its
+**periapsis** (true anomaly 0°), and sweeps B around its own orbit. The slider is
+the difference between their true anomalies, each measured from that body's
+own periapsis:
 
 ```text
-distance² = a² + b² − 2ab cos(theta)
-circular nearest distance  = abs(a − b)
-circular farthest distance = a + b
-maximum range R = sqrt(PA × PB) × rangeMultiplier
-x = clamp(1 − distance/R, 0, 1)
-range-only strength = 3x² − 2x³
+true anomaly A = reference position A
+true anomaly B = reference position A + relative phase, wrapped to 0–360°
 ```
 
-Strength is a fraction from 0 to 1, displayed as a percentage. At the exact
-antenna range it is zero; a link at that limit is marked marginal rather than
-as a robust connection. The model does not use an inverse-square strength
-percentage. A distance of one quarter, one half, or three quarters of maximum
-range gives **84.375%**, **50%**, or **15.625%** respectively before occlusion.
-These raw CommNet percentages remain the signal-strength results with every
-profile, including the closest/farthest readouts. A Kerbalism profile separately
-applies `S^k` to calculate **Transmission efficiency**, using the selected
-damping exponent. Closest/farthest cards show that efficiency separately, also
-before blocking. This does not change maximum range, obstruction, or link status.
+The orbit orientations and inclinations are retained. The slider is not the
+angle between the two sky directions, a transfer-window phase angle, or an
+in-game date. Advanced lets you adjust A's reference position. When a hierarchy
+contains intermediate parents, their positions are held at the reference UT
+while the selected endpoint orbits are explored. This is one chosen orbital
+configuration, not a prediction that all its positions occur simultaneously.
 
-**Closest position** and **Farthest position** compare **two circular orbits and
-ignore blocking**.
-Real orbits can be stretched or tilted, giving different closest and farthest
-approaches. The current strength also checks whether the central body blocks the link.
-At opposite alignment it blocks the signal, making strength **0%** even if the
-antennas have enough range. The horizontal chart axis is your chosen angle,
-rather than time in your save.
+The graph's horizontal axis spans the selected 0–360° sweep. Its current-position
+marker follows the slider. Changing A's reference position changes the sweep
+and its closest/farthest estimates.
 
-For example, using one **RA-100 at each endpoint**, **Stock CommNet**, and range
-multiplier 1, a Kerbin–Duna reference has maximum range **100 Gm**:
+### In-game date
 
-| Relative phase | Distance (Gm) | Range-only strength | Central-body result |
+Choose **In-game date**, then enter **Year**, **Day**, and time. The planner
+converts them to universal game time (UT, seconds), advances mean anomaly from
+each body's source epoch, solves Kepler's equation, and places both bodies in a
+common three-dimensional frame. Parent positions are added through the actual
+hierarchy; a moon is not treated as a planet directly orbiting the Sun.
+
+- The Kerbin calendar uses **6-hour days and 426-day years**. Year 1, Day 1,
+  00:00:00 is UT 0.
+- RSS uses the official formatter's **Gregorian calendar**, **24-hour days**,
+  and **1951-01-01** start. Year 1951, Day 1, 00:00:00 is UT 0; leap years have
+  366 days. Seconds follow the continuous game clock, without UTC leap-second
+  adjustments.
+- Advanced exposes UT for precise comparisons. If another time formatter,
+  calendar, or epoch is installed, use the actual UT rather than assuming its
+  displayed year/day matches these conventions.
+
+The date graph covers approximately one synodic period where it can be defined.
+Otherwise it uses an explicitly labelled orbital-period or fixed time window.
+The caption states the displayed interval; the selected date is marked on the
+curve. The endpoints of this window are not universal limits on all future
+planetary alignments.
+
+Very long windows are capped at 16 periods of the shortest relevant endpoint
+or ancestor orbit; the graph caption identifies the shorter window. Dense
+occultations in some moon-heavy systems can still exceed the finite sampling
+budget. In that case the planner explicitly withholds the graph rather than
+drawing a falsely clear link. The selected-position result remains available;
+Relative phase offers a separate exploratory sweep.
+
+### Geometry choices and missing data
+
+Advanced **Signal geometry** offers:
+
+- **Actual orbits**: source-backed orbital elements and hierarchy, with
+  optional parameter/reference-position overrides.
+- **Circular reference orbits**: the previous approximation, using semi-major
+  axes as constant radii in one plane, checking only the shared central body
+  for blocking. Its circular examples below remain useful
+  regression references; they are not the default eccentric-orbit results.
+- **Manual link distance**: enter an exact separation to calculate raw signal,
+  maximum range, Kerbalism efficiency, and science rate. A distance alone cannot
+  determine blocking or orbital positions, so this mode does not draw an orbit
+  diagram or position graph and does not claim that the path is clear.
+- **Manual orbits**: the retained circular-radius setup for custom geometry.
+  Enter **Orbit radius A** and **Orbit radius B** in Gm and **Central radius** in
+  km, measured from one shared center rather than from the surface.
+
+Unknown orbital facts are not replaced with guessed angles or epochs. A
+supported phase configuration can use known orbit shapes without claiming a
+date. Where actual shape data are incomplete but reference radii are known,
+the planner identifies its circular fallback. Dated positions require complete
+mean-anomaly/epoch/period information for the necessary hierarchy; missing
+information produces an explanation and an Advanced correction path. Imported
+pack names or familiar-looking body IDs do not establish verified ephemerides.
+Manual distance remains available when orbital geometry is unknown.
+
+### Signal strength and the retained circular reference
+
+All geometry modes use the same antenna, CommNet, and Kerbalism calculations.
+For effective sender/receiver powers `PA` and `PB`:
+
+```text
+maximum range R = sqrt(PA × PB) × rangeMultiplier
+x = clamp(1 − separation/R, 0, 1)
+raw signal before blocking = 3x² − 2x³
+Kerbalism transmission efficiency = signalStrength^k
+```
+
+The maximum-range boundary has zero signal and is marked marginal, not a robust
+connection. A separation of one quarter, one half, or three quarters of range
+produces **84.375%**, **50%**, or **15.625%** signal before blocking. Body blocking
+sets actual signal and efficiency to zero. Damping changes efficiency and
+science throughput, not the raw signal curve or maximum antenna range.
+
+For **Circular reference orbits** or **Manual orbits**, radii `a`, `b` and angle
+`theta` retain the original compatibility calculation:
+
+```text
+separation² = a² + b² − 2ab cos(theta)
+circular nearest distance  = abs(a − b)
+circular farthest distance = a + b
+```
+
+One RA-100 at each endpoint, Stock CommNet, and range multiplier 1 give a
+**100 Gm** maximum range. In the explicit circular Kerbin–Duna reference:
+
+| Relative phase | Distance (Gm) | Signal before blocking | Central-body result |
 | --- | ---: | ---: | --- |
 | 0° | 7.126315008 | 98.5488501% | Clear |
 | 90° | 24.789698809 | 84.6109236% | Clear |
-| 180° | 34.325995520 | 72.7408663% | Kerbol blocks the ray; effective strength 0% |
+| 180° | 34.325995520 | 72.7408663% | Kerbol blocks the ray; actual signal 0% |
 
-Both endpoint selectors initially use one RA-100 and the phase starts at **90°**.
-For the Kerbin–Duna pair, the displayed values therefore round to **24.79 Gm**
-and **84.61%**. Open **Signal assumptions and sources** for the selected
-reference and radio-source links.
+These values describe the circular option. Actual-orbit values differ because
+orbital radii and three-dimensional orientation change along each ellipse.
+Open **Signal assumptions and sources** for the selected geometry and radio
+references.
 
-### Occlusion and reference coverage
+### Diagram, blocking, and closest/farthest estimates
 
-Occlusion means a body blocking the radio signal. The calculation finds the
-point on the link between the two craft that passes closest to the central body.
-It compares that distance from the center with
-`centralRadius × occlusionFactor`. A line passing inside that radius is blocked;
-a line just touching its edge is marked at the limit. The default factor is
-**1**, using the body's full size. A factor of **0.9** uses **90%** of that radius
-for blocking. The orbit radii stay unchanged. The Signals model starts at factor 1
-rather than choosing a Normal game factor from the star's atmosphere data;
-some stars have atmospheres defined for technical game purposes.
+The diagram projects the calculated three-dimensional geometry into two
+dimensions. Ellipses keep their parent at the correct focus and use a common
+scale. Small body/craft markers are enlarged for readability. A visual overlap
+in the projection is not itself a blocked link: separation and line-of-sight
+checks use the underlying 3D coordinates.
 
-Reference pairs cover **7 Stock**, **10 OPM**, and **11 RSS** planetary bodies.
-The Stock/Kcalbeloh and OPM/Kcalbeloh configurations offer **20** and **23**
-respectively. Kcalbeloh's supported local groups are Kcalbeloh (four planets),
-Maelg (two), Sunorc (four), and Aralc-A (three). The catalog requires a common
-supported physical center and at least two eligible planets in its group.
-Moons, binary-center children, wormholes, cross-star links, and Aralc-B's
-singleton group are excluded from automatic reference pairs. Custom and
-rescaled configurations can use manually entered circular orbits around one
-shared center, within the same model limits.
+In Actual orbits, the link segment is checked against known intervening bodies using their
+physical radius times **Occlusion factor**. The default factor is 1; 0.9 uses
+90% of the blocking radius without resizing the orbit. Endpoint planets/moons
+are excluded as occluders because the endpoints represent their centers, not
+surface stations. Their local horizon and spacecraft altitude are not modeled.
+Bodies whose positions cannot be established are reported as unchecked rather
+than silently guaranteeing visibility. Exact limb/range boundaries remain
+marginal.
 
-The model checks the selected central occluder only. It does not check the
-endpoint planets' local horizons, spacecraft orbital positions, other planets,
-companion stars, rings or accretion structures, relativistic propagation,
-deployed antennas, control capability, or a complete path through relays back
-to the DSN. RealAntennas and RemoteTech remain separate unsupported radio models.
-These are single-link planning estimates using the stated geometry.
+Circular reference and Manual orbits retain the previous central-body-only
+blocking check. They do not invent coplanar occultations by other planets.
+
+The graph keeps only **Signal strength** and, with Kerbalism,
+**Transmission efficiency**. Both include the modeled body blocking. Sampling
+refines potential narrow blocking intervals; shaded sections identify blocked
+positions. Out-of-range positions have zero signal even when the path is clear.
+
+The **Closest position** and **Farthest position** cards summarize the selected
+sweep or displayed date interval, not all configurations that those orbits could
+ever reach. Each includes distance, raw signal potential before blocking,
+Kerbalism efficiency/rate where available, and the actual availability at that
+position. A promising distance-based rate can therefore coexist with a blocked
+link whose actual rate is zero. Science rates use the selected sender, antenna
+speed, and minimum-rate settings; they do not include slower onward relay hops.
+
+### Orbital data and limitations
+
+The built-in catalogs retain actual parent relationships and verified angular
+units/epochs:
+
+- **Stock**: [pinned KSPTOT orbital elements](https://github.com/Arrowstar/ksptot/blob/9972b57398742263af12374652799db210395499/bodies.ini),
+  including planets and moons, with source means converted from degrees and
+  epochs at UT 0.
+- **OPM 2.2.12**: [official Kopernicus configurations](https://github.com/Poodmund/Outer-Planets-Mod/tree/ffedf02e23d2d620e1018d1467f5e485f7950fa0/GameData/OPM/KopernicusConfigs),
+  including per-body epochs and Eeloo's reparented orbit/inherited elements.
+- **RSS**: [official pinned configurations](https://github.com/KSP-RO/RealSolarSystem/tree/75139b961567f4dab61af83fe162a7e52026558b/GameData/RealSolarSystem/RSSKopernicus)
+  for all 32 supported planets/moons. Its B1950 element epoch is
+  **−31,542,641.784 UT seconds**, separate from the 1951 game-calendar start.
+  The reference plane is Earth-equatorial B1950, not an assumed ecliptic plane.
+- **Kcalbeloh 1.1.8**: [official configurations](https://github.com/jcyuan06/Kcalbeloh-System/tree/1c61f4d3a9d72c76054855c4ee9330d3a3ee85a9/GameData/KcalbelohSystem),
+  including moons, multiple stellar parents, the SimeSystem hierarchy, and the
+  explicit Simetra/Simeht period. The supported default is DistanceFactor 1,
+  Rescale 1, HomeSwitch false, RealisticStarSize true, with wormholes on or off.
+
+Kcalbeloh has two deliberately partial dated records. Its root bridge omits a
+verified epoch; Efil supplies conflicting radian and degree mean-anomaly keys.
+A date requiring either missing value needs a user override. Local links can
+use their common-ancestor frame without requiring an unknown orbit above it.
+The default Kcalbeloh stellar patch sets Kerbol's mass and radius; those
+values are applied only to the new Signals orbital catalog. They do not change
+the existing Network, Deployment, transfer budgets, or map data.
+
+These are fixed Keplerian game-config orbits, not N-body trajectories or live
+save ephemerides. Rescaled/user-patched systems, alternative calendars, and
+Principia may differ. Actual craft separation can differ from planet-center
+separation because of parking altitude, local orbital phase, ground-station
+location, or motion during a long link. Terrain, deployment/power state, rings,
+accretion structures, and a complete DSN/control path are not simulated.
+RealAntennas and RemoteTech remain unsupported communication models.
 
 ## What the results mean
 
@@ -597,8 +676,8 @@ atmosphere height **65 km**, and SOI radius approximately **31,359.322 km**.
 A **700 km** circular orbit has an ideal period of about **5,639.576 s**
 (**1 h 34 min 0 s** when displayed). The local relay model treats binary-system
 bodies as individual spheres; other bodies' occlusion and perturbations are not
-calculated there. The separate Signals section checks one common-center
-interplanetary reference link with the limits described above.
+calculated there. The separate Signals section checks a hierarchy-aware
+three-dimensional link with the data and visibility limits described above.
 
 Preset values are reference facts for the pinned versions. Relay coverage and
 deployment calculations remain separate from the calculated OPM maneuver model
@@ -781,8 +860,8 @@ a separate percentage inside the signal-strength card. The closest/farthest
 signal cards in Signals also keep raw CommNet strength before blocking and show
 transmission efficiency separately.
 The chart shows raw signal strength and, only with Kerbalism, transmission
-efficiency. Both curves account for central-body blocking and fall to zero when
-the body blocks the link. In Advanced, open
+efficiency. Both curves account for modeled body blocking and fall to zero when
+a body blocks the link. In Advanced, open
 **Kerbalism damping** to select
 **Automatic (3.44)** or
 **Custom exponent**. Damping mode and custom value remain shared across both tabs and

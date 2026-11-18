@@ -57,11 +57,11 @@ with Stock or OPM.
 - **Basic and Advanced CommNet views**: start with everyday relay and signal
   controls, then reveal body edits, antenna arrays, and detailed radio settings.
   Switching views keeps the active setup and uses the same calculations.
-- **Interplanetary signal planning** for one link at a time. Move two bodies around
-  simplified circular orbits to compare distance, signal strength, and blocking
-  by their shared central body. Presets cover Stock, OPM, RSS, and compatible local
-  Kcalbeloh systems. Manual orbits accepts your own radii around one shared center;
-  it does not connect different star systems or model wormholes.
+- **Interplanetary signal planning** for one link at a time, using verified
+  elliptical and inclined orbits by default. Explore a relative-phase sweep or
+  enter an in-game date to compare distance, signal strength, and body blocking.
+  Planet and moon presets cover Stock, OPM, RSS, and default Kcalbeloh combinations.
+  Advanced retains circular references and offers exact manual link distances.
 - **Mixed antenna arrays** with separate relay, surface-client, and interplanetary
   endpoint loadouts, using stock antenna combining rules.
 - **Probes Before Crew radio profiles** for PBC 3.3.2, with its individual
@@ -244,18 +244,28 @@ satellite separately; antennas on different satellites do not combine. Arrays
 use the selected radio setup's powers. Custom powers are final effective values
 and are never scaled automatically.
 
-For planet-to-planet links, open **Relays → Signals**. Choose two planets around
-the same reference center and an antenna for each, using the selectors labeled
-with their body names. Advanced also offers arrays. Choose the
-**Signal receiver** (B by default): a receiving vessel needs a relay antenna,
-and only relay-capable parts contribute to its array power. A DSN power can
-represent the homeworld receiver. Move **Planet positions**, or use **Closest**
-and **Opposite**, to inspect changing distance and central-body obstruction.
-The estimated signal includes that obstruction; **Closest position** and
-**Farthest position** show the signal for those circles before blocking.
-No in-game date is used. In Advanced, **Manual orbits** accepts your own orbit radii measured from
-one shared center, plus the central body's radius. See the [signal guide](docs/RELAYS.md#interplanetary-signals)
-for scope and examples.
+For planet-to-planet or moon links, open **Relays → Signals**. Choose the bodies,
+antenna loadouts, and **Signal receiver**. A receiving vessel needs a relay
+antenna; only relay-capable parts contribute to its receiving array power. A DSN
+preset can represent the homeworld receiver. Actual orbital geometry is the
+default wherever verified elements are available.
+
+Use **Relative phase** to explore a selected configuration without a date: A
+starts at periapsis, while B moves along its own eccentric, inclined orbit.
+The slider compares their true anomalies, not a dated alignment or a transfer
+window. **In-game date** instead advances both bodies from their source epochs.
+The Kerbin calendar uses 6-hour days and 426-day years; RSS uses Gregorian dates,
+24-hour days, and a 1951 start. Advanced also accepts universal game time.
+
+**Closest** and **Farthest** navigate to extrema of the selected sweep or time
+window. The summary cards distinguish signal/rate potential before blocking
+from actual link availability. They are not bounds across every possible
+planetary configuration. Advanced **Signal geometry** also offers **Circular
+reference orbits**, retained **Manual orbits**, and **Manual link distance** for
+an exact separation without inventing orbital positions or blockage. Missing
+orbital facts produce an explicit fallback or correction message. See the
+[signal guide](docs/RELAYS.md#interplanetary-signals) for sources, calendar
+conventions, and known limitations.
 
 ## About the estimates
 
@@ -353,12 +363,13 @@ for choices and calculation assumptions.
 
 **Relay coverage is equatorial.** A visible surface receiver and a working local
 ring do not establish a connection back to the homeworld's Deep Space Network
-(DSN). **Signals checks one link** between vessels near the selected planets,
-using circular orbits in the same plane and a chosen angle rather than dates.
-Its closest/farthest strengths may differ from real eccentric or tilted orbits.
-The ground near either craft, other blocking bodies, and complete routes through
-relays to the DSN are not checked. The radio presets use stock CommNet rules with explicit
-Stock, RSS, and Kerbalism configurations. Communotron 8 cannot forward relay
+(DSN). **Signals checks one link** using source-backed three-dimensional orbital
+geometry, a selected phase configuration or in-game date, and known intervening
+bodies. Closest/farthest estimates describe only the displayed sweep or time
+window. They do not include spacecraft altitude, local horizons, unknown
+occluders, or complete routes through relays to the DSN. The radio presets use
+stock CommNet rules with explicit Stock, RSS, PBC, and Kerbalism configurations.
+Communotron 8 cannot forward relay
 traffic. Signals checks the receiving endpoint's relay capability for one hop;
 it does not establish a complete connection to mission control.
 Kerbalism estimates science rates for the selected hops; complete-path

@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Page } from '@playwright/test'
+import { selectCircularSignalReference } from './helpers/signalGeometry'
 
 const storageKey = 'ksp-deltav:relay-planner-mode'
 const planner = (page: Page) => page.getByRole('dialog', { name: 'CommNet relay planner', exact: true })
@@ -92,7 +93,10 @@ test('starts new users in one Basic mode across all four tabs with essential res
   await expect(combo(page, 'Signal geometry')).toHaveCount(0)
   await expect(field(page, 'Range multiplier')).toHaveCount(0)
   await expect(field(page, 'Occlusion factor')).toHaveCount(0)
-  await expect(metric(page, 'signal-strength')).toHaveText('84.61%')
+  await expect(planner(page).getByTestId('interplanetary-planner')).toHaveAttribute('data-signal-geometry', 'actual')
+  // Pinned Duna elements at true anomaly 90° give 31.723862 Gm from
+  // Kerbin at its 0° reference; the unchanged 100 Gm CommNet curve gives 76.19%.
+  await expect(metric(page, 'signal-strength')).toHaveText('76.19%')
 })
 
 test('uses clear antenna and relay-link labels in both modes without flagging default settings', async ({ page }) => {
@@ -292,6 +296,7 @@ test('provides an Advanced entry point when a custom body has no required refere
 test('keeps Stock and Kerbalism estimates and DSN receiving available in Basic Signals', async ({ page }) => {
   await openPlanner(page)
   await section(page, 'Signals')
+  await selectCircularSignalReference(page)
   await expect(metric(page, 'signal-distance')).toHaveText('24.79 Gm')
   await expect(metric(page, 'signal-strength')).toHaveText('84.61%')
   await choose(page, 'Radio setup', 'Kerbalism + CommNet')
@@ -317,6 +322,7 @@ test('keeps Stock and Kerbalism estimates and DSN receiving available in Basic S
 test('keeps hidden Kerbalism calibration and science overrides active in Basic', async ({ page }) => {
   await openPlanner(page)
   await section(page, 'Signals')
+  await selectCircularSignalReference(page)
   await setMode(page, 'Advanced')
   await choose(page, 'Radio setup', 'Kerbalism + CommNet')
   await revealDetails(page, /Kerbalism damping/)
@@ -401,6 +407,7 @@ test('keeps manual signal geometry active in Basic and reopens its exact Advance
 test('exposes hidden invalid signal overrides without replacing or ignoring their values', async ({ page }) => {
   await openPlanner(page)
   await section(page, 'Signals')
+  await selectCircularSignalReference(page)
   await setMode(page, 'Advanced')
   await field(page, 'Range multiplier').fill('0')
   await setMode(page, 'Basic')
@@ -430,6 +437,7 @@ test('keeps an invalid hidden DSN configuration visible and editable from Basic 
 test('retains receiver validation and lets Basic users correct a direct-only receiving antenna', async ({ page }) => {
   await openPlanner(page)
   await section(page, 'Signals')
+  await selectCircularSignalReference(page)
   await chooseEndpoint(page, 'b', 'Communotron 16')
   await expect(metric(page, 'signal-strength')).toHaveCount(0)
   await expect(planner(page).getByText(/Choose a relay antenna or a DSN level/)).toBeVisible()
