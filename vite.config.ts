@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { deploymentHtml, deploymentRobots, resolveDeploymentContext, type DeploymentContext } from './src/build/deployment.ts'
 
 const socialPreviewSource = new URL('./docs/assets/planner-preview.png', import.meta.url)
 
@@ -35,8 +36,24 @@ function socialPreview(): Plugin {
   }
 }
 
-// Keep development at /; production and preview use the Pages project path.
-export default defineConfig(({ command, isPreview }) => ({
-  plugins: [react(), socialPreview()],
-  base: command === 'build' || isPreview ? '/ksp-deltav/' : '/',
-}))
+function deploymentAssets(context: DeploymentContext): Plugin {
+  return {
+    name: 'planner-deployment-context',
+    transformIndexHtml: { order: 'pre', handler: html => deploymentHtml(html, context) },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'robots.txt', source: deploymentRobots(context) })
+    },
+  }
+}
+
+// Development and production defaults stay unchanged. Preview builds provide
+// both variables so a nested artifact cannot accidentally omit protections.
+export default defineConfig(({ command, isPreview, mode }) => {
+  const environment = loadEnv(mode, process.cwd(), 'VITE_')
+  const context = resolveDeploymentContext({
+    basePath: environment.VITE_BASE_PATH,
+    previewPRNumber: environment.VITE_PREVIEW_PR_NUMBER,
+    production: command === 'build' || isPreview,
+  })
+  return { plugins: [react(), socialPreview(), deploymentAssets(context)], base: context.basePath }
+})

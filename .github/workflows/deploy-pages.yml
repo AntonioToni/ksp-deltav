@@ -9,20 +9,22 @@ permissions:
   contents: read
 
 concurrency:
-  group: github-pages
-  cancel-in-progress: false
+  group: production-pages-build
+  cancel-in-progress: true
 
 jobs:
   build:
+    if: github.repository == 'AntonioToni/ksp-deltav' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # Allow dependency setup and the complete production browser suite to finish.
     timeout-minutes: 25
     permissions:
       contents: read
-      pages: read
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -34,28 +36,20 @@ jobs:
         run: npm run lint
       - name: Test routing and data
         run: npm test
+      - name: Test deployment reconciliation and archive safety
+        run: npm run test:deployment
       - name: Install browser for production checks
         run: npx playwright install --with-deps chromium
       - name: Build and test the Pages project path
         run: npm run test:pages -- --project=desktop
-      - name: Configure Pages
-        uses: actions/configure-pages@v6
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v5
+      - name: Package validated production build
+        run: node .github/scripts/pages-build.mjs production
+        env:
+          PAGES_SOURCE_SHA: ${{ github.sha }}
+      - name: Retain validated production snapshot
+        uses: actions/upload-artifact@v6
         with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+          name: production-site-${{ github.sha }}-${{ github.run_attempt }}
+          path: pages-build-artifact/
+          retention-days: 90
+          if-no-files-found: error

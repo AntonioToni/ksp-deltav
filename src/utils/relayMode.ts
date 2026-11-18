@@ -1,3 +1,5 @@
+import { appStorageKey } from '../build/runtime'
+
 export type RelayMode = 'basic' | 'advanced'
 
 export const RELAY_MODE_STORAGE_KEY = 'ksp-deltav:relay-planner-mode'
@@ -6,7 +8,7 @@ export const RELAY_MODE_STORAGE_KEY = 'ksp-deltav:relay-planner-mode'
 export function readRelayModePreference(storage?: Pick<Storage, 'getItem'>): RelayMode {
   try {
     const available = storage ?? (typeof window === 'undefined' ? undefined : window.localStorage)
-    return available?.getItem(RELAY_MODE_STORAGE_KEY) === 'advanced' ? 'advanced' : 'basic'
+    return available?.getItem(appStorageKey(RELAY_MODE_STORAGE_KEY)) === 'advanced' ? 'advanced' : 'basic'
   } catch {
     return 'basic'
   }
@@ -17,7 +19,7 @@ export function writeRelayModePreference(mode: RelayMode, storage?: Pick<Storage
   if (mode !== 'basic' && mode !== 'advanced') return
   try {
     const available = storage ?? (typeof window === 'undefined' ? undefined : window.localStorage)
-    available?.setItem(RELAY_MODE_STORAGE_KEY, mode)
+    available?.setItem(appStorageKey(RELAY_MODE_STORAGE_KEY), mode)
   } catch {
     // The caller still keeps the selected mode for this open session.
   }

@@ -12,6 +12,8 @@ dist
 dist-ssr
 playwright-report
 test-results
+pages-build-artifact/
+__pycache__/
 *.local
 
 # Editor directories and files

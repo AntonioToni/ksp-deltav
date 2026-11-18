@@ -17,8 +17,11 @@ npm run build
 npm run preview
 ```
 
-Production output is written to `dist`. Production builds and previews use the
-`/ksp-deltav/` project path for GitHub Pages; the development server uses `/`.
+Production output is written to `dist`. The default production build and local
+preview server use `/ksp-deltav/`; the development server uses `/`. PR builds use
+their own nested base path and preview context. See the
+[deployment guide](DEPLOYMENT.md#local-checks) for the matching build and browser
+commands.
 
 ## Checks
 
@@ -692,14 +695,20 @@ changing those fixture values to match a different geometry.
 ## GitHub Pages
 
 In **Settings → Pages → Build and deployment**, select **GitHub Actions** as the
-source. The [deployment workflow](../.github/workflows/deploy-pages.yml) runs on
-pushes to `main` and can also be started manually from the Actions tab.
+source. The [production workflow](../.github/workflows/deploy-pages.yml) retains
+lint, unit, production build, and desktop browser checks before creating a
+validated build artifact. A separate trusted publisher deploys one combined
+site containing production and all active same-repository PR previews.
 
-The workflow installs dependencies, runs lint and unit tests, and checks the
-production build with desktop browser tests before deploying `dist`. It uses
-GitHub's temporary workflow token; no additional deployment secret is required.
+The publisher preserves the existing protected `github-pages` environment and
+uses GitHub's temporary workflow token; no additional deployment secret is
+required. It never executes PR code with deployment permissions. Fork content
+is not published under production's browser origin.
 
-The project URL is <https://antoniotoni.github.io/ksp-deltav/>.
+Production remains at <https://antoniotoni.github.io/ksp-deltav/>. Previews use
+`/ksp-deltav/previews/pr-{number}/`. The [deployment guide](DEPLOYMENT.md) documents
+the state branch, concurrency and stale-run handling, token permissions,
+repository settings, limitations, and safe first-preview test after merge.
 
 ## Discoverability and social previews
 
@@ -715,9 +724,9 @@ The Vite plugin in `vite.config.ts` publishes
 `docs/assets/planner-preview.png` as `dist/social-preview.png`, so the README and
 site use one source image. The public card URL is
 <https://antoniotoni.github.io/ksp-deltav/social-preview.png>. Development serves
-`GET` and `HEAD /social-preview.png`; production and preview use the Pages project
-path. Metadata references the image without fetching it as part of the initial
-planner UI.
+`GET` and `HEAD /social-preview.png`; builds serve the image beneath their
+production or nested PR base path. Metadata references the canonical production
+image without fetching it as part of the initial planner UI.
 
 To change the card artwork, replace the source PNG, keep it **1280 × 640** and
 under **1 MB**, then build and deploy. Changes to page metadata or crawl files
@@ -731,10 +740,13 @@ relay tabs are application state rather than separate indexable routes. Update
 the sitemap when actual public pages are added.
 
 Crawler rules belong at the origin's `/robots.txt`, such as
-<https://antoniotoni.github.io/robots.txt>. A file under
-`/ksp-deltav/robots.txt` cannot define the origin's crawl policy, so this project
-does not publish one. The page's robots metadata does not override an
-origin-level blocking rule.
+<https://antoniotoni.github.io/robots.txt>. The build emits a project-level
+`robots.txt` that disallows the preview prefix, and each preview emits a deny-all
+file. These are defensive hints: project files cannot define the origin's crawl
+policy. Preview indexing prevention relies on the HTML `noindex` metadata; the
+preview also omits production's structured search listing. See the
+[deployment guide](DEPLOYMENT.md#preview-application-behavior). The page's robots
+metadata does not override an origin-level blocking rule.
 
 The repository owner can optionally add
 `https://antoniotoni.github.io/ksp-deltav/` as a **URL-prefix property** in Google

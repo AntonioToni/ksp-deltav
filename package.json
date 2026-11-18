@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:deployment": "node --test --test-isolation=none .github/scripts/*.test.mjs && python3 -m unittest discover -s .github/scripts -p 'test_*.py'",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:pages": "npm run build && playwright test --config=playwright.pages.config.ts"

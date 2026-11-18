@@ -1,5 +1,6 @@
 import type { PlanetPack } from '../types/planner'
 import { validatePlanetPack } from './validatePlanetPack'
+import { appStorageKey } from '../build/runtime'
 
 export const MAX_CUSTOM_PACKS = 5
 export const MAX_PACK_BYTES = 1024 * 1024
@@ -177,7 +178,7 @@ export function validateCustomPackAddition(pack: PlanetPack, existing: readonly 
 /** Restore only validated entries; malformed local storage never reaches routing. */
 export function readCustomPacks(storage: Pick<Storage, 'getItem'>): { packs: PlanetPack[]; warning: string | null } {
   try {
-    const saved = storage.getItem(CUSTOM_PACK_STORAGE_KEY)
+    const saved = storage.getItem(appStorageKey(CUSTOM_PACK_STORAGE_KEY))
     if (saved === null) return { packs: [], warning: null }
     if (saved.length > MAX_CUSTOM_PACKS * MAX_PACK_BYTES + 1024 || encoder.encode(saved).byteLength > MAX_CUSTOM_PACKS * MAX_PACK_BYTES + 1024) {
       return { packs: [], warning: 'Saved custom packs exceeded the supported size and could not be restored.' }
@@ -210,7 +211,7 @@ export function saveCustomPacks(storage: Pick<Storage, 'setItem'>, packs: readon
       if (canonical.some(candidate => candidate.id === result.pack.id)) return 'Custom pack IDs must be unique.'
       canonical.push(result.pack)
     }
-    storage.setItem(CUSTOM_PACK_STORAGE_KEY, JSON.stringify({ version: 1, packs: canonical }))
+    storage.setItem(appStorageKey(CUSTOM_PACK_STORAGE_KEY), JSON.stringify({ version: 1, packs: canonical }))
     return null
   } catch {
     return 'This browser could not save custom packs. They remain available for this session; export a copy to keep them.'
