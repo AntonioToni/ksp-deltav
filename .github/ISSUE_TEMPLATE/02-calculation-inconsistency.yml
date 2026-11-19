@@ -1,0 +1,73 @@
+name: Calculation or data inconsistency
+description: Report incorrect estimates, orbital data, antenna values or differences from KSP.
+title: "[Accuracy]: "
+labels: ["accuracy"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for numerical or data discrepancies. Check the [data and assumptions](https://github.com/AntonioToni/ksp-deltav/blob/main/docs/DATA.md) and [relay reference](https://github.com/AntonioToni/ksp-deltav/blob/main/docs/RELAYS.md) first: the planner uses reference estimates, not simulated flights or complete relay paths.
+        Please [search existing issues](https://github.com/AntonioToni/ksp-deltav/issues?q=is%3Aissue) for similar reports.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Type of inconsistency
+      options:
+        - Delta-V budget or maneuver cost
+        - Planetary / orbital data
+        - Antenna power or link range
+        - Signal strength or physical occlusion
+        - Kerbalism efficiency or science rate
+        - Relay coverage or geometry
+        - Deployment timing or burns
+        - Other or unsure
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: Planetary system
+      options:
+        - Stock
+        - Outer Planets Mod (OPM)
+        - Real Solar System (RSS)
+        - Stock + Kcalbeloh
+        - OPM + Kcalbeloh
+        - Custom planet pack
+        - Other or unsure
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Planner and game configuration
+      description: Include enough details to recreate the calculation. Only provide settings relevant to your report.
+      placeholder: |
+        Planner version or URL:
+        Bodies / route / orbit altitude:
+        Radio setup, antennas and array configuration:
+        DSN level, range / occlusion / difficulty modifiers:
+        In-game date or UT, orbital mode and overrides:
+        KSP version, relevant mods and their versions:
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Planner result
+      description: Enter the actual values shown in the planner, including units.
+      placeholder: "Example: 85.2% signal strength at 14.5 Gm"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result and comparison
+      description: Include the observed in-game result or reference value, with units, and explain why it differs from the planner.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Supporting evidence or sources
+      description: Screenshots of the planner and KSP, links to reliable references, relevant part or mod configs, or an exported custom planet pack are especially useful. Remove any private information before posting.
