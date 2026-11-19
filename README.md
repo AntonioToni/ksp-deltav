@@ -1,4 +1,4 @@
-[![KSP Delta-V Planner — Mission budgets & CommNet planning](docs/assets/planner-preview.png?v=6)](https://antoniotoni.github.io/ksp-deltav/)
+[![KSP Delta-V Planner — Mission budgets & CommNet planning](docs/assets/planner-preview.png?v=7)](https://antoniotoni.github.io/ksp-deltav/)
 
 # KSP Delta-V Planner
 
@@ -125,5 +125,7 @@ Versions previously distributed under MIT retain their original license.
 Third-party notices and reference-data attribution remain under their respective
 terms, documented in the [data guide](docs/DATA.md) and
 [relay guide](docs/RELAYS.md).
+The banner uses a KSP gameplay screenshot by MRDOOGLE (MRBOOGLE on SpaceDock),
+from [Spectra Compatibility With Blackrack's Volumetric Clouds](https://spacedock.info/mod/3440/).
 Kerbal Space Program is the property of its respective owners; this is a
 community project.
