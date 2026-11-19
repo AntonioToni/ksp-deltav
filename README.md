@@ -113,6 +113,7 @@ constellations with complete multi-hop communication paths.
 
 Suggestions, bug reports, and contributions are welcome through
 [GitHub issues](https://github.com/AntonioToni/ksp-deltav/issues) and pull requests.
+See the [contributing guidelines](CONTRIBUTING.md) to get started.
 
 ## License
 
