@@ -1,0 +1,67 @@
+name: Bug report
+description: Report broken functionality, crashes, layout problems or unexpected behavior.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve KSP Delta-V Planner! Please [search existing issues](https://github.com/AntonioToni/ksp-deltav/issues?q=is%3Aissue) first.
+        For incorrect numerical estimates or planetary data, use the **Calculation or data inconsistency** form instead.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Delta-V map / mission budget
+        - Landing & Capture
+        - CommNet - Network
+        - CommNet - Deployment
+        - CommNet - Signals
+        - CommNet - Body data
+        - Planet packs / system selection
+        - General UI / mobile / accessibility
+        - Other or unsure
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+      description: Describe the problem and any error messages.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the selected bodies, route or relay settings if relevant.
+      placeholder: |
+        1. Open the planner...
+        2. Select...
+        3. Observe...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Planner version or URL
+      description: If known, enter the release, preview URL or commit. Otherwise leave blank.
+      placeholder: "Example: https://antoniotoni.github.io/ksp-deltav/"
+  - type: input
+    id: environment
+    attributes:
+      label: Browser, device and viewport
+      description: Especially helpful for UI bugs. Include zoom or resolution if relevant.
+      placeholder: "Example: Firefox, Windows 11, 1920x1080, 100% zoom"
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or additional context
+      description: Drag and drop screenshots, attach relevant logs or include a custom planet pack if needed. Remove any private information before posting.
