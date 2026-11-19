@@ -5,13 +5,5 @@
     "runId": 44403297602,
     "runAttempt": 1
   },
-  "previews": {
-    "19": {
-      "sourceSha": "aa2192f2bc0d7662853e87982011f4eaa4bb134e",
-      "runId": 44491409912,
-      "runAttempt": 1,
-      "mergeSha": "d96f22df6ef5bb9761689139d6efbb4090ef2e44",
-      "baseSha": "5003d700f2bffe5a4f1ffdf5e85f8fcb72fc8cc2"
-    }
-  }
+  "previews": {}
 }
