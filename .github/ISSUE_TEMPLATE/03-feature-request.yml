@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a new feature, supported mod, usability improvement or enhancement.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your suggestion! Please [search existing issues](https://github.com/AntonioToni/ksp-deltav/issues?q=is%3Aissue) first to see whether your idea is already planned.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area of the planner
+      options:
+        - Delta-V map / mission planning
+        - CommNet / relay planning
+        - Planet packs / mod support
+        - UI / UX / accessibility
+        - Documentation
+        - Other or unsure
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe what you are trying to accomplish and why the existing planner does not meet that need.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed feature or improvement
+      description: Describe how you would like it to work. A simple idea is enough; implementation details are not required.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Examples, alternatives or additional context
+      description: Optional screenshots, mockups, links, use cases or relevant mod information.

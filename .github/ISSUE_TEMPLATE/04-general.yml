@@ -1,0 +1,30 @@
+name: Question or other feedback
+description: Ask about usage, suggest documentation corrections or share other feedback.
+title: "[Other]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Not sure where your issue belongs? That's fine! You can ask here.
+        The [user guide](https://github.com/AntonioToni/ksp-deltav/blob/main/docs/USER_GUIDE.md) may already answer your question. Please also [check existing issues](https://github.com/AntonioToni/ksp-deltav/issues?q=is%3Aissue).
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Usage question
+        - Documentation correction
+        - General feedback
+        - Other
+  - type: textarea
+    id: message
+    attributes:
+      label: What would you like to share?
+      description: Describe your question, concern or feedback.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Include relevant settings, links or screenshots if helpful. Remove private information before posting.
